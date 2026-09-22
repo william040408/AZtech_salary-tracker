@@ -1,17 +1,14 @@
 {
   "person": "홍길동",
-  "hourly": 9999,
-  "monthlyHours": 209,
-  "dailyHours": 8,
-  "fixedAllowances": {
-    "직무수당": 90000,
-    "개근수당": 70000
-  },
-  "hireDate": "YYYY-MM-DD",
-  "serviceEnd": "YYYY-MM-DD",
-  "employmentInsuranceRate": 0.009,
-  "workbook": "C:/path/to/workbook.xlsx",
   "company": "회사명",
   "team": "부서명",
-  "serviceStart": "YYYY-MM-DD"
+  "hireDate": "YYYY-MM-DD",
+  "serviceStart": "YYYY-MM-DD",
+  "serviceEnd": "YYYY-MM-DD",
+  "hourly": 0,
+  "monthlyHours": 209,
+  "dailyHours": 8,
+  "fixedAllowances": {"수당이름": 0},
+  "employmentInsuranceRate": 0.009,
+  "workbook": "C:/path/to/workbook.xlsx"
 }
