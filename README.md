@@ -16,7 +16,7 @@
 
 ```bash
 python -m venv .venv
-.venv\Scriptsctivate          # macOS/Linux 는 source .venv/bin/activate
+.venv\Scripts\activate          # macOS/Linux 는 source .venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium      # 크롬 엔진, 계정당 한 번만 받으면 된다
 ```
