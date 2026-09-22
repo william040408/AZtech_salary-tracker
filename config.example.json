@@ -7,10 +7,10 @@
     "직무수당": 90000,
     "개근수당": 70000
   },
-  "hireDate": "2026-03-03",
-  "serviceEnd": "2028-02-02",
+  "hireDate": "YYYY-MM-DD",
+  "serviceEnd": "YYYY-MM-DD",
   "employmentInsuranceRate": 0.009,
-  "workbook": "C:/path/to/근무현황.xlsx",
+  "workbook": "C:/path/to/workbook.xlsx",
   "company": "회사명",
   "team": "부서명"
 }
