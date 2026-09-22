@@ -96,6 +96,26 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .legend{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:13px;font-size:11px;color:var(--muted)}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid}
 
+/* ── leave ledger ── */
+.hint{font-size:11.5px;color:var(--muted);font-weight:500}
+.lv-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.lv-s{background:var(--surface2);border:1px solid var(--line2);border-radius:10px;padding:10px 11px;display:flex;flex-direction:column;gap:2px}
+.lv-s span{font-size:11px;color:var(--muted);font-weight:500}
+.lv-s b{font-size:17px;font-weight:600}
+.lv-s.hi{background:var(--accent-soft);border-color:var(--accent)}
+.lv-s.hi b{color:var(--accent)}
+.ledger{display:flex;flex-direction:column}
+.lg{display:grid;grid-template-columns:62px 1fr auto;gap:10px;align-items:baseline;padding:9px 0;border-top:1px solid var(--line2);font-size:13px}
+.lg:first-child{border-top:0}
+.lg .m{color:var(--muted);font-size:12px}
+.lg .ev{display:flex;flex-wrap:wrap;gap:4px 8px;font-size:12.5px}
+.lg .bal{font-weight:600;white-space:nowrap}
+.tag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:5px;white-space:nowrap}
+.tag.acc{background:var(--accent-soft);color:var(--accent)}
+.tag.use{background:var(--paid-soft);color:var(--paid)}
+.tag.cash{background:var(--half-soft);color:var(--half)}
+.tag.un{background:var(--unpaid-soft);color:var(--unpaid)}
+
 /* ── month rows ── */
 .mrow{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line2)}
 .mrow:last-child{border-bottom:0}
@@ -154,6 +174,9 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .opt{padding:13px 12px}
   .btn{padding:14px}
   .mrow{padding:13px 14px}
+  .lv-sum{grid-template-columns:1fr 1fr}
+  .lg{grid-template-columns:54px 1fr;row-gap:4px}
+  .lg .bal{grid-column:2;justify-self:start}
 }
 /* 세로로 긴 화면에서 시트가 화면을 다 덮지 않도록 */
 .sheet{max-height:min(78vh,560px);overflow-y:auto;overscroll-behavior:contain}
@@ -176,7 +199,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   <div class="tiles">
     <div class="tile"><span>누적 실수령</span><b class="num" id="tNet"></b><small id="tNetSub"></small></div>
     <div class="tile"><span>만근 기준 실수령</span><b class="num" id="tRef"></b><small id="tRefSub"></small></div>
-    <div class="tile"><span>쉰 날</span><b class="num" id="tOff"></b><small id="tOffSub"></small></div>
+    <div class="tile"><span>출근 안 한 근무일</span><b class="num" id="tOff"></b><small id="tOffSub"></small></div>
   </div>
 
   <section class="sec">
@@ -202,6 +225,20 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
       </div>
     </div>
     <div class="note">회색 배경은 회사 근무현황 엑셀에서 읽어온 기록이고, 오른쪽 위 점이 찍힌 날은 직접 고친 날입니다. 날짜를 눌러 바꾸세요.</div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-hd"><h2>연차 현황</h2><span class="hint" id="lvAsOf"></span></div>
+    <div class="sec-body">
+      <div class="lv-sum">
+        <div class="lv-s"><span>발생</span><b class="num" id="lvAcc"></b></div>
+        <div class="lv-s"><span>유급으로 사용</span><b class="num" id="lvUsed"></b></div>
+        <div class="lv-s"><span>잔액</span><b class="num" id="lvBal"></b></div>
+        <div class="lv-s"><span>수당으로 받음</span><b class="num" id="lvCash"></b></div>
+      </div>
+      <div class="ledger" id="ledger"></div>
+    </div>
+    <div class="note" id="lvNote"></div>
   </section>
 
   <section class="sec">
@@ -284,7 +321,7 @@ function tiles(){
     if (KINDS[k]) { d += KINDS[k].off; if(k==="unpaid") h += 1; }
   }
   $("tOff").textContent = (Math.round(d*10)/10) + "일";
-  $("tOffSub").textContent = h ? ("무급 " + h + "일 포함") : "전부 유급";
+  $("tOffSub").textContent = h ? ("무급 " + h + "일 · 나머지 유급") : "전부 유급 (회사 휴무 포함)";
 }
 function refNet(){
   const p = B.payslips.find(p => !p.deductedHours && !p.leaveCashed);
@@ -376,15 +413,93 @@ function drawMonths(){
       // 내 기록상 무급 일수 vs 명세서 차감 시간
       const mine = unpaidDays * B.dailyHours + (0);
       const ok = mine === p.deductedHours;
-      const c = document.createElement("div");
-      c.className = "chk " + (ok ? "ok" : "bad");
-      c.textContent = ok
-        ? "✓ 내 기록의 무급 " + (p.deductedHours/B.dailyHours) + "일과 명세서 차감 " + p.deductedHours + "시간이 일치"
-        : "⚠ 내 기록은 무급 " + mine + "시간인데 명세서 차감은 " + p.deductedHours + "시간";
-      row.appendChild(c);
+      if (mine || p.deductedHours){
+        const c = document.createElement("div");
+        c.className = "chk " + (ok ? "ok" : "bad");
+        c.textContent = ok
+          ? "✓ 내 기록의 무급 " + (mine/B.dailyHours) + "일과 명세서 차감이 일치"
+          : "⚠ 내 기록의 무급은 " + mine + "시간인데 명세서 차감은 " + p.deductedHours + "시간 — 달력에서 분류해 주세요";
+        row.appendChild(c);
+      }
     }
     box.appendChild(row);
   }
+}
+
+/* ── 연차 원장 ──
+   근로기준법 제60조 2항: 계속근로 1년 미만은 1개월 개근 시 1일, 최대 11일.
+   무엇이 연차를 소모하는지는 달력에서 직접 분류한 값을 따른다. */
+const CONSUMES = { personal:1, half:0.5, substitute:0, unpaid:0, company:0 };
+
+function accrualDates(){
+  const [hy,hm,hd] = B.hireDate.split("-").map(Number);
+  const today = new Date(); const out = [];
+  for (let n=1; n<=11; n++){
+    const d = new Date(hy, hm-1+n, hd);
+    if (d > today) break;
+    out.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"));
+  }
+  return out;
+}
+
+function drawLeave(){
+  const accs = accrualDates();
+  const accByMonth = {};
+  for (const d of accs) accByMonth[d.slice(0,7)] = (accByMonth[d.slice(0,7)]||0) + 1;
+
+  // 달력 분류에서 사용·무급 집계
+  const useByMonth = {}, unpaidByMonth = {}, detail = {};
+  for (const a of B.attendance){
+    const k = kindOf(a.date); if (!(k in CONSUMES)) continue;
+    const mo = monthOf(a.date);
+    detail[mo] = detail[mo] || {};
+    detail[mo][k] = (detail[mo][k]||0) + 1;
+    if (CONSUMES[k]) useByMonth[mo] = (useByMonth[mo]||0) + CONSUMES[k];
+    if (k === "unpaid") unpaidByMonth[mo] = (unpaidByMonth[mo]||0) + 1;
+  }
+  const cashByMonth = {};
+  for (const pp of B.payslips) if (pp.leaveCashed) cashByMonth[pp.period] = pp.leaveCashed;
+
+  const months = [...new Set([...Object.keys(accByMonth), ...Object.keys(useByMonth),
+                              ...Object.keys(cashByMonth), ...Object.keys(unpaidByMonth)])].sort();
+  const box = $("ledger"); box.textContent = "";
+  let bal = 0, tAcc = 0, tUse = 0, tCash = 0, tUnpaid = 0;
+  const KO = {personal:"연차", half:"반차", substitute:"대체휴무", unpaid:"무급", company:"회사휴무"};
+
+  for (const mo of months){
+    const acc = accByMonth[mo]||0, use = useByMonth[mo]||0,
+          cash = cashByMonth[mo]||0, un = unpaidByMonth[mo]||0;
+    bal += acc - use; tAcc += acc; tUse += use; tCash += cash; tUnpaid += un;
+
+    const row = document.createElement("div"); row.className = "lg";
+    const m = document.createElement("span"); m.className = "m num";
+    m.textContent = mo.replace("-", ".");
+    const ev = document.createElement("span"); ev.className = "ev";
+    const tag = (cls, txt) => { const e = document.createElement("span"); e.className = "tag "+cls; e.textContent = txt; ev.appendChild(e); };
+    if (acc)  tag("acc",  "발생 +" + acc);
+    if (cash) tag("cash", "수당 " + cash + "일분 " + WON(cash*B.dayPay) + "원");
+    const d = detail[mo] || {};
+    for (const k of ["personal","half","substitute","company"])
+      if (d[k]) tag("use", KO[k] + " " + d[k] + (k==="half" ? "회" : "일"));
+    if (un) tag("un", "무급 " + un + "일");
+    if (!ev.childElementCount){ const e = document.createElement("span"); e.className="m"; e.textContent="—"; ev.appendChild(e); }
+    const b = document.createElement("span"); b.className = "bal num";
+    b.textContent = (Math.round(bal*10)/10) + "일";
+    row.append(m, ev, b); box.appendChild(row);
+  }
+
+  $("lvAcc").textContent  = tAcc + "일";
+  $("lvUsed").textContent = (Math.round(tUse*10)/10) + "일";
+  $("lvBal").textContent  = (Math.round(bal*10)/10) + "일";
+  $("lvCash").textContent = tCash + "일";
+  $("lvBal").closest(".lv-s").classList.add("hi");
+  $("lvAsOf").textContent = "오늘까지 · 1개월 개근당 1일";
+  $("lvNote").textContent =
+    "발생은 근로기준법 기준(1년 미만, 1개월 개근당 1일, 최대 11일)이고 소모는 달력 분류를 따릅니다. "
+    + "회사는 그 달에 쓰지 않은 연차를 수당으로 먼저 지급하는데, 그 " + tCash + "일을 '미리 받은 것'으로 보면 잔액은 "
+    + (Math.round(bal*10)/10) + "일이고, '팔아서 없어진 것'으로 보면 " + (Math.round((bal-tCash)*10)/10)
+    + "일입니다. 어느 쪽인지는 회사에 잔여일수를 물어봐야 확정됩니다."
+    + (tUnpaid ? " 무급으로 쉰 " + tUnpaid + "일은 연차를 소모하지 않고 급여에서 차감됐습니다." : "");
 }
 
 /* ── 편집 시트 ── */
@@ -423,7 +538,7 @@ async function setKind(ds, kind){
   }
 }
 
-function redraw(){ drawCal(); drawMonths(); tiles(); }
+function redraw(){ drawCal(); drawMonths(); drawLeave(); tiles(); }
 
 /* ── 이벤트 ── */
 $("grid").addEventListener("click", e => {

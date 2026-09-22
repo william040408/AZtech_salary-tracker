@@ -13,7 +13,7 @@ from calendar_kr import holidays, actual_pay_date
 
 from config import PERSON as ME, CFG
 FIRST = date.fromisoformat(CFG["hireDate"])
-LAST = date(2026, 12, 31)
+LAST = date.today()   # 미래 날짜는 엑셀이 비어 있을 뿐이므로 제외
 
 slips = [verify(p) for p in load_dir("data/raw")]
 days = read_all(WORKBOOK)
