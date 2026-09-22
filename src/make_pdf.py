@@ -24,13 +24,31 @@ PAGE_HEIGHT = "210mm"
 # 인쇄용 보정. 화면과 달리 종이는 항상 밝은 바탕이고, 표·그림이 페이지 경계에서
 # 잘리면 읽기 어려워 통째로 넘긴다.
 PRINT_CSS = """
-@page { margin: 11mm 9mm 13mm; }
+@page { margin: 10mm 9mm 12mm; }
 body { background: #fff !important; }
-figure, .card, pre, table, .links a, .steps li, dl { break-inside: avoid; }
-h1, h2, h3 { break-after: avoid; }
-h2 { break-before: auto; }
+
+/* 화면에서는 가로로 밀어 볼 수 있지만 종이에서는 잘려 버린다.
+   코드와 표는 줄을 접어서 전부 보이게 한다. */
+pre { white-space: pre-wrap; word-break: break-word; overflow: visible; }
+.tw { overflow: visible; }
+table { min-width: 0; font-size: 12.5px; }
+th, td { padding: 7px 8px; }
+td:first-child { white-space: normal; }
+
+/* 통째로 넘겨야 하는 덩어리. 쪽 경계에서 갈리면 읽을 수 없다. */
+figure, .card, pre, .tw, .links a, .steps li { break-inside: avoid; }
+
+/* 제목만 쪽 끝에 남거나, 용어가 뜻과 갈라지지 않게 */
+h1, h2, h3, dt { break-after: avoid; }
+dd { break-before: avoid; }
+
+/* 문단이 한 줄만 남기고 넘어가지 않게.
+   절마다 쪽을 강제하면 빈 쪽이 생겨서, 흐르게 두고 덩어리만 지킨다. */
+p, li, dd { orphans: 3; widows: 3; }
+
+h2 { margin-top: 32px !important; }
+figure svg { max-height: 150mm; }
 a { text-decoration: none; }
-.links a { border-color: #dbe1e8 !important; }
 """
 
 
