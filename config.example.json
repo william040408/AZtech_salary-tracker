@@ -3,11 +3,14 @@
   "hourly": 9999,
   "monthlyHours": 209,
   "dailyHours": 8,
-  "fixedAllowances": {"직무수당": 90000, "개근수당": 70000},
+  "fixedAllowances": {
+    "직무수당": 90000,
+    "개근수당": 70000
+  },
   "hireDate": "2026-03-03",
   "serviceEnd": "2028-02-02",
   "employmentInsuranceRate": 0.009,
-  "workbook": "C:/경로/근무현황.xlsx",
+  "workbook": "C:/path/to/근무현황.xlsx",
   "company": "회사명",
   "team": "부서명"
 }

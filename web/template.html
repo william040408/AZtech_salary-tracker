@@ -163,11 +163,11 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 <div class="wrap">
   <header class="hd">
     <div>
-      <div class="eyebrow">산업기능요원 · 주식회사 ○○테크 ○○실</div>
+      <div class="eyebrow" id="org"></div>
       <h1>급여·연차 기록부</h1>
     </div>
     <div class="svc">
-      <div class="svc-row"><span>복무 2026.03.03 → 2028.02.02</span><span class="num" id="svcPct"></span></div>
+      <div class="svc-row"><span id="svcRange"></span><span class="num" id="svcPct"></span></div>
       <div class="bar"><i id="svcBar" style="width:0%"></i></div>
       <div class="svc-row"><span class="num" id="svcDone"></span><span class="num" id="svcLeft"></span></div>
     </div>
@@ -175,7 +175,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 
   <div class="tiles">
     <div class="tile"><span>누적 실수령</span><b class="num" id="tNet"></b><small id="tNetSub"></small></div>
-    <div class="tile"><span>만근 기준 실수령</span><b class="num" id="tRef"></b><small>월 209시간 · 시급 XX,XXX원</small></div>
+    <div class="tile"><span>만근 기준 실수령</span><b class="num" id="tRef"></b><small id="tRefSub"></small></div>
     <div class="tile"><span>쉰 날</span><b class="num" id="tOff"></b><small id="tOffSub"></small></div>
   </div>
 
@@ -260,6 +260,9 @@ const kindOf = d => overrides.get(d) || (ATT.has(d) ? baseKind(ATT.get(d)) : nul
 
 /* ── 복무 진행 ── */
 (function service(){
+  $("org").textContent = "산업기능요원 · " + B.company + " " + B.team;
+  $("svcRange").textContent = "복무 " + B.hireDate.replace(/-/g,".") + " → " + B.serviceEnd.replace(/-/g,".");
+  $("tRefSub").textContent = "월 " + (B.fullBase/B.hourly) + "시간 · 시급 " + WON(B.hourly) + "원";
   const s = new Date(B.hireDate+"T00:00:00"), e = new Date(B.serviceEnd+"T00:00:00"), n = new Date();
   const total = (e-s)/864e5, done = Math.max(0, Math.min(total, (n-s)/864e5));
   const pct = done/total*100;
