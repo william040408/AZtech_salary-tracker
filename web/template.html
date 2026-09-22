@@ -261,9 +261,9 @@ const kindOf = d => overrides.get(d) || (ATT.has(d) ? baseKind(ATT.get(d)) : nul
 /* ── 복무 진행 ── */
 (function service(){
   $("org").textContent = "산업기능요원 · " + B.company + " " + B.team;
-  $("svcRange").textContent = "복무 " + B.hireDate.replace(/-/g,".") + " → " + B.serviceEnd.replace(/-/g,".");
+  $("svcRange").textContent = "복무 " + B.serviceStart.replace(/-/g,".") + " → " + B.serviceEnd.replace(/-/g,".");
   $("tRefSub").textContent = "월 " + (B.fullBase/B.hourly) + "시간 · 시급 " + WON(B.hourly) + "원";
-  const s = new Date(B.hireDate+"T00:00:00"), e = new Date(B.serviceEnd+"T00:00:00"), n = new Date();
+  const s = new Date(B.serviceStart+"T00:00:00"), e = new Date(B.serviceEnd+"T00:00:00"), n = new Date();
   const total = (e-s)/864e5, done = Math.max(0, Math.min(total, (n-s)/864e5));
   const pct = done/total*100;
   $("svcBar").style.width = pct.toFixed(1)+"%";

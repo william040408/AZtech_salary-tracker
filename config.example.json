@@ -12,5 +12,6 @@
   "employmentInsuranceRate": 0.009,
   "workbook": "C:/path/to/workbook.xlsx",
   "company": "회사명",
-  "team": "부서명"
+  "team": "부서명",
+  "serviceStart": "YYYY-MM-DD"
 }

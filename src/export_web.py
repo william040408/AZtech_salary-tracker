@@ -69,6 +69,7 @@ bundle = {
     "fullBase": FULL_BASE,
     "dailyHours": DAILY_HOURS,
     "hireDate": CFG["hireDate"],
+    "serviceStart": CFG["serviceStart"],
     "serviceEnd": CFG["serviceEnd"],
     "company": CFG["company"], "team": CFG["team"],
     "firstDay": str(FIRST),
