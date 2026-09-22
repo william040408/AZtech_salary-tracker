@@ -1,0 +1,535 @@
+<title>급여 기록부 작동 원리</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f3f5f8; --surface:#fff; --surface2:#f8fafb;
+  --ink:#141a21; --ink2:#3c4753; --muted:#69737f; --line:#dbe1e8; --line2:#eceff3;
+  --accent:#0a6b6b; --accent-soft:#e2f1f0;
+  --warn:#9c6607; --warn-soft:#faeed6;
+  --good:#1c7748; --good-soft:#e0f2e7;
+  --bad:#ad3b25; --bad-soft:#fae3de;
+  --shadow:0 1px 2px rgba(20,26,33,.05),0 4px 14px rgba(20,26,33,.05);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0e1319; --surface:#161d26; --surface2:#1b232d;
+  --ink:#e7edf4; --ink2:#c2ccd8; --muted:#8a95a3; --line:#252f3b; --line2:#1e2731;
+  --accent:#38c9c0; --accent-soft:#12312f;
+  --warn:#dda63f; --warn-soft:#352814;
+  --good:#4fbc83; --good-soft:#123326;
+  --bad:#e67c62; --bad-soft:#3a1e18;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);
+}}
+:root[data-theme="dark"]{
+  --ground:#0e1319; --surface:#161d26; --surface2:#1b232d;
+  --ink:#e7edf4; --ink2:#c2ccd8; --muted:#8a95a3; --line:#252f3b; --line2:#1e2731;
+  --accent:#38c9c0; --accent-soft:#12312f;
+  --warn:#dda63f; --warn-soft:#352814;
+  --good:#4fbc83; --good-soft:#123326;
+  --bad:#e67c62; --bad-soft:#3a1e18;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:"IBM Plex Sans KR",-apple-system,"Segoe UI","Malgun Gothic",sans-serif;
+  font-size:15.5px;line-height:1.75;-webkit-text-size-adjust:100%}
+code,.mono{font-family:"IBM Plex Mono",Consolas,monospace;font-size:.88em}
+.wrap{max-width:660px;margin:0 auto;padding-inline:18px;padding-block:28px 80px}
+
+header{margin-bottom:30px}
+.eyebrow{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{margin:.2em 0 .3em;font-size:29px;font-weight:700;letter-spacing:-.025em;text-wrap:balance;line-height:1.25}
+.lede{color:var(--ink2);font-size:16px;margin:0}
+
+h2{margin:44px 0 14px;font-size:20px;font-weight:700;letter-spacing:-.02em;text-wrap:balance;
+  padding-top:18px;border-top:2px solid var(--line)}
+h2 .n{color:var(--accent);font-family:"IBM Plex Mono",monospace;font-size:.78em;margin-right:.5em}
+h3{margin:26px 0 8px;font-size:16px;font-weight:600;letter-spacing:-.01em}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 14px;padding-left:1.3em}
+li{margin-bottom:6px}
+strong{font-weight:600}
+em{font-style:normal;background:var(--accent-soft);color:var(--accent);padding:1px 5px;border-radius:4px;font-weight:600}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:18px 0;box-shadow:var(--shadow)}
+.card>:last-child{margin-bottom:0}
+.card.q{border-left:3px solid var(--accent)}
+.card.warn{background:var(--warn-soft);border-color:var(--warn)}
+.card.warn strong{color:var(--warn)}
+.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:5px;
+  background:var(--accent-soft);color:var(--accent);margin-bottom:8px}
+
+pre{background:var(--surface2);border:1px solid var(--line2);border-radius:9px;padding:12px 14px;
+  overflow-x:auto;margin:14px 0;font-family:"IBM Plex Mono",Consolas,monospace;font-size:12.5px;line-height:1.65}
+code:not(pre code){background:var(--surface2);border:1px solid var(--line2);padding:1px 5px;border-radius:4px}
+
+.tw{overflow-x:auto;margin:16px 0}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:340px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line2);vertical-align:top}
+th{font-weight:600;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;
+  border-bottom:1px solid var(--line)}
+td:first-child{font-weight:600;white-space:nowrap}
+
+figure{margin:22px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 14px 12px;box-shadow:var(--shadow)}
+figure svg{display:block;width:100%;max-width:100%;height:auto;color:var(--ink2)}
+figcaption{margin-top:10px;font-size:12.5px;color:var(--muted);line-height:1.6;text-align:center}
+
+.steps{counter-reset:s;list-style:none;padding:0;margin:16px 0}
+.steps li{counter-increment:s;position:relative;padding-left:38px;margin-bottom:16px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;
+  background:var(--accent);color:#fff;font-size:12.5px;font-weight:700;display:grid;place-items:center;
+  font-family:"IBM Plex Mono",monospace}
+.steps b{display:block;font-size:15.5px}
+.steps span{color:var(--muted);font-size:14px}
+
+dl{margin:16px 0}
+dt{font-weight:700;margin-top:14px;font-size:15px}
+dt:first-child{margin-top:0}
+dd{margin:2px 0 0;color:var(--ink2);font-size:14.5px}
+
+.links a{display:block;padding:11px 13px;background:var(--surface2);border:1px solid var(--line2);
+  border-radius:9px;margin-bottom:8px;text-decoration:none;color:var(--ink)}
+.links a:hover{border-color:var(--accent)}
+.links b{display:block;font-size:14px}
+.links span{font-size:11.5px;color:var(--muted);word-break:break-all;font-family:"IBM Plex Mono",monospace}
+
+@media (max-width:520px){
+  body{font-size:15px}
+  .wrap{padding-inline:16px;padding-block:22px 60px}
+  h1{font-size:24px} h2{font-size:18px;margin-top:36px} h3{font-size:15px}
+  .card{padding:14px 15px}
+  figure{padding:12px 10px 10px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">읽고 나면 오늘 한 일이 전부 이해됨</div>
+  <h1>급여 기록부 작동 원리</h1>
+  <p class="lede">웹을 한 번도 안 해본 사람 기준으로, 파일이 뭔지부터 시작해서
+  왜 서버를 두 개나 빌렸는지까지 순서대로 설명합니다.</p>
+</header>
+
+<h2><span class="n">01</span>한 문장으로</h2>
+
+<div class="card q">
+<p><strong>매달 이메일로 오는 급여명세서를 자동으로 모아서, 회사 근무기록과 대조해
+"이번 달 월급이 왜 이 금액인지"를 폰에서 볼 수 있게 만든 것.</strong></p>
+</div>
+
+<p>처음에 궁금했던 건 세 가지였습니다.</p>
+<ul>
+  <li>남은 연차가 몇 개인가</li>
+  <li>월급이 계산대로 제대로 들어왔는가</li>
+  <li>연차가 제대로 사용 처리됐는가</li>
+</ul>
+
+<p>명세서를 읽어보니 <em>돈 계산은 전부 정상</em>이었습니다. 6개월치 실수령액 변동이
+연차수당과 기본급 차감만으로 100% 설명됐고, 고용보험·주민세 같은 공제도 전부 맞았습니다.</p>
+
+<p>문제는 다른 데 있었습니다. <strong>명세서에 근태 정보가 아예 없습니다.</strong>
+금액만 있고 며칠 쉬었는지, 연차가 몇 개 남았는지가 안 적혀 있습니다.
+그래서 "왜 이 금액인지"를 확인할 방법이 없었습니다. 그걸 채우려고 만든 게 이 도구입니다.</p>
+
+<h2><span class="n">02</span>순서대로 뭘 했나</h2>
+
+<ol class="steps">
+  <li><b>명세서에서 급여 구조를 역산했습니다</b>
+    <span>기본급을 시급으로 나눠보니 딱 떨어지는 시간 수가 나왔습니다.
+    거기서 시급·월 소정근로시간·하루치 금액을 알아냈고, 연차를 쓰면 기본급에서
+    시간 단위로 깎인다는 규칙까지 찾았습니다.</span></li>
+
+  <li><b>명세서를 자동으로 받아오게 했습니다</b>
+    <span>이메일 본문에는 금액이 한 글자도 없고 링크만 있었습니다.
+    그래서 브라우저를 사람 없이 자동으로 띄워서 그 링크를 열고 표를 읽어오게 만들었습니다.
+    링크는 3개월이면 만료되므로 매달 한 번은 돌려야 합니다.</span></li>
+
+  <li><b>회사 근무기록 엑셀과 대조했습니다</b>
+    <span>엑셀의 빈칸이 두 종류라는 걸 발견했습니다. 그날 전원이 비어 있으면 회사 전체 휴무,
+    나만 비어 있으면 개인 휴가입니다. 이걸 구분해야 명세서의 차감액과 맞출 수 있습니다.</span></li>
+
+  <li><b>화면을 만들었습니다</b>
+    <span>달력에서 날짜를 눌러 그날의 성격(연차·반차·무급·회사휴무)을 직접 기록하고,
+    그 기록을 명세서 차감액과 자동으로 대조하는 페이지입니다.</span></li>
+
+  <li><b>인터넷에 올렸습니다</b>
+    <span>폰에서도 노트북에서도 같은 내용을 보려면 인터넷에 있어야 합니다.
+    <strong>오늘 오래 걸린 게 바로 이 단계</strong>입니다. 아래에서 자세히 설명합니다.</span></li>
+</ol>
+
+<h2><span class="n">03</span>웹 기초 — 5분</h2>
+
+<h3>파일이 전부입니다</h3>
+
+<p>웹사이트라고 하면 뭔가 대단한 것 같지만, 실체는 <strong>글자가 적힌 파일 몇 개</strong>입니다.
+브라우저가 그 파일을 읽고 화면을 그리는 것뿐입니다.</p>
+
+<h3>HTML — 뼈대</h3>
+
+<p>"여기 제목, 여기 표" 같은 <strong>구조</strong>를 적은 파일입니다.
+아래처럼 적으면</p>
+
+<pre>&lt;h1&gt;급여·연차 기록부&lt;/h1&gt;
+&lt;p&gt;9월 11일 연차&lt;/p&gt;</pre>
+
+<p>브라우저가 읽고 "첫 줄은 큰 제목, 둘째 줄은 본문"으로 그립니다.
+<strong>레고 조립 설명서</strong>와 같습니다. 종이 자체는 별것 아니지만 그대로 조립하면 모양이 나옵니다.</p>
+
+<div class="card">
+<p><strong>직접 확인해 보세요.</strong> 아무 웹페이지에서 마우스 우클릭 →
+<code>페이지 소스 보기</code>를 누르면 글자가 잔뜩 나옵니다.
+그게 브라우저가 받은 원본 파일입니다.</p>
+</div>
+
+<h3>CSS — 겉모습</h3>
+
+<p>뼈대에 <strong>색과 크기</strong>를 입힙니다. 기록부에 실제로 이런 줄이 있습니다.</p>
+
+<pre>.cell.k-personal { background: 연한초록; color: 초록; }</pre>
+
+<p>"연차로 찍힌 칸은 연한 초록 배경에 초록 글씨로 그려라"는 뜻입니다.
+달력에서 9월 11일이 초록으로 보이는 이유가 이 한 줄입니다.</p>
+
+<pre>@media (max-width: 520px) { .cell { min-height: 52px; } }</pre>
+
+<p>"화면 폭이 520px보다 좁으면, 즉 폰이면 칸 높이를 52px 이상으로 해라"는 뜻입니다.
+폰에서 달력 칸이 손가락으로 누를 만큼 커지는 게 이 덕분입니다.</p>
+
+<h3>JavaScript — 움직임</h3>
+
+<p>HTML과 CSS는 <strong>가만히 있습니다.</strong> 눌러도 반응이 없습니다.
+움직이게 하는 게 JavaScript입니다. 기록부에서는 이런 일을 합니다.</p>
+
+<ul>
+  <li>달력 그리기 — 9월이면 30칸, 2월이면 28칸</li>
+  <li>날짜를 누르면 아래에서 선택창 올리기</li>
+  <li>연차 잔액 계산하기</li>
+  <li><strong>급여 숫자를 받아오기</strong> — 이게 핵심입니다. 뒤에서 다시 나옵니다</li>
+</ul>
+
+<div class="card">
+<p><strong>셋이 한 파일에 다 들어 있습니다.</strong> <code>index.html</code> 하나에
+HTML·CSS·JavaScript가 섞여 있습니다. 원래는 나누기도 하지만, 하나로 뭉쳐 두는 쪽이 간단합니다.</p>
+</div>
+
+<h3>서버 — 항상 켜져 있는 남의 컴퓨터</h3>
+
+<p>노트북에 있는 <code>index.html</code>은 더블클릭하면 열립니다.
+그런데 <strong>폰에서는 못 엽니다.</strong> 파일이 노트북 안에 있으니까요.</p>
+
+<div class="card q">
+<p><strong>서버 = 전원을 안 끄는 컴퓨터.</strong> 파일을 거기 올려두면
+인터넷이 되는 아무 기기에서나 꺼내 볼 수 있습니다.</p>
+</div>
+
+<p>특별한 기계가 아닙니다. 24시간 켜져 있고, 누가 "파일 줘"라고 하면 보내주는
+프로그램이 돌고 있는 것뿐입니다. 노트북을 서버로 쓸 수 없는 이유는 단순합니다.
+덮으면 꺼지고, 집 인터넷 주소는 계속 바뀌어서 폰이 찾아갈 수가 없습니다.</p>
+
+<p>그래서 남의 것을 빌립니다. <strong>GitHub</strong>과 <strong>Cloudflare</strong>가
+공짜로 빌려주는 걸 썼습니다.</p>
+
+<h3>주소가 하는 일</h3>
+
+<pre>https://william040408.github.io/AZtech_salary-tracker/
+        └──── 어느 컴퓨터 ────┘└───── 어느 폴더 ─────┘</pre>
+
+<p><strong>"어느 컴퓨터의, 어느 파일"</strong>을 가리키는 게 전부입니다. 집 주소와 같습니다.</p>
+
+<h2><span class="n">04</span>서버에도 두 종류가 있습니다</h2>
+
+<p>이게 오늘 오래 걸린 이유의 핵심입니다.</p>
+
+<div class="card">
+<span class="tag">종류 A</span>
+<h3 style="margin-top:0">자판기 — GitHub Pages</h3>
+<p><strong>생각을 하지 않습니다.</strong> 물어본 파일을 그대로 뱉습니다.</p>
+<ul>
+  <li>빠르고 공짜</li>
+  <li><strong>기억을 못 합니다.</strong> 폰에서 뭘 입력해도 받아둘 데가 없습니다</li>
+  <li><strong>판단을 못 합니다.</strong> 누가 물어보든 똑같이 내줍니다</li>
+</ul>
+</div>
+
+<div class="card">
+<span class="tag">종류 B</span>
+<h3 style="margin-top:0">카운터 직원 — Cloudflare Worker</h3>
+<p><strong>생각을 합니다.</strong> 요청을 받고 내줄지 말지 판단합니다.
+우리가 준 지시사항이 <code>worker.js</code> 파일이고, 이렇게 적혀 있습니다.</p>
+<ul>
+  <li>암구호가 틀리면 "안 됩니다"라고만 답하고 끝내라</li>
+  <li>맞으면 금고에서 꺼내서 줘라</li>
+  <li>우리 사이트에서 온 요청만 받아라</li>
+</ul>
+<p>그리고 <strong>금고(KV)</strong>가 직원이 물건을 넣어두는 곳입니다.
+급여 데이터와 달력 입력이 여기 들어 있습니다.</p>
+</div>
+
+<h2><span class="n">05</span>왜 두 개를 썼나</h2>
+
+<p>처음엔 GitHub 하나로 하려고 했는데, 자판기라서 두 가지가 막혔습니다.</p>
+
+<div class="tw">
+<table>
+  <tr><th>문제</th><th>왜</th><th>어떻게 풀었나</th></tr>
+  <tr><td>입력을 저장 못 함</td><td>자판기는 기억을 못 함</td><td>직원에게 맡김</td></tr>
+  <tr><td>급여가 공개됨</td><td>자판기는 아무에게나 내줌</td><td>급여는 금고에만 넣음</td></tr>
+</table>
+</div>
+
+<p>그래서 역할을 갈랐습니다. <strong>화면 파일은 GitHub에, 급여 숫자는 Cloudflare 금고에.</strong>
+GitHub에 올라간 파일에는 <em>급여 숫자가 하나도 없습니다.</em>
+그래서 저장소를 공개로 둬도 안전합니다.</p>
+
+<figure>
+<svg viewBox="0 0 380 300" role="img" aria-label="폰은 GitHub Pages에서 숫자가 빠진 화면 파일을 받고, 별도로 Cloudflare Worker에 암구호를 보내 금고에서 급여 숫자를 받아온다">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0,1 10,5 0,9" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <rect x="110" y="6" width="160" height="38" rx="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="190" y="30" text-anchor="middle" font-size="13" fill="currentColor" font-weight="600">폰 · 노트북</text>
+
+  <line x1="150" y1="46" x2="98" y2="96" stroke="currentColor" stroke-width="1.5" marker-end="url(#a1)"/>
+  <line x1="230" y1="46" x2="282" y2="96" stroke="currentColor" stroke-width="1.5" marker-end="url(#a1)"/>
+  <text x="6" y="74" font-size="10.5" fill="currentColor">① 화면 파일</text>
+  <text x="374" y="74" text-anchor="end" font-size="10.5" fill="currentColor">② 암구호 + 요청</text>
+
+  <rect x="6" y="100" width="168" height="62" rx="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="90" y="124" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">GitHub Pages</text>
+  <text x="90" y="144" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".75">자판기 · 파일만 내줌</text>
+  <text x="90" y="184" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".6">급여 숫자 0개</text>
+  <text x="90" y="200" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".6">공개돼도 안전</text>
+
+  <rect x="206" y="100" width="168" height="62" rx="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="290" y="124" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">Cloudflare Worker</text>
+  <text x="290" y="144" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".75">직원 · 암구호 확인</text>
+
+  <line x1="290" y1="164" x2="290" y2="214" stroke="currentColor" stroke-width="1.5" marker-end="url(#a1)"/>
+  <text x="298" y="192" font-size="10.5" fill="currentColor" opacity=".75">꺼내고 넣음</text>
+
+  <rect x="206" y="218" width="168" height="58" rx="9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="290" y="242" text-anchor="middle" font-size="12.5" fill="currentColor" font-weight="600">KV 금고</text>
+  <text x="290" y="262" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".75">급여 · 근태 · 내 입력</text>
+</svg>
+<figcaption>화면 파일과 급여 숫자가 서로 다른 곳에서 옵니다. 왼쪽은 누구나 받을 수 있고, 오른쪽은 암구호가 있어야 열립니다.</figcaption>
+</figure>
+
+<h2><span class="n">06</span>실제로 이렇게 돌아갑니다</h2>
+
+<p>폰에서 주소를 열었을 때 벌어지는 일입니다. <strong>화면이 먼저 오고, 숫자가 나중에 따로 옵니다.</strong>
+이 순서가 이 구조의 전부입니다.</p>
+
+<figure>
+<svg viewBox="0 0 380 320" role="img" aria-label="폰이 먼저 GitHub Pages에서 숫자 없는 화면 파일을 받고, 그 다음 Cloudflare Worker에 암구호를 보내 급여 숫자를 받는다. 달력을 누르면 다시 Worker에 저장 요청을 보낸다">
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0,1 10,5 0,9" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <rect x="14" y="4" width="84" height="30" rx="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="56" y="24" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">폰</text>
+  <rect x="132" y="4" width="116" height="30" rx="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="190" y="24" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">GitHub Pages</text>
+  <rect x="270" y="4" width="104" height="30" rx="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="322" y="24" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">Cloudflare</text>
+
+  <line x1="56" y1="36" x2="56" y2="312" stroke="currentColor" stroke-width="1" opacity=".28" stroke-dasharray="3 4"/>
+  <line x1="190" y1="36" x2="190" y2="128" stroke="currentColor" stroke-width="1" opacity=".28" stroke-dasharray="3 4"/>
+  <line x1="322" y1="36" x2="322" y2="312" stroke="currentColor" stroke-width="1" opacity=".28" stroke-dasharray="3 4"/>
+
+  <text x="123" y="60" text-anchor="middle" font-size="10.5" fill="currentColor">① 페이지 줘</text>
+  <line x1="58" y1="68" x2="188" y2="68" stroke="currentColor" stroke-width="1.5" marker-end="url(#a2)"/>
+  <text x="123" y="94" text-anchor="middle" font-size="10.5" fill="currentColor">② 화면 파일 (숫자 없음)</text>
+  <line x1="188" y1="102" x2="58" y2="102" stroke="currentColor" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <text x="190" y="142" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".6">여기까지는 빈 화면</text>
+
+  <text x="189" y="174" text-anchor="middle" font-size="10.5" fill="currentColor">③ 암구호 + 데이터 줘</text>
+  <line x1="58" y1="182" x2="320" y2="182" stroke="currentColor" stroke-width="1.5" marker-end="url(#a2)"/>
+  <text x="189" y="208" text-anchor="middle" font-size="10.5" fill="currentColor">④ 급여 · 근태 숫자</text>
+  <line x1="320" y1="216" x2="58" y2="216" stroke="currentColor" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <text x="190" y="240" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".6">이제 숫자가 채워짐</text>
+
+  <text x="189" y="272" text-anchor="middle" font-size="10.5" fill="currentColor">⑤ 8/4는 무급으로</text>
+  <line x1="58" y1="280" x2="320" y2="280" stroke="currentColor" stroke-width="1.5" marker-end="url(#a2)"/>
+  <text x="189" y="302" text-anchor="middle" font-size="10.5" fill="currentColor">⑥ 금고에 저장함</text>
+  <line x1="320" y1="310" x2="58" y2="310" stroke="currentColor" stroke-width="1.5" marker-end="url(#a2)"/>
+</svg>
+<figcaption>①②로 빈 화면이 먼저 도착하고, ③④에서 암구호를 내고 숫자를 받습니다. ⑤⑥은 달력을 눌렀을 때입니다.</figcaption>
+</figure>
+
+<div class="card q">
+<p><strong>폰과 노트북이 같은 내용을 보는 이유</strong>가 여기 있습니다.
+입력이 기기에 저장되는 게 아니라 <strong>금고에 저장</strong>되기 때문입니다.
+어느 기기에서 열든 ③④를 거쳐 같은 금고에서 꺼내옵니다.</p>
+</div>
+
+<h2><span class="n">07</span>GitHub이 정확히 뭐였나</h2>
+
+<p>GitHub은 사실 <strong>두 가지 일</strong>을 합니다. 섞여서 헷갈리기 쉽습니다.</p>
+
+<h3>ㄱ) 창고 — 원래 기능</h3>
+
+<p>코드 파일을 보관하는 곳인데, <strong>바꾼 기록을 전부 남깁니다.</strong></p>
+
+<pre>25번째 저장: 전사 휴무를 처리 방식에 따라 셋으로 나눔
+24번째 저장: Worker 배포 방식을 문서에 적음
+23번째 저장: wrangler 배포 설정 추가
+ ...</pre>
+
+<p>언제든 옛날 버전으로 되돌릴 수 있습니다.
+<code>git push</code>는 <strong>"노트북의 파일을 창고로 보내라"</strong>는 명령입니다.</p>
+
+<div class="card warn">
+<p><strong>오늘 이 기록을 손봐야 했습니다.</strong> 초반 커밋 안에 급여 금액과 이름이
+남아 있었는데, 저장소를 공개로 올리면 그 옛날 기록까지 전부 읽힙니다.
+그래서 25개 커밋 전체에서 금액과 이름을 지우고 올렸습니다. 지금은 흔적이 없습니다.</p>
+</div>
+
+<h3>ㄴ) 자판기 — Pages 기능</h3>
+
+<p>창고에 있는 파일 중 <strong><code>docs</code> 폴더만</strong> 인터넷에 내보내주는 서비스입니다.
+설정에서 <code>/docs</code>를 고른 게 그 뜻입니다.</p>
+
+<h2><span class="n">08</span>고치면 어떻게 반영되나</h2>
+
+<p><strong>경로가 세 가지</strong>인데, 서로 다릅니다. 이것만 구분하면 됩니다.</p>
+
+<figure>
+<svg viewBox="0 0 380 272" role="img" aria-label="코드를 고칠 때는 노트북에서 GitHub 창고로 보내면 Pages와 Cloudflare가 자동으로 가져간다. 급여 데이터는 GitHub을 거치지 않고 노트북에서 금고로 바로 간다">
+  <defs>
+    <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0,1 10,5 0,9" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <line x1="190" y1="0" x2="190" y2="272" stroke="currentColor" stroke-width="1" opacity=".2" stroke-dasharray="4 4"/>
+
+  <text x="92" y="14" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">코드를 고칠 때</text>
+  <rect x="14" y="26" width="156" height="32" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="92" y="47" text-anchor="middle" font-size="12" fill="currentColor">내 노트북</text>
+  <line x1="92" y1="60" x2="92" y2="94" stroke="currentColor" stroke-width="1.5" marker-end="url(#a3)"/>
+  <text x="99" y="81" font-size="10.5" fill="currentColor">git push</text>
+  <rect x="14" y="98" width="156" height="32" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="92" y="119" text-anchor="middle" font-size="12" fill="currentColor">GitHub 창고</text>
+  <line x1="92" y1="132" x2="92" y2="166" stroke="currentColor" stroke-width="1.5" marker-end="url(#a3)"/>
+  <text x="99" y="153" font-size="10.5" fill="currentColor">자동</text>
+  <rect x="14" y="170" width="156" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="92" y="191" text-anchor="middle" font-size="11.5" fill="currentColor">GitHub Pages</text>
+  <text x="92" y="209" text-anchor="middle" font-size="11.5" fill="currentColor">Cloudflare Worker</text>
+  <text x="92" y="244" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".65">화면 · 기능이 바뀜</text>
+
+  <text x="288" y="14" text-anchor="middle" font-size="11.5" fill="currentColor" font-weight="700">급여 데이터를 넣을 때</text>
+  <rect x="210" y="26" width="156" height="32" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="288" y="47" text-anchor="middle" font-size="12" fill="currentColor">내 노트북</text>
+  <line x1="288" y1="60" x2="288" y2="166" stroke="currentColor" stroke-width="1.5" marker-end="url(#a3)"/>
+  <text x="295" y="108" font-size="10.5" fill="currentColor">push_data.py</text>
+  <text x="295" y="126" font-size="10.5" fill="currentColor" opacity=".65">창고를 안 거침</text>
+  <rect x="210" y="170" width="156" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="288" y="200" text-anchor="middle" font-size="11.5" fill="currentColor">Cloudflare KV 금고</text>
+  <text x="288" y="244" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".65">숫자가 바뀜</text>
+</svg>
+<figcaption>왼쪽은 창고를 거쳐 자동으로 퍼집니다. 오른쪽은 급여라서 창고를 건너뛰고 금고로 바로 갑니다.</figcaption>
+</figure>
+
+<div class="tw">
+<table>
+  <tr><th>무엇을</th><th>어떻게</th><th>누가</th><th>걸리는 시간</th></tr>
+  <tr><td>화면 · 기능</td><td><code>git push</code></td><td>Claude</td><td>1~2분 뒤 자동 반영</td></tr>
+  <tr><td>급여 데이터</td><td><code>push_data.py</code></td><td>Claude</td><td>즉시</td></tr>
+  <tr><td>달력 분류</td><td>폰에서 탭</td><td>나</td><td>즉시</td></tr>
+</table>
+</div>
+
+<p><strong>달력을 누르는 건 명령어가 필요 없습니다.</strong> 누르는 순간 금고에 저장됩니다.</p>
+
+<h2><span class="n">09</span>오늘 오래 걸린 이유</h2>
+
+<p>Cloudflare Worker에 <strong>코드를 집어넣는 방법이 두 가지</strong>인데, 처음 고른 쪽이 막혀 있었습니다.</p>
+
+<dl>
+  <dt>방법 A — 브라우저에서 직접 타이핑</dt>
+  <dd>간단하지만 Worker가 만들어진 방식에 따라 잠겨 있을 수 있습니다.
+  <code>Read only</code>를 만난 게 이것입니다.</dd>
+
+  <dt>방법 B — GitHub에서 자동으로 가져가게 하기</dt>
+  <dd>Cloudflare가 저장소를 지켜보다가 바뀌면 알아서 가져가 배포합니다.
+  이걸 하려면 "뭘 어떻게 배포해라"를 알려줘야 하는데, 그 배달 주문서가 <code>wrangler.jsonc</code>입니다.</dd>
+</dl>
+
+<p>A가 막혀서 B로 돌렸는데, 그러던 중 <code>Edit code</code>가 열려서 결국 A로 끝났습니다.
+<strong>헛수고는 아닙니다.</strong> B도 같이 연결해 둔 덕분에 앞으로는 코드를 고치면 자동 배포됩니다.</p>
+
+<h2><span class="n">10</span>매달 할 일</h2>
+
+<pre>cd 프로젝트폴더
+.venv\Scripts\activate
+
+python src/fetch.py links     명세서 링크 수집
+python src/fetch_doc.py       명세서 받아오기
+python src/report.py          이상한 것만 보고
+python src/push_data.py       금고에 반영</pre>
+
+<div class="card warn">
+<p><strong>명세서 링크는 3개월이면 만료됩니다.</strong> 거르면 그달 명세서를 영영 못 봅니다.
+이미 2월부터 5월까지는 만료돼서 못 가져왔습니다. 매달 10일 이후에 한 번은 돌려야 합니다.</p>
+</div>
+
+<h2><span class="n">11</span>용어 정리</h2>
+
+<dl>
+  <dt>HTML</dt><dd>화면의 뼈대를 적은 파일. "여기 제목, 여기 표"</dd>
+  <dt>CSS</dt><dd>겉모습을 적은 파일. 색, 크기, 폰에서의 배치</dd>
+  <dt>JavaScript</dt><dd>움직임을 적은 파일. 누르면 반응하고, 계산하고, 데이터를 받아옴</dd>
+  <dt>서버</dt><dd>전원을 안 끄는 남의 컴퓨터. 파일을 나눠주는 프로그램이 돌고 있음</dd>
+  <dt>GitHub</dt><dd>코드 창고. 바꾼 기록을 전부 보관하고, 되돌릴 수 있음</dd>
+  <dt>GitHub Pages</dt><dd>창고의 <code>docs</code> 폴더를 인터넷에 내보내주는 자판기</dd>
+  <dt>git push</dt><dd>노트북의 파일을 창고로 보내는 명령</dd>
+  <dt>Cloudflare Worker</dt><dd>요청을 받고 판단하는 문지기. 암구호를 확인함</dd>
+  <dt>KV</dt><dd>문지기가 물건을 넣어두는 금고. 급여·근태·달력 입력이 여기 있음</dd>
+  <dt>wrangler</dt><dd>Cloudflare에 배포하는 도구. <code>wrangler.jsonc</code>가 그 주문서</dd>
+  <dt>Node.js</dt><dd>JavaScript를 브라우저 밖에서 실행하는 프로그램. wrangler가 이걸로 만들어져 있음.
+  <strong>내 노트북엔 필요 없음</strong> — Cloudflare 쪽 컴퓨터에서 돌아감</dd>
+  <dt>Python</dt><dd>내 노트북에서 도는 언어. 명세서 파싱·검산·빌드를 담당</dd>
+  <dt>가상환경 (.venv)</dt><dd>이 프로젝트 전용 패키지 보관함. 다른 프로젝트와 안 섞이게 격리</dd>
+  <dt>.env</dt><dd>비밀번호를 적어두는 파일. 절대 창고에 올라가지 않음. <code>.venv</code>와 이름만 비슷한 다른 것</dd>
+</dl>
+
+<h2><span class="n">12</span>주소 모음</h2>
+
+<div class="links">
+  <a href="https://william040408.github.io/AZtech_salary-tracker/" target="_blank" rel="noopener">
+    <b>기록부 — 매일 쓰는 화면</b>
+    <span>william040408.github.io/AZtech_salary-tracker/</span></a>
+  <a href="https://github.com/william040408/AZtech_salary-tracker" target="_blank" rel="noopener">
+    <b>GitHub 창고 — 코드와 기록</b>
+    <span>github.com/william040408/AZtech_salary-tracker</span></a>
+  <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">
+    <b>Cloudflare — 문지기와 금고 설정</b>
+    <span>dash.cloudflare.com</span></a>
+</div>
+
+<div class="card q">
+<p><strong>폰 홈 화면에 두기</strong> — 기록부 주소를 크롬으로 열고
+<code>⋮</code> → <code>홈 화면에 추가</code>를 누르면 앱처럼 씁니다.
+처음 한 번만 Worker 주소와 암구호를 넣으면 그 기기는 기억합니다.</p>
+</div>
+
+<h2><span class="n">13</span>다음에 할 것</h2>
+
+<ul>
+  <li><strong>달력에서 5월 4일과 8월 3~7일 분류하기</strong> — 지금은 잠정값이라
+  8월 대조에 경고가 떠 있습니다. 3일은 연차, 2일은 무급으로 찍으면 맞아떨어집니다</li>
+  <li><strong>회사에 연차 잔여일수 물어보기</strong> — 명세서에 근태가 없어서
+  이것만은 데이터로 확정이 안 됩니다</li>
+  <li><strong>암구호 늘리기</strong> — 지금 9자인데 20자 이상이 안전합니다</li>
+  <li>매달 자동 실행, 도메인 연결 — 급하지 않음</li>
+</ul>
+
+</div>
