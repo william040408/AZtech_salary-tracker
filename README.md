@@ -10,19 +10,48 @@
 3. **대조** — 회사 근무현황 엑셀의 출퇴근 기록과 명세서의 기본급 차감을 맞춰본다.
 4. **기록** — 쉰 날의 성격(연차·반차·무급·회사휴무·대체휴무)을 휴대폰에서 직접 분류해 남긴다.
 
+## 준비
+
+가상환경을 파서 이 프로젝트 안에만 패키지를 둔다.
+
+```bash
+python -m venv .venv
+.venv\Scriptsctivate          # macOS/Linux 는 source .venv/bin/activate
+pip install -r requirements.txt
+playwright install chromium      # 크롬 엔진, 계정당 한 번만 받으면 된다
+```
+
+`activate` 를 한 번 치면 그 터미널에서는 `python` 이 가상환경 것을 가리킨다.
+새 터미널을 열 때마다 다시 쳐야 하고, 빠져나올 때는 `deactivate`.
+
+설정 파일 두 개가 필요하다. 둘 다 커밋되지 않는다.
+
+- `config.json` — 시급, 월 소정근로시간, 입사일 등 (`config.example.json` 복사)
+- `.env` — Gmail 앱 비밀번호, Cloudflare Worker 주소와 암구호 (`.env.example` 복사)
+
 ## 실행
 
 ```bash
-pip install -r requirements.txt
-python -m playwright install chromium
-
-python src/fetch.py links      # Gmail에서 명세서 메일의 링크 추출
+python src/fetch.py links      # Gmail 에서 명세서 메일의 링크 추출
 python src/fetch_doc.py        # 링크를 브라우저로 열어 명세서 저장
 python src/report.py           # 평소와 달라진 항목만 보고
-python src/build_web.py        # 웹 페이지 빌드
+python src/build_web.py        # 페이지 빌드 (두 벌)
+python src/push_data.py        # Cloudflare 로 데이터 올리기
 ```
 
-`.env` 에 Gmail 주소와 앱 비밀번호가 필요하다. `.env.example` 참고.
+명세서 링크는 **3개월만 살아있다.** 매달 한 번은 돌려야 한다.
+
+## 보는 방법
+
+`src/build_web.py` 가 같은 템플릿에서 두 벌을 만든다.
+
+| 파일 | 어디에 | 데이터 | 연차 기록 저장 |
+| --- | --- | --- | --- |
+| `web/index.html` | 클로드 아티팩트 | 페이지 안에 박힘 | 아티팩트 DB |
+| `docs/index.html` | GitHub Pages | Worker 에서 받아옴 | Worker KV |
+
+저장소가 서로 다르므로 한쪽에서 분류한 값은 다른 쪽에 보이지 않는다.
+하나를 정해서 쓴다. Worker 설정은 `worker/README.md` 참고.
 
 ## 급여 구조
 
