@@ -22,3 +22,4 @@ data/raw/html/
 data/raw/links.json
 web/index.html
 web/data.json
+config.json

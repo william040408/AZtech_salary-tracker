@@ -3,17 +3,11 @@
 from datetime import date
 from dateutil.relativedelta import relativedelta  # noqa
 
-# --- 회사/계약 전제 (명세서에서 역산해 확정한 값) ---
-HOURLY = 10_000          # 2026년 최저시급 = 적용 시급
-MONTHLY_HOURS = 209      # 주40h + 주휴 기준 월 소정근로시간
-DAILY_HOURS = 8
-FULL_BASE = HOURLY * MONTHLY_HOURS      # 만근 시 기본급 X,XXX,XXX
-DAY_PAY = HOURLY * DAILY_HOURS          # 1일 통상임금 XX,XXX
+# 계약 조건은 전부 config.json 에서 온다 (명세서에서 역산해 확정한 값들)
+from config import (HOURLY, MONTHLY_HOURS, DAILY_HOURS, FULL_BASE, DAY_PAY,
+                    FIXED_ALLOWANCES, EI_RATE, CFG)
 
-FIXED_ALLOWANCES = {"직무수당": 90_000, "개근수당": 50_000}
-
-EI_RATE = 0.009          # 고용보험 근로자 부담률
-HIRE_DATE = date(2026, 3, 2)
+HIRE_DATE = date.fromisoformat(CFG["hireDate"])
 
 
 def _round10_down(x):

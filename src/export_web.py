@@ -11,8 +11,9 @@ from reconcile import read_all, WORKBOOK
 from attendance import worked_hours
 from calendar_kr import holidays, actual_pay_date
 
-ME = "홍길동"
-FIRST, LAST = date(2026, 3, 3), date(2026, 9, 30)
+from config import PERSON as ME, CFG
+FIRST = date.fromisoformat(CFG["hireDate"])
+LAST = date(2026, 12, 31)
 
 slips = [verify(p) for p in load_dir("data/raw")]
 days = read_all(WORKBOOK)
@@ -67,8 +68,9 @@ bundle = {
     "dayPay": DAY_PAY,
     "fullBase": FULL_BASE,
     "dailyHours": DAILY_HOURS,
-    "hireDate": "2026-03-03",
-    "serviceEnd": "2028-02-02",
+    "hireDate": CFG["hireDate"],
+    "serviceEnd": CFG["serviceEnd"],
+    "company": CFG["company"], "team": CFG["team"],
     "firstDay": str(FIRST),
     "payslips": pay,
     "attendance": att,

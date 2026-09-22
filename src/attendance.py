@@ -7,8 +7,7 @@
 import sys
 from datetime import date, datetime, time
 
-WORKBOOK = (r"C:/Users/willi/OneDrive/Desktop/AZtech_macro_maker"
-            r"/작업자 목록/02. 26년도 ○○실 월 근무현황.xlsx")
+from config import WORKBOOK, PERSON  # noqa: F401
 
 
 def _as_date(v):
