@@ -1,5 +1,8 @@
 # 급여·연차 기록부
 
+> Automated URL parsing and monitoring system for Korean payroll,
+> pre-paid leave allowance, and tax tracking.
+
 산업기능요원으로 근무하며 매달 받는 급여명세서를 자동으로 모으고,
 회사 근무현황과 대조해 "이번 달 금액이 왜 이 값인지"를 설명하는 도구.
 
