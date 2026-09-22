@@ -20,3 +20,5 @@ node_modules/
 *링크*
 data/raw/html/
 data/raw/links.json
+web/index.html
+web/data.json

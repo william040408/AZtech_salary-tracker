@@ -1,0 +1,463 @@
+<title>급여·연차 기록부</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#f3f5f8; --surface:#fff; --surface2:#f8fafb;
+  --ink:#141a21; --ink2:#3c4753; --muted:#69737f; --line:#dbe1e8; --line2:#eceff3;
+  --accent:#0a6b6b; --accent-soft:#e2f1f0;
+  --paid:#1c7748; --paid-soft:#e0f2e7;
+  --half:#9c6607; --half-soft:#faeed6;
+  --unpaid:#ad3b25; --unpaid-soft:#fae3de;
+  --company:#42548a; --company-soft:#e4e8f5;
+  --hol:#8a5670; --hol-soft:#f5e6ee;
+  --shadow:0 1px 2px rgba(20,26,33,.06),0 4px 14px rgba(20,26,33,.05);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0e1319; --surface:#161d26; --surface2:#1b232d;
+  --ink:#e7edf4; --ink2:#c2ccd8; --muted:#8a95a3; --line:#252f3b; --line2:#1e2731;
+  --accent:#38c9c0; --accent-soft:#12312f;
+  --paid:#4fbc83; --paid-soft:#123326;
+  --half:#dda63f; --half-soft:#352814;
+  --unpaid:#e67c62; --unpaid-soft:#3a1e18;
+  --company:#8a9ad4; --company-soft:#1c2340;
+  --hol:#c992ad; --hol-soft:#331f2a;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);
+}}
+:root[data-theme="dark"]{
+  --ground:#0e1319; --surface:#161d26; --surface2:#1b232d;
+  --ink:#e7edf4; --ink2:#c2ccd8; --muted:#8a95a3; --line:#252f3b; --line2:#1e2731;
+  --accent:#38c9c0; --accent-soft:#12312f;
+  --paid:#4fbc83; --paid-soft:#123326;
+  --half:#dda63f; --half-soft:#352814;
+  --unpaid:#e67c62; --unpaid-soft:#3a1e18;
+  --company:#8a9ad4; --company-soft:#1c2340;
+  --hol:#c992ad; --hol-soft:#331f2a;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--ground);color:var(--ink);
+  font-family:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+  font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%;
+}
+.num{font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:24px 96px;display:flex;flex-direction:column;gap:22px}
+
+/* ── header ── */
+.hd{display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+.svc{display:flex;flex-direction:column;gap:6px}
+.svc-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12.5px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+
+/* ── tiles ── */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 14px;display:flex;flex-direction:column;gap:3px}
+.tile b{font-size:19px;font-weight:600;letter-spacing:-.01em}
+.tile span{font-size:11.5px;color:var(--muted);font-weight:500}
+.tile small{font-size:11px;color:var(--muted)}
+
+/* ── section ── */
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.sec-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line2)}
+.sec-hd h2{margin:0;font-size:14px;font-weight:600;letter-spacing:-.01em}
+.sec-body{padding:16px}
+
+/* ── calendar ── */
+.nav{display:flex;align-items:center;gap:4px}
+.nav button{appearance:none;background:none;border:1px solid var(--line);color:var(--ink2);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center}
+.nav button:hover:not(:disabled){background:var(--surface2);color:var(--accent)}
+.nav button:disabled{opacity:.3;cursor:default}
+.nav b{min-width:96px;text-align:center;font-size:13.5px;font-weight:600}
+.dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:5px}
+.dow span{text-align:center;font-size:10.5px;font-weight:600;color:var(--muted);padding-bottom:2px}
+.dow span:first-child{color:var(--unpaid)}
+.dow span:last-child{color:var(--company)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cell{aspect-ratio:1/1.08;border:1px solid var(--line2);border-radius:9px;background:var(--surface2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  cursor:pointer;padding:2px;font-size:13px;position:relative;min-width:0}
+.cell.pad{visibility:hidden;cursor:default}
+.cell:disabled{cursor:default;opacity:.45}
+.cell .d{font-weight:500;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.cell .t{font-size:9px;font-weight:600;line-height:1;white-space:nowrap;max-width:100%;overflow:hidden}
+.cell.k-work{background:var(--surface2)}
+.cell.k-short{background:var(--surface2);border-color:var(--half)}
+.cell.k-half{background:var(--half-soft);border-color:var(--half);color:var(--half)}
+.cell.k-personal{background:var(--paid-soft);border-color:var(--paid);color:var(--paid)}
+.cell.k-unpaid{background:var(--unpaid-soft);border-color:var(--unpaid);color:var(--unpaid)}
+.cell.k-company{background:var(--company-soft);border-color:var(--company);color:var(--company)}
+.cell.k-holiday{background:var(--hol-soft);color:var(--hol)}
+.cell.k-weekend{background:transparent;border-color:transparent;color:var(--muted)}
+.cell.edited::after{content:"";position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.cell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.legend{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:13px;font-size:11px;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid}
+
+/* ── month rows ── */
+.mrow{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line2)}
+.mrow:last-child{border-bottom:0}
+.mrow-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.mrow-top b{font-size:14px;font-weight:600}
+.mrow-top .net{font-size:16px;font-weight:600}
+.delta{font-size:12px;font-weight:600;padding:1px 7px;border-radius:20px}
+.delta.up{background:var(--paid-soft);color:var(--paid)}
+.delta.dn{background:var(--unpaid-soft);color:var(--unpaid)}
+.delta.eq{background:var(--line2);color:var(--muted)}
+.mrow-why{font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px}
+.chk{font-size:12px;display:flex;align-items:center;gap:6px;font-weight:500}
+.chk.ok{color:var(--paid)} .chk.bad{color:var(--unpaid)}
+.pending{font-size:12.5px;color:var(--muted);font-style:normal}
+
+/* ── sheet ── */
+.scrim{position:fixed;inset:0;background:rgba(10,14,20,.45);opacity:0;pointer-events:none;transition:opacity .16s;z-index:20}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--surface);
+  border-radius:16px 16px 0 0;border-top:1px solid var(--line);
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));
+  transform:translateY(102%);transition:transform .2s cubic-bezier(.4,0,.2,1);
+  max-width:760px;margin:0 auto;box-shadow:0 -6px 30px rgba(10,14,20,.18)}
+.sheet.on{transform:translateY(0)}
+.sheet h3{margin:0 0 3px;font-size:16px;font-weight:600}
+.sheet .sub{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opt{appearance:none;text-align:left;border:1px solid var(--line);background:var(--surface2);color:var(--ink);
+  border-radius:10px;padding:11px 12px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:500;
+  display:flex;flex-direction:column;gap:1px}
+.opt small{font-size:10.5px;color:var(--muted);font-weight:400}
+.opt:hover{border-color:var(--accent)}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.opt:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.sheet-foot{display:flex;gap:8px;margin-top:12px}
+.btn{flex:1;appearance:none;border-radius:10px;padding:11px;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--ink2)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.note{font-size:12px;color:var(--muted);padding:10px 16px;border-top:1px solid var(--line2);background:var(--surface2)}
+.offline{background:var(--half-soft);color:var(--half);border:1px solid var(--half);border-radius:10px;padding:10px 12px;font-size:12.5px}
+/* 폰: Galaxy S26 Ultra 등 412~480px 폭, 세로로 매우 긴 화면 */
+@media (max-width:520px){
+  .wrap{padding-inline:14px;padding-block:18px 40px;gap:18px}
+  .tiles{grid-template-columns:1fr 1fr;gap:8px}
+  .tile:first-child{grid-column:1/-1}
+  .tile b{font-size:18px}
+  h1{font-size:22px}
+  .sec-body{padding:13px}
+  .grid,.dow{gap:3px}
+  .cell{aspect-ratio:auto;min-height:52px}     /* 손가락으로 누를 최소 크기 */
+  .cell .d{font-size:14px}
+  .cell .t{font-size:8.5px}
+  .nav b{min-width:82px}
+  .nav button{width:34px;height:34px}          /* 터치 타겟 */
+  .opts{grid-template-columns:1fr 1fr;gap:7px}
+  .opt{padding:13px 12px}
+  .btn{padding:14px}
+  .mrow{padding:13px 14px}
+}
+/* 세로로 긴 화면에서 시트가 화면을 다 덮지 않도록 */
+.sheet{max-height:min(78vh,560px);overflow-y:auto;overscroll-behavior:contain}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="hd">
+    <div>
+      <div class="eyebrow">산업기능요원 · 주식회사 ○○테크 ○○실</div>
+      <h1>급여·연차 기록부</h1>
+    </div>
+    <div class="svc">
+      <div class="svc-row"><span>복무 2026.03.03 → 2028.02.02</span><span class="num" id="svcPct"></span></div>
+      <div class="bar"><i id="svcBar" style="width:0%"></i></div>
+      <div class="svc-row"><span class="num" id="svcDone"></span><span class="num" id="svcLeft"></span></div>
+    </div>
+  </header>
+
+  <div class="tiles">
+    <div class="tile"><span>누적 실수령</span><b class="num" id="tNet"></b><small id="tNetSub"></small></div>
+    <div class="tile"><span>만근 기준 실수령</span><b class="num" id="tRef"></b><small>월 209시간 · 시급 XX,XXX원</small></div>
+    <div class="tile"><span>쉰 날</span><b class="num" id="tOff"></b><small id="tOffSub"></small></div>
+  </div>
+
+  <section class="sec">
+    <div class="sec-hd">
+      <h2>근태 달력</h2>
+      <div class="nav">
+        <button id="prev" aria-label="이전 달">‹</button>
+        <b id="mlabel" class="num"></b>
+        <button id="next" aria-label="다음 달">›</button>
+      </div>
+    </div>
+    <div class="sec-body">
+      <div id="dbWarn" hidden class="offline">저장 기능에 연결하지 못했어요. 분류를 바꿔도 이 기기에만 남고 저장되지 않습니다.</div>
+      <div class="dow"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+      <div class="grid" id="grid"></div>
+      <div class="legend">
+        <span><i style="background:var(--surface2);border-color:var(--line)"></i>근무</span>
+        <span><i style="background:var(--paid-soft);border-color:var(--paid)"></i>연차(유급)</span>
+        <span><i style="background:var(--half-soft);border-color:var(--half)"></i>반차</span>
+        <span><i style="background:var(--unpaid-soft);border-color:var(--unpaid)"></i>무급</span>
+        <span><i style="background:var(--company-soft);border-color:var(--company)"></i>회사 휴무</span>
+        <span><i style="background:var(--hol-soft);border-color:var(--hol)"></i>공휴일</span>
+      </div>
+    </div>
+    <div class="note">회색 배경은 회사 근무현황 엑셀에서 읽어온 기록이고, 오른쪽 위 점이 찍힌 날은 직접 고친 날입니다. 날짜를 눌러 바꾸세요.</div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-hd"><h2>월별 명세서 대조</h2></div>
+    <div id="months"></div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+  <h3 id="shTitle">—</h3>
+  <div class="sub" id="shSub">—</div>
+  <div class="opts" id="shOpts"></div>
+  <div class="sheet-foot">
+    <button class="btn" id="shReset">엑셀 기록으로 되돌리기</button>
+    <button class="btn pri" id="shClose">닫기</button>
+  </div>
+</div>
+
+<script id="bundle" type="application/json">__BUNDLE__</script>
+<script>
+(function(){
+"use strict";
+const B = JSON.parse(document.getElementById("bundle").textContent);
+const WON = n => (n<0?"−":"") + Math.abs(Math.round(n)).toLocaleString("ko-KR");
+
+// 분류 정의. base는 엑셀에서 유추한 값, 사용자가 고르면 override가 된다.
+const KINDS = {
+  work:     {label:"근무",      cls:"k-work",     desc:"정상 출근",           off:0},
+  short:    {label:"지각",      cls:"k-short",    desc:"8시간 미만 근무",      off:0},
+  half:     {label:"반차",      cls:"k-half",     desc:"4시간 휴가",          off:0.5},
+  personal: {label:"연차",      cls:"k-personal", desc:"유급 휴가",           off:1},
+  unpaid:   {label:"무급",      cls:"k-unpaid",   desc:"급여에서 차감",        off:1},
+  company:  {label:"회사휴무",  cls:"k-company",  desc:"전사 휴무일",          off:1},
+  substitute:{label:"대체휴무", cls:"k-personal", desc:"휴일근로 보상",        off:1},
+  holiday:  {label:"공휴일",    cls:"k-holiday",  desc:"법정 공휴일",          off:0},
+  weekend:  {label:"주말",      cls:"k-weekend",  desc:"",                    off:0},
+};
+const CHOOSABLE = ["work","personal","half","unpaid","company","substitute"];
+
+// 엑셀이 준 기본 분류를 사용자 분류 체계로 옮긴다
+const baseKind = a => a.kind === "personal_off" ? "personal"
+                    : a.kind === "company_off" ? "company"
+                    : a.kind;
+
+const ATT = new Map(B.attendance.map(a => [a.date, a]));
+const PAY = new Map(B.payslips.map(p => [p.period, p]));
+let overrides = new Map();   // date -> kind
+let dbRef = null;
+let view = "2026-09";
+let picked = null;
+
+const $ = id => document.getElementById(id);
+const monthOf = d => d.slice(0,7);
+const kindOf = d => overrides.get(d) || (ATT.has(d) ? baseKind(ATT.get(d)) : null);
+
+/* ── 복무 진행 ── */
+(function service(){
+  const s = new Date(B.hireDate+"T00:00:00"), e = new Date(B.serviceEnd+"T00:00:00"), n = new Date();
+  const total = (e-s)/864e5, done = Math.max(0, Math.min(total, (n-s)/864e5));
+  const pct = done/total*100;
+  $("svcBar").style.width = pct.toFixed(1)+"%";
+  $("svcPct").textContent = pct.toFixed(1)+"%";
+  $("svcDone").textContent = "복무 " + Math.floor(done) + "일차";
+  $("svcLeft").textContent = "남은 " + Math.ceil(total-done).toLocaleString("ko-KR") + "일";
+})();
+
+/* ── 요약 타일 ── */
+function tiles(){
+  const nets = B.payslips.reduce((s,p)=>s+p.net, 0);
+  $("tNet").textContent = WON(nets)+"원";
+  $("tNetSub").textContent = B.payslips.length + "개월분 (" + B.payslips[0].period + "~" + B.payslips.at(-1).period + ")";
+  $("tRef").textContent = WON(refNet())+"원";
+  let d=0, h=0;
+  for (const a of B.attendance){
+    const k = kindOf(a.date);
+    if (KINDS[k]) { d += KINDS[k].off; if(k==="unpaid") h += 1; }
+  }
+  $("tOff").textContent = (Math.round(d*10)/10) + "일";
+  $("tOffSub").textContent = h ? ("무급 " + h + "일 포함") : "전부 유급";
+}
+function refNet(){
+  const p = B.payslips.find(p => !p.deductedHours && !p.leaveCashed);
+  return p ? p.net : 0;
+}
+
+/* ── 달력 ── */
+function drawCal(){
+  const [y,m] = view.split("-").map(Number);
+  $("mlabel").textContent = y + "." + String(m).padStart(2,"0");
+  const first = new Date(y, m-1, 1), last = new Date(y, m, 0);
+  const g = $("grid"); g.textContent = "";
+  for (let i=0;i<first.getDay();i++){
+    const c = document.createElement("div"); c.className = "cell pad"; g.appendChild(c);
+  }
+  for (let day=1; day<=last.getDate(); day++){
+    const ds = y+"-"+String(m).padStart(2,"0")+"-"+String(day).padStart(2,"0");
+    const k = kindOf(ds), K = KINDS[k];
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cell " + (K ? K.cls : "k-weekend");
+    b.dataset.date = ds;
+    if (!ATT.has(ds)) b.disabled = true;
+    if (overrides.has(ds)) b.classList.add("edited");
+    const dd = document.createElement("span"); dd.className = "d"; dd.textContent = day;
+    b.appendChild(dd);
+    if (K && k!=="work" && k!=="weekend"){
+      const t = document.createElement("span"); t.className = "t";
+      t.textContent = k==="holiday" ? (ATT.get(ds)?.holiday || "공휴일").slice(0,4) : K.label;
+      b.appendChild(t);
+    }
+    const a = ATT.get(ds);
+    b.setAttribute("aria-label", ds + " " + (K?K.label:"기록 없음") + (a&&a.start ? " "+a.start+"~"+a.end : ""));
+    g.appendChild(b);
+  }
+  const ms = B.attendance.map(a=>monthOf(a.date));
+  $("prev").disabled = view <= ms[0];
+  $("next").disabled = view >= ms[ms.length-1];
+}
+
+/* ── 월별 대조 ── */
+function drawMonths(){
+  const box = $("months"); box.textContent = "";
+  const months = [...new Set(B.attendance.map(a=>monthOf(a.date)))].sort();
+  const ref = refNet();
+  for (const mo of months){
+    const p = PAY.get(mo);
+    const row = document.createElement("div"); row.className = "mrow";
+    const top = document.createElement("div"); top.className = "mrow-top";
+    const nm = document.createElement("b"); nm.textContent = mo.replace("-",".") + " 급여";
+    top.appendChild(nm);
+    if (p){
+      const right = document.createElement("div");
+      right.style.cssText = "display:flex;align-items:baseline;gap:9px";
+      const d = p.net - ref;
+      const badge = document.createElement("span");
+      badge.className = "delta " + (d>0?"up":d<0?"dn":"eq");
+      badge.textContent = d===0 ? "기준" : (d>0?"+":"−") + WON(Math.abs(d));
+      const net = document.createElement("span"); net.className = "net num";
+      net.textContent = WON(p.net)+"원";
+      right.append(badge, net); top.appendChild(right);
+    } else {
+      const s = document.createElement("span"); s.className = "pending";
+      s.textContent = "명세서 미수령";
+      top.appendChild(s);
+    }
+    row.appendChild(top);
+
+    // 근태 집계
+    let off = 0, unpaidDays = 0, half = 0;
+    for (const a of B.attendance){
+      if (monthOf(a.date) !== mo) continue;
+      const k = kindOf(a.date);
+      if (!KINDS[k]) continue;
+      off += KINDS[k].off;
+      if (k === "unpaid") unpaidDays += 1;
+      if (k === "half") half += 1;
+    }
+    const why = document.createElement("div"); why.className = "mrow-why";
+    const bits = [];
+    if (p && p.leaveCashed) bits.push("연차수당 +" + WON(p.leaveCashed*B.dayPay) + " (" + p.leaveCashed + "일분)");
+    if (p && p.deductedHours) bits.push("기본급 −" + WON(p.deductedHours*B.hourly) + " (" + p.deductedHours + "시간)");
+    if (off) bits.push("쉰 날 " + (Math.round(off*10)/10) + "일" + (half?" (반차 "+half+")":""));
+    if (!bits.length) bits.push("만근, 변동 없음");
+    for (const t of bits){ const s = document.createElement("span"); s.textContent = t; why.appendChild(s); }
+    row.appendChild(why);
+
+    if (p){
+      // 내 기록상 무급 일수 vs 명세서 차감 시간
+      const mine = unpaidDays * B.dailyHours + (0);
+      const ok = mine === p.deductedHours;
+      const c = document.createElement("div");
+      c.className = "chk " + (ok ? "ok" : "bad");
+      c.textContent = ok
+        ? "✓ 내 기록의 무급 " + (p.deductedHours/B.dailyHours) + "일과 명세서 차감 " + p.deductedHours + "시간이 일치"
+        : "⚠ 내 기록은 무급 " + mine + "시간인데 명세서 차감은 " + p.deductedHours + "시간";
+      row.appendChild(c);
+    }
+    box.appendChild(row);
+  }
+}
+
+/* ── 편집 시트 ── */
+function openSheet(ds){
+  picked = ds;
+  const a = ATT.get(ds), k = kindOf(ds);
+  const dt = new Date(ds+"T00:00:00");
+  $("shTitle").textContent = ds.replace(/-/g,".") + " (" + "일월화수목금토"[dt.getDay()] + ")";
+  $("shSub").textContent = a && a.start
+    ? "엑셀 기록 " + a.start + "~" + a.end + " · " + a.hours + "시간"
+    : (a && a.holiday ? a.holiday : "출근 기록 없음");
+  const box = $("shOpts"); box.textContent = "";
+  for (const key of CHOOSABLE){
+    const K = KINDS[key];
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "opt"; b.dataset.kind = key;
+    b.setAttribute("aria-pressed", String(k === key));
+    const t = document.createElement("span"); t.textContent = K.label;
+    const s = document.createElement("small"); s.textContent = K.desc;
+    b.append(t, s); box.appendChild(b);
+  }
+  $("scrim").classList.add("on"); $("sheet").classList.add("on");
+}
+function closeSheet(){ $("scrim").classList.remove("on"); $("sheet").classList.remove("on"); picked = null; }
+
+async function setKind(ds, kind){
+  if (kind) overrides.set(ds, kind); else overrides.delete(ds);
+  redraw();
+  if (!dbRef) return;
+  try {
+    const doc = dbRef.collection("leave").doc(ds);
+    if (kind) await doc.set({ date: ds, kind, updatedAt: new Date().toISOString() });
+    else await doc.delete();
+  } catch (e) {
+    $("dbWarn").hidden = false;
+  }
+}
+
+function redraw(){ drawCal(); drawMonths(); tiles(); }
+
+/* ── 이벤트 ── */
+$("grid").addEventListener("click", e => {
+  const b = e.target.closest(".cell"); if (!b || b.disabled) return;
+  openSheet(b.dataset.date);
+});
+$("shOpts").addEventListener("click", e => {
+  const b = e.target.closest(".opt"); if (!b || !picked) return;
+  setKind(picked, b.dataset.kind); closeSheet();
+});
+$("shReset").addEventListener("click", () => { if (picked) setKind(picked, null); closeSheet(); });
+$("shClose").addEventListener("click", closeSheet);
+$("scrim").addEventListener("click", closeSheet);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+$("prev").addEventListener("click", () => { view = shift(view,-1); drawCal(); });
+$("next").addEventListener("click", () => { view = shift(view, 1); drawCal(); });
+function shift(v, n){
+  let [y,m] = v.split("-").map(Number); m += n;
+  if (m < 1){ m = 12; y--; } if (m > 12){ m = 1; y++; }
+  return y + "-" + String(m).padStart(2,"0");
+}
+
+redraw();
+
+/* ── 저장소 연결 (없으면 읽기 전용으로 계속 동작) ── */
+(async () => {
+  const db = await (window.claude?.use?.("db") ?? Promise.resolve(null));
+  if (!db){ $("dbWarn").hidden = false; return; }
+  dbRef = db;
+  db.collection("leave").onSnapshot(
+    snap => {
+      overrides = new Map();
+      for (const d of snap.docs){ const v = d.data(); if (v && v.kind) overrides.set(d.id, v.kind); }
+      redraw();
+    },
+    () => { $("dbWarn").hidden = false; }
+  );
+})();
+})();
+</script>

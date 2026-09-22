@@ -1,0 +1,6 @@
+requests
+beautifulsoup4
+openpyxl
+holidayskr
+playwright
+python-dateutil
