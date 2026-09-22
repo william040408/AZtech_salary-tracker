@@ -169,9 +169,9 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .sheet.on{transform:translateY(0)}
 .sheet h3{margin:0 0 3px;font-size:16px;font-weight:600}
 .sheet .sub{font-size:12.5px;color:var(--muted);margin-bottom:14px}
-.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .opt{appearance:none;text-align:left;border:1px solid var(--line);background:var(--surface2);color:var(--ink);
-  border-radius:10px;padding:11px 12px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:500;
+  border-radius:10px;padding:10px 11px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:500;
   display:flex;flex-direction:column;gap:1px}
 .opt small{font-size:10.5px;color:var(--muted);font-weight:400}
 .opt:hover{border-color:var(--accent)}
@@ -260,14 +260,14 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
       <div class="grid" id="grid"></div>
       <div class="legend">
         <span><i style="background:var(--surface2);border-color:var(--line)"></i>근무</span>
-        <span><i style="background:var(--paid-soft);border-color:var(--paid)"></i>연차(유급)</span>
+        <span><i style="background:var(--paid-soft);border-color:var(--paid)"></i>연차 차감</span>
         <span><i style="background:var(--half-soft);border-color:var(--half)"></i>반차</span>
-        <span><i style="background:var(--unpaid-soft);border-color:var(--unpaid)"></i>무급</span>
-        <span><i style="background:var(--company-soft);border-color:var(--company)"></i>회사 휴무</span>
+        <span><i style="background:var(--unpaid-soft);border-color:var(--unpaid)"></i>급여 차감</span>
+        <span><i style="background:var(--company-soft);border-color:var(--company)"></i>차감 없음</span>
         <span><i style="background:var(--hol-soft);border-color:var(--hol)"></i>공휴일</span>
       </div>
     </div>
-    <div class="note">회색 배경은 회사 근무현황 엑셀에서 읽어온 기록이고, 오른쪽 위 점이 찍힌 날은 직접 고친 날입니다. 날짜를 눌러 바꾸세요.</div>
+    <div class="note">색은 <b>그 날이 어떻게 처리됐는지</b>를 나타냅니다. 초록은 연차가 깎인 날, 주황은 급여가 깎인 날, 남색은 둘 다 아닌 날입니다. 회사가 전체를 쉬게 한 날도 셋 중 어느 쪽이든 될 수 있어 <b>전사·연차 / 전사·무급 / 전사·유급</b>으로 나눠 두었습니다. 엑셀에서 읽어온 값은 잠정치이고, 오른쪽 위 점이 찍힌 날은 직접 고친 날입니다.</div>
   </section>
 
   <section class="sec">
@@ -315,18 +315,25 @@ let B = null, ATT = null, PAY = null, api = null;
 const WON = n => (n<0?"−":"") + Math.abs(Math.round(n)).toLocaleString("ko-KR");
 
 // 분류 정의. base는 엑셀에서 유추한 값, 사용자가 고르면 override가 된다.
+// 쉰 날은 '왜 쉬었나'와 '어떻게 처리됐나'가 따로 논다. 회사가 전체를 쉬게 한
+// 날이어도 연차를 까기도, 무급이기도, 회사가 부담하기도 한다. 색은 처리 방식을
+// 따르고(연차=초록, 무급=주황, 회사부담=남색) 이름이 사유를 적는다.
 const KINDS = {
-  work:     {label:"근무",      cls:"k-work",     desc:"정상 출근",           off:0},
-  short:    {label:"지각",      cls:"k-short",    desc:"8시간 미만 근무",      off:0},
-  half:     {label:"반차",      cls:"k-half",     desc:"4시간 휴가",          off:0.5},
-  personal: {label:"연차",      cls:"k-personal", desc:"유급 휴가",           off:1},
-  unpaid:   {label:"무급",      cls:"k-unpaid",   desc:"급여에서 차감",        off:1},
-  company:  {label:"회사휴무",  cls:"k-company",  desc:"전사 휴무일",          off:1},
-  substitute:{label:"대체휴무", cls:"k-personal", desc:"휴일근로 보상",        off:1},
-  holiday:  {label:"공휴일",    cls:"k-holiday",  desc:"법정 공휴일",          off:0},
-  weekend:  {label:"주말",      cls:"k-weekend",  desc:"",                    off:0},
+  work:      {label:"근무",     cls:"k-work",     desc:"정상 출근",              off:0},
+  short:     {label:"지각",     cls:"k-short",    desc:"8시간 미만 근무",         off:0},
+  holiday:   {label:"공휴일",   cls:"k-holiday",  desc:"법정 공휴일",             off:0},
+  weekend:   {label:"주말",     cls:"k-weekend",  desc:"",                       off:0},
+
+  personal:  {label:"연차",     cls:"k-personal", desc:"내가 신청 · 연차 차감",    off:1},
+  half:      {label:"반차",     cls:"k-half",     desc:"내가 신청 · 연차 0.5일",   off:0.5},
+  unpaid:    {label:"무급휴가", cls:"k-unpaid",   desc:"내가 신청 · 급여 차감",    off:1},
+
+  coAnnual:  {label:"전사·연차", cls:"k-personal", desc:"회사 휴무 · 연차 차감",   off:1},
+  coUnpaid:  {label:"전사·무급", cls:"k-unpaid",   desc:"회사 휴무 · 급여 차감",   off:1},
+  company:   {label:"전사·유급", cls:"k-company",  desc:"회사 휴무 · 차감 없음",   off:1},
+  substitute:{label:"대체휴무", cls:"k-company",  desc:"휴일근로 보상 · 차감 없음", off:1},
 };
-const CHOOSABLE = ["work","personal","half","unpaid","company","substitute"];
+const CHOOSABLE = ["work","personal","half","unpaid","coAnnual","coUnpaid","company","substitute"];
 
 // 엑셀이 준 기본 분류를 사용자 분류 체계로 옮긴다
 const baseKind = a => a.kind === "personal_off" ? "personal"
@@ -444,7 +451,7 @@ function drawMonths(){
       const k = kindOf(a.date);
       if (!KINDS[k]) continue;
       off += KINDS[k].off;
-      if (k === "unpaid") unpaidDays += 1;
+      if (k in DEDUCTS) unpaidDays += 1;
       if (k === "half") half += 1;
     }
     const why = document.createElement("div"); why.className = "mrow-why";
@@ -476,7 +483,10 @@ function drawMonths(){
 /* ── 연차 원장 ──
    근로기준법 제60조 2항: 계속근로 1년 미만은 1개월 개근 시 1일, 최대 11일.
    무엇이 연차를 소모하는지는 달력에서 직접 분류한 값을 따른다. */
-const CONSUMES = { personal:1, half:0.5, substitute:0, unpaid:0, company:0 };
+const CONSUMES = { personal:1, half:0.5, coAnnual:1,
+                   unpaid:0, coUnpaid:0, company:0, substitute:0 };
+// 급여에서 차감되는 분류 (명세서의 기본급 차감과 대조한다)
+const DEDUCTS = { unpaid:1, coUnpaid:1 };
 
 function accrualDates(){
   const [hy,hm,hd] = B.hireDate.split("-").map(Number);
@@ -502,7 +512,7 @@ function drawLeave(){
     detail[mo] = detail[mo] || {};
     detail[mo][k] = (detail[mo][k]||0) + 1;
     if (CONSUMES[k]) useByMonth[mo] = (useByMonth[mo]||0) + CONSUMES[k];
-    if (k === "unpaid") unpaidByMonth[mo] = (unpaidByMonth[mo]||0) + 1;
+    if (k in DEDUCTS) unpaidByMonth[mo] = (unpaidByMonth[mo]||0) + 1;
   }
   const cashByMonth = {};
   for (const pp of B.payslips) if (pp.leaveCashed) cashByMonth[pp.period] = pp.leaveCashed;
@@ -511,7 +521,7 @@ function drawLeave(){
                               ...Object.keys(cashByMonth), ...Object.keys(unpaidByMonth)])].sort();
   const box = $("ledger"); box.textContent = "";
   let bal = 0, tAcc = 0, tUse = 0, tCash = 0, tUnpaid = 0;
-  const KO = {personal:"연차", half:"반차", substitute:"대체휴무", unpaid:"무급", company:"회사휴무"};
+  const KO = {personal:"연차", half:"반차", coAnnual:"전사연차", substitute:"대체휴무", company:"전사휴무"};
 
   for (const mo of months){
     const acc = accByMonth[mo]||0, use = useByMonth[mo]||0,
@@ -526,9 +536,11 @@ function drawLeave(){
     if (acc)  tag("acc",  "발생 +" + acc);
     if (cash) tag("cash", "수당 " + cash + "일분 " + WON(cash*B.dayPay) + "원");
     const d = detail[mo] || {};
-    for (const k of ["personal","half","substitute","company"])
+    for (const k of ["personal","half","coAnnual","substitute","company"])
       if (d[k]) tag("use", KO[k] + " " + d[k] + (k==="half" ? "회" : "일"));
-    if (un) tag("un", "무급 " + un + "일");
+    const du = (d.unpaid||0), dcu = (d.coUnpaid||0);
+    if (du)  tag("un", "무급 " + du + "일");
+    if (dcu) tag("un", "전사무급 " + dcu + "일");
     if (!ev.childElementCount){ const e = document.createElement("span"); e.className="m"; e.textContent="—"; ev.appendChild(e); }
     const b = document.createElement("span"); b.className = "bal num";
     b.textContent = (Math.round(bal*10)/10) + "일";
