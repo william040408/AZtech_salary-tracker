@@ -25,17 +25,21 @@ def verify(ps):
     issues, notes = [], []
     e, d, t = ps["earnings"], ps["deductions"], ps["totals"]
 
-    # 1) 기본급 -> 연차 사용일수 역산
+    # 1) 기본급 -> 차감 시간 역산. 반차(4h) 사용이 있으므로 '일' 단위로 가정하지 않는다.
     base = e.get("기본급", 0)
     shortfall = FULL_BASE - base
-    if shortfall % DAY_PAY == 0:
-        ps["leave_used"] = shortfall // DAY_PAY
+    if shortfall % HOURLY == 0:
+        ps["deducted_hours"] = shortfall // HOURLY
     else:
-        ps["leave_used"] = None
+        ps["deducted_hours"] = None
         issues.append(
-            f"기본급 {base:,}원이 1일치({DAY_PAY:,}원) 단위로 안 떨어짐 "
-            f"(만근 {FULL_BASE:,} 대비 {shortfall:,} 차이 = {shortfall/DAY_PAY:.2f}일)"
+            f"기본급 {base:,}원이 시급({HOURLY:,}원) 단위로 안 떨어짐 "
+            f"(만근 {FULL_BASE:,} 대비 {shortfall:,} 차이)"
         )
+    h = ps["deducted_hours"]
+    if h is not None and h % 4 != 0:
+        issues.append(f"차감 {h}시간 — 연차(8h)·반차(4h) 어느 배수도 아님")
+    ps["leave_used"] = h / DAILY_HOURS if h is not None else None
 
     # 2) 연차수당 -> 현금 지급받은 연차일수
     ann = e.get("연차수당", 0)

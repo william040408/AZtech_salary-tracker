@@ -30,7 +30,7 @@ for p in slips:
     tot_used += u or 0
     tot_cash += c or 0
     print(f"{p['period']:<9}{str(actual_pay_date(y,mo)):<13}{workdays(y,mo):>5}{len(weekday_holidays(y,mo)):>6}"
-          f"{p['earnings'].get('기본급',0):>11,}{('%d일'%u) if u else '-':>9}{('%d일'%c) if c else '-':>9}"
+          f"{p['earnings'].get('기본급',0):>11,}{("%gh"%(u*8)) if u else "-":>9}{('%d일'%c) if c else '-':>9}"
           f"{p['totals']['지급총액']:>11,}{p['computed_net']:>11,}")
 print("-" * 96)
 

@@ -18,3 +18,5 @@ node_modules/
 .DS_Store
 명세서위치.txt
 *링크*
+data/raw/html/
+data/raw/links.json
