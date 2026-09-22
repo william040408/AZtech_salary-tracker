@@ -1,0 +1,22 @@
+{
+  // Cloudflare Worker 배포 설정.
+  // 대시보드에서 직접 편집하는 대신 이 저장소를 연결해 두면
+  // git push 할 때마다 worker/worker.js 가 배포된다.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "salary-api",
+  "main": "worker/worker.js",
+  "compatibility_date": "2026-09-01",
+
+  // 대시보드 Settings > Bindings 에서 만든 KV 네임스페이스
+  "kv_namespaces": [
+    { "binding": "KV", "id": "c0d9bb9737de48fbb1b57781186c5f5b" }
+  ],
+
+  // 비밀이 아닌 값. 암구호(PASSPHRASE)는 대시보드 Secret 으로만 두고
+  // 여기에는 절대 적지 않는다.
+  "vars": {
+    "ALLOW_ORIGIN": "https://william040408.github.io"
+  },
+
+  "observability": { "enabled": true }
+}
