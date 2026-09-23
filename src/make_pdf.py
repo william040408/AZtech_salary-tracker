@@ -17,8 +17,8 @@ from playwright.sync_api import sync_playwright
 
 # python src/make_pdf.py [문서이름]  — 기본은 guide
 DOCS = {
-    "guide":  ("web/guide.html",  "급여기록부_설명.pdf"),
-    "deploy": ("web/deploy.html", "급여기록부_구조.pdf"),
+    "guide":  ("web/guide.html",  "자료/급여기록부_설명.pdf"),
+    "deploy": ("web/deploy.html", "자료/급여기록부_구조.pdf"),
 }
 _name = sys.argv[1] if len(sys.argv) > 1 else "guide"
 if _name not in DOCS:
