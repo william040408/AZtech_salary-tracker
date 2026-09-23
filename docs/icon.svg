@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="급여·연차 기록부">
+  <rect width="512" height="512" rx="114" fill="#cb344d"/>
+  <!-- 달력 한 장 -->
+  <rect x="104" y="132" width="304" height="268" rx="40" fill="#ffffff"/>
+  <rect x="104" y="132" width="304" height="62" rx="40" fill="#a22a3e"/>
+  <rect x="104" y="170" width="304" height="24" fill="#a22a3e"/>
+  <!-- 고리 -->
+  <rect x="160" y="96" width="30" height="72" rx="15" fill="#7a1f2e"/>
+  <rect x="322" y="96" width="30" height="72" rx="15" fill="#7a1f2e"/>
+  <!-- 원화 -->
+  <text x="256" y="356" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="168" font-weight="700" fill="#cb344d" text-anchor="middle">₩</text>
+  <!-- 연차 한 칸이 찍힌 표시 -->
+  <circle cx="366" cy="356" r="42" fill="#2ea22a"/>
+  <path d="M344 356 l16 17 l30 -33" fill="none" stroke="#ffffff" stroke-width="18"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

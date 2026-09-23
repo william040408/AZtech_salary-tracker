@@ -2,40 +2,40 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap">
 <style>
 :root{
-  --ground:#fdfbfb; --surface:#ffffff; --surface2:#f8f5f5;
-  --ink:#1a1414; --ink2:#463c3c; --muted:#8a7d7d; --line:#eae3e3; --line2:#f3eeee;
-  --accent:#3f9e37; --accent-soft:#eaf7e6; --accent-bright:#6bc95f;
-  --paid:#3f9e37; --paid-soft:#eaf7e6;
-  --half:#6d9440; --half-soft:#f2f8e6;
-  --unpaid:#bf4d5c; --unpaid-soft:#fbecee;
-  --company:#8a7d7d; --company-soft:#f3eeee;
-  --warn:#9a6b24; --warn-soft:#fbf1e2;
-  --hol:#bf4d5c; --hol-soft:#fbecee;
-  --shadow:0 1px 2px rgba(26,20,20,.04);
+  --ground:#fdf7f8; --surface:#ffffff; --surface2:#faeef1;
+  --ink:#150508; --ink2:#53131f; --muted:#96707a; --line:#f0dde2; --line2:#f8eef0;
+  --accent:#2ea22a; --accent-soft:#e6f7e5; --accent-bright:#39cb34;
+  --paid:#2ea22a; --paid-soft:#e6f7e5;
+  --half:#6ea22a; --half-soft:#eff7e3;
+  --unpaid:#cb344d; --unpaid-soft:#fbe4e8;
+  --company:#96707a; --company-soft:#f6eef0;
+  --warn:#a5273e; --warn-soft:#fbe4e8;
+  --hol:#cb344d; --hol-soft:#fbe4e8;
+  --shadow:0 1px 2px rgba(21,5,8,.05);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --ground:#171313; --surface:#211c1c; --surface2:#2a2323;
-  --ink:#f7f3f3; --ink2:#ded5d5; --muted:#a89d9d; --line:#3a3030; --line2:#2b2424;
-  --accent:#7fd474; --accent-soft:#1b2e19; --accent-bright:#6bc95f;
-  --paid:#7fd474; --paid-soft:#1b2e19;
-  --half:#b3d97e; --half-soft:#242d16;
-  --unpaid:#e2808f; --unpaid-soft:#331a1e;
-  --company:#a89d9d; --company-soft:#2a2323;
-  --warn:#d8a860; --warn-soft:#2f2617;
-  --hol:#e2808f; --hol-soft:#331a1e;
-  --shadow:0 1px 2px rgba(0,0,0,.3);
+  --ground:#14050a; --surface:#210a11; --surface2:#2d0f18;
+  --ink:#faebf0; --ink2:#ebadc2; --muted:#c98da0; --line:#4a1d2b; --line2:#320f1a;
+  --accent:#61d55d; --accent-soft:#0f2a0e; --accent-bright:#88e085;
+  --paid:#61d55d; --paid-soft:#0f2a0e;
+  --half:#a1d55d; --half-soft:#1c290a;
+  --unpaid:#e085a3; --unpaid-soft:#3d1424;
+  --company:#c98da0; --company-soft:#2d0f18;
+  --warn:#d8a860; --warn-soft:#33270f;
+  --hol:#e085a3; --hol-soft:#3d1424;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
 }}
 :root[data-theme="dark"]{
-  --ground:#171313; --surface:#211c1c; --surface2:#2a2323;
-  --ink:#f7f3f3; --ink2:#ded5d5; --muted:#a89d9d; --line:#3a3030; --line2:#2b2424;
-  --accent:#7fd474; --accent-soft:#1b2e19; --accent-bright:#6bc95f;
-  --paid:#7fd474; --paid-soft:#1b2e19;
-  --half:#b3d97e; --half-soft:#242d16;
-  --unpaid:#e2808f; --unpaid-soft:#331a1e;
-  --company:#a89d9d; --company-soft:#2a2323;
-  --warn:#d8a860; --warn-soft:#2f2617;
-  --hol:#e2808f; --hol-soft:#331a1e;
-  --shadow:0 1px 2px rgba(0,0,0,.3);
+  --ground:#14050a; --surface:#210a11; --surface2:#2d0f18;
+  --ink:#faebf0; --ink2:#ebadc2; --muted:#c98da0; --line:#4a1d2b; --line2:#320f1a;
+  --accent:#61d55d; --accent-soft:#0f2a0e; --accent-bright:#88e085;
+  --paid:#61d55d; --paid-soft:#0f2a0e;
+  --half:#a1d55d; --half-soft:#1c290a;
+  --unpaid:#e085a3; --unpaid-soft:#3d1424;
+  --company:#c98da0; --company-soft:#2d0f18;
+  --warn:#d8a860; --warn-soft:#33270f;
+  --hol:#e085a3; --hol-soft:#3d1424;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}   /* .app 의 display:contents 보다 우선해야 한다 */
@@ -121,13 +121,17 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .dow span:first-child{color:var(--unpaid)}
 .dow span:last-child{color:var(--company)}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.cell{aspect-ratio:1/1.08;border:1px solid var(--line2);border-radius:11px;background:var(--surface2);
+.cell{aspect-ratio:1/1.18;min-height:54px;border:1px solid var(--line2);border-radius:11px;background:var(--surface2);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   cursor:pointer;padding:2px;font-size:13px;position:relative;min-width:0}
 .cell.pad{visibility:hidden;cursor:default}
 .cell:disabled{cursor:default;opacity:.45}
 .cell .d{font-weight:600;font-family:Inter,sans-serif;font-variant-numeric:tabular-nums}
 .cell .t{font-size:8px;font-weight:600;line-height:1.1;white-space:nowrap;max-width:100%;letter-spacing:-.03em}
+.cell .h{font-size:7px;font-weight:600;line-height:1.08;color:var(--hol);max-width:100%;
+  letter-spacing:-.04em;word-break:keep-all;display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden}
+.cell.k-weekend .h,.cell.k-holiday .h{opacity:.85}
 .cell.k-work{background:var(--surface2)}
 .cell.k-work .t{color:var(--muted);font-weight:500;opacity:.8}
 .cell.k-short{background:var(--surface2);border-color:var(--half)}
@@ -314,9 +318,10 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   h1{font-size:22px}
   .sec-body{padding:13px}
   .grid,.dow{gap:3px}
-  .cell{aspect-ratio:auto;min-height:52px}     /* 손가락으로 누를 최소 크기 */
+  .cell{aspect-ratio:auto;min-height:62px}     /* 손가락으로 누를 최소 크기 */
   .cell .d{font-size:14px}
   .cell .t{font-size:7.5px}
+  .cell .h{font-size:7.5px}
   .nav>button{width:34px;height:34px}          /* 터치 타겟 */
   .opt-row{gap:5px}
   .opt{padding:13px 12px}
@@ -500,17 +505,9 @@ const KINDS = {
   official:  {label:"공가",      tag:"공가", cls:"k-company",  desc:"병무청 교육 등 · 차감 없음", off:1},
 };
 
-// 공휴일 이름도 칸에 맞게 줄인다
-function holidayTag(name){
-  if (!name) return "공휴일";
-  if (name.includes("대체")) return "대체";
-  for (const k of ["설날","추석","어린이","현충","광복","개천","한글","제헌","삼일","선거"])
-    if (name.includes(k)) return k;
-  if (name.includes("석가") || name.includes("부처")) return "석가";
-  if (name.includes("크리스마스") || name.includes("성탄")) return "성탄";
-  if (name.includes("노동") || name.includes("근로")) return "노동";
-  if (name.includes("3·1")) return "3·1";
-  return name.slice(0, 4);
+// 그날의 공휴일 이름. 근태 기록에 붙은 것과 달력표를 함께 본다.
+function holName(ds){
+  return (ATT.get(ds) && ATT.get(ds).holiday) || (B.holidays && B.holidays[ds]) || null;
 }
 
 /* 시트에 묶어서 보여 줄 순서. 회사가 실제로 쓰는 갈래를 그대로 따른다. */
@@ -634,15 +631,18 @@ function drawCal(){
     if (w0 === 0) b.classList.add("sun");
     const dd = document.createElement("span"); dd.className = "d"; dd.textContent = day;
     b.appendChild(dd);
-    if (K && k !== "weekend"){
-      const t = document.createElement("span"); t.className = "t";
-      t.textContent = k === "holiday"
-        ? holidayTag(ATT.get(ds)?.holiday || (B.holidays && B.holidays[ds]))
-        : K.tag;
+    const hn = holName(ds);
+    if (K && k !== "weekend" && k !== "holiday"){
+      const t = document.createElement("span"); t.className = "t"; t.textContent = K.tag;
       b.appendChild(t);
     }
+    if (hn){                       // 출근한 날이어도 무슨 날이었는지 남긴다
+      const h = document.createElement("span"); h.className = "h"; h.textContent = hn;
+      b.appendChild(h);
+    }
     const a = ATT.get(ds);
-    b.setAttribute("aria-label", ds + " " + (K?K.label:"기록 없음") + (a&&a.start ? " "+a.start+"~"+a.end : ""));
+    b.setAttribute("aria-label", ds + " " + (K?K.label:"기록 없음")
+      + (hn ? " · " + hn : "") + (a&&a.start ? " "+a.start+"~"+a.end : ""));
     g.appendChild(b);
   }
   $("prev").disabled = view <= B.calendarFrom;

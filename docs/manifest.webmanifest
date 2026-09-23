@@ -1,0 +1,18 @@
+{
+  "name": "급여·연차 기록부",
+  "short_name": "급여 기록부",
+  "description": "월급이 계산대로 들어왔는지, 연차가 몇 일 남았는지 확인합니다.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fdf7f8",
+  "theme_color": "#cb344d",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

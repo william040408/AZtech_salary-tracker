@@ -23,3 +23,7 @@ data/raw/links.json
 web/index.html
 web/data.json
 config.json
+
+# 아이콘만은 올린다 (그 외 이미지는 위에서 막혀 있다)
+!docs/*.png
+!docs/*.svg
