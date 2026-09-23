@@ -27,17 +27,6 @@ jobs:
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
 
-      - name: 설정 파일 만들기
-        env:
-          CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
-        run: |
-          if [ -n "$CONFIG_JSON" ]; then
-            printf '%s' "$CONFIG_JSON" > config.json
-          else
-            echo "[!] CONFIG_JSON 시크릿이 없습니다." >&2
-            exit 1
-          fi
-
       - name: 자격 증명 준비
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
@@ -52,6 +41,19 @@ jobs:
             echo "WORKER_URL=$WORKER_URL"
             echo "WORKER_PASS=$WORKER_PASS"
           } > .env
+
+      - name: 금고에서 설정 받아오기
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          WORKER_PASS: ${{ secrets.WORKER_PASS }}
+        run: |
+          code=$(curl -sS -o config.json -w '%{http_code}'                  -H "x-pass: $WORKER_PASS" "${WORKER_URL%/}/config")
+          if [ "$code" != "200" ] || ! python -c "import json;json.load(open('config.json',encoding='utf-8'))"; then
+            echo "[!] 금고에서 설정을 못 받았습니다 (HTTP $code)." >&2
+            echo "    노트북에서 python src/push_data.py 를 한 번 돌려 설정을 올려 주세요." >&2
+            exit 1
+          fi
+          echo "설정 받음"
 
       - name: 메일에서 명세서 링크 찾기
         run: python src/fetch.py links

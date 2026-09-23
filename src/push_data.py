@@ -25,6 +25,14 @@ url, pw = env.get("WORKER_URL"), env.get("WORKER_PASS")
 if not url or not pw:
     sys.exit("[!] .env 에 WORKER_URL 과 WORKER_PASS 를 넣어 주세요.")
 
+# 계약 조건도 금고에 둔다. 시급이 바뀌면 여기 한 곳만 고치면 되고,
+# 수집 작업은 실행할 때마다 최신 값을 받아 간다.
+cfg = Path("config.json")
+if cfg.exists():
+    rc = requests.put(url.rstrip("/") + "/config", data=cfg.read_bytes(),
+                      headers={"x-pass": pw, "content-type": "application/json"}, timeout=30)
+    print(f"  설정 올림 — HTTP {rc.status_code}")
+
 subprocess.run([sys.executable, "src/export_web.py"], check=True)
 
 import json

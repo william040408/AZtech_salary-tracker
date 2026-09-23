@@ -6,6 +6,8 @@
  *
  *   GET  /bundle    급여·근태 데이터 읽기
  *   PUT  /bundle    급여·근태 데이터 덮어쓰기 (수집 작업이 올림)
+ *   GET  /config    계약 조건 (시급, 소정근로시간 등) 읽기
+ *   PUT  /config    계약 조건 덮어쓰기 — 노트북에서만 올린다
  *   GET  /leave     연차 분류 읽기
  *   PUT  /leave     연차 분류 덮어쓰기
  *   GET  /meta      마지막 갱신 시각 (가벼움 — 진행 확인용)
@@ -18,7 +20,7 @@
  *   - 변수 ALLOW_ORIGIN, GH_REPO, GH_WORKFLOW 는 wrangler.jsonc 에 있다
  */
 
-const KEYS = { bundle: "bundle", leave: "leave" };
+const KEYS = { bundle: "bundle", leave: "leave", config: "config" };
 const META = "meta";
 const MAX_BYTES = 2_000_000;
 
