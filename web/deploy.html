@@ -102,21 +102,26 @@ dd{margin:2px 0 0;color:var(--ink2);font-size:14.5px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
-/* 이 문서 전용 — 본문이 길어 기본보다 작게 */
-body{font-size:14px;line-height:1.7}
-h1{font-size:25px} h2{font-size:17.5px;margin-top:38px;padding-top:15px} h3{font-size:14.5px;margin-top:20px}
-.lede{font-size:14px}
-p{margin-bottom:11px}
-table{font-size:12px} th,td{padding:6px 7px} th{font-size:10.5px}
-pre{font-size:11px;padding:10px 12px;line-height:1.6}
-dt{font-size:13.5px;margin-top:11px} dd{font-size:13px}
-.steps b{font-size:14px} .steps span{font-size:12.5px}
-.steps li{padding-left:34px;margin-bottom:13px}
-.steps li::before{width:23px;height:23px;font-size:11.5px}
-.card{padding:13px 15px;margin:15px 0}
-figcaption{font-size:11.5px}
-ul,ol{padding-left:1.25em} li{margin-bottom:4px}
-@media (max-width:520px){ body{font-size:13.5px} h1{font-size:21px} h2{font-size:16.5px} }
+/* 이 문서 전용 — 본문이 길어 기본보다 훨씬 작게 */
+body{font-size:12px;line-height:1.68}
+h1{font-size:21px} h2{font-size:15px;margin-top:32px;padding-top:13px} h3{font-size:12.5px;margin-top:17px;margin-bottom:6px}
+.lede{font-size:12px}
+.eyebrow{font-size:9.5px}
+p{margin-bottom:9px}
+table{font-size:10.5px} th,td{padding:5px 6px} th{font-size:9px}
+pre{font-size:9.5px;padding:9px 11px;line-height:1.6;margin:11px 0}
+code:not(pre code){padding:0 3px}
+dt{font-size:11.5px;margin-top:9px} dd{font-size:11.5px}
+.steps b{font-size:12px} .steps span{font-size:11px}
+.steps li{padding-left:29px;margin-bottom:10px}
+.steps li::before{width:20px;height:20px;font-size:10px}
+.card{padding:11px 13px;margin:12px 0;border-radius:10px}
+figure{margin:16px 0;padding:11px 9px 8px}
+figcaption{font-size:10px;margin-top:7px}
+figure svg{width:88%;margin:0 auto}          /* 그림도 본문에 맞춰 줄인다 */
+ul,ol{padding-left:1.2em} li{margin-bottom:3px}
+.tag{font-size:9.5px}
+@media (max-width:520px){ body{font-size:11.5px} h1{font-size:19px} h2{font-size:14px} }
 </style>
 
 <div class="wrap">
@@ -147,7 +152,7 @@ ul,ol{padding-left:1.25em} li{margin-bottom:4px}
   <tr><td>④ 문지기</td><td>Cloudflare</td><td class="mono">Workers</td><td>요청 심사, 중계</td></tr>
   <tr><td>⑤ 금고</td><td>Cloudflare</td><td class="mono">Workers KV</td><td>데이터 보관</td></tr>
   <tr><td>⑥ 메일함</td><td>Google</td><td class="mono">Gmail (IMAP)</td><td>명세서 알림이 도착</td></tr>
-  <tr><td>⑦ 문서 창구</td><td>이카운트</td><td class="mono">전자문서 뷰어</td><td>실제 명세서가 있는 곳</td></tr>
+  <tr><td>⑦ 문서 창구</td><td>이카운트</td><td>전자문서 뷰어</td><td>실제 명세서가 있는 곳</td></tr>
 </table>
 </div>
 
