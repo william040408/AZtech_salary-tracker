@@ -790,7 +790,7 @@ function drawLeave(){
   for (const mo of months){
     const acc = accByMonth[mo]||0, use = useByMonth[mo]||0, cash = cashByMonth[mo]||0;
     const slipH = dedByMonth[mo]||0, mineH = mineHByMonth[mo]||0;
-    bal += acc - use; tAcc += acc; tUse += use; tCash += cash; tMineH += mineH; tSlipH += slipH;
+    bal += acc - use - cash; tAcc += acc;   // 수당으로 받은 날은 이미 쓴 것이다 tUse += use; tCash += cash; tMineH += mineH; tSlipH += slipH;
 
     const hasSlip = havePayslip.has(mo);
     if (hasSlip && slipH !== mineH) mismatch.push({ mo, slipH, mineH });
@@ -834,7 +834,7 @@ function drawLeave(){
   chk.append(h, l1, l2, foot);
   tb.appendChild(chk);
 
-  const rest = fmt(tAcc - tUse);
+  const rest = fmt(tAcc - tUse - tCash);
   $("heroBal").textContent = rest + "일";
   $("heroAcc").textContent = tAcc + "일";
   $("heroMine").textContent = fmt(byMe) + "일";
@@ -861,16 +861,17 @@ function drawLeave(){
         todo.map(x => x.mo.replace("-",".") + " " + x.n + "일").join(", ")
         + " — 달력에서 눌러 성격을 정해 주세요.");
   if (rest < 0)
-    add("bad", "법정 발생보다 " + fmt(-rest) + "일 더 썼습니다",
-        "법정 기준으로는 " + tAcc + "일이 생겼는데 달력에는 " + fmt(tUse) + "일을 쓴 것으로 남아 있습니다. "
+    add("bad", "생긴 것보다 " + fmt(-rest) + "일 더 나갔습니다",
+        tAcc + "일이 생겼는데, 쉰 날로 " + fmt(tUse) + "일 · 수당으로 " + tCash + "일분이 나갔습니다. "
         + "회사가 법정보다 연차를 더 준 경우이거나, 연차로 찍은 날 중 일부가 실제로는 "
-        + "대체휴무나 회사 부담 휴무일 수 있습니다.");
+        + "대체휴무·회사 부담 휴무일 수 있습니다.");
   if (!mismatch.length && !todo.length && rest >= 0 && B.payslips.length)
     add("fine", "명세서와 기록이 모두 일치합니다",
         "명세서 " + B.payslips.length + "장의 기본급 차감이 달력 기록과 맞습니다.");
 
   $("lvNote").textContent =
     "연차는 1개월 개근할 때마다 1일씩 생깁니다(근로기준법, 1년 미만 최대 11일). "
+    + "그 달에 쓰지 않은 연차를 회사가 수당으로 정산해 주면 그만큼 잔여에서 빠집니다. "
     + "아래 표는 달마다 연차가 얼마나 생기고 얼마나 줄었는지, 그래서 그 달 끝에 몇 일이 "
     + "남았는지를 보여 줍니다. 오른쪽 숫자가 그 시점의 잔여입니다.";
 }
