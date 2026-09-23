@@ -1,37 +1,54 @@
 # -*- coding: utf-8 -*-
-"""템플릿에서 배포할 파일들을 만든다.
+"""배포할 파일을 docs/ 에 만든다.
 
-  web/index.html    급여 데이터를 페이지 안에 박은 것. 클로드 아티팩트용.
-                    데이터가 들어있으므로 커밋하지 않는다.
-  docs/index.html   데이터 없이 원격에서 받아오는 것. GitHub Pages 용.
+소스는 web/ 에 세 개로 나뉘어 있다.
 
-아티팩트는 문서 껍데기(doctype, charset, viewport)를 자동으로 씌워 주지만
-GitHub Pages 는 파일을 그대로 내보내므로 docs 쪽에는 직접 붙여야 한다.
+    web/index.html   뼈대
+    web/style.css    화면
+    web/app.js       동작
+
+하는 일은 두 가지뿐이다.
+
+  1. 세 파일을 docs/ 로 옮긴다. index.html 의 __BUNDLE__ 자리는 그대로 둔다 —
+     급여 데이터는 페이지가 열린 뒤 금고에서 받아오므로 공개 저장소에 올라가지
+     않는다.
+  2. style.css 와 app.js 주소 뒤에 내용 지문을 붙인다. 안 그러면 고쳐서 올려도
+     브라우저가 예전 파일을 그대로 쓴다.
 """
+import hashlib
 import io
+import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
-from page import embed, wrap
-
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+
+SRC = Path("web")
+OUT = Path("docs")
+ASSETS = ("style.css", "app.js")
+
+
+def stamp(text):
+    """style.css → style.css?v=1a2b3c4d. 내용이 바뀔 때만 주소가 바뀐다."""
+    for name in ASSETS:
+        h = hashlib.md5((SRC / name).read_bytes()).hexdigest()[:8]
+        text = re.sub(r'(?<=["/])' + re.escape(name) + r'(?=["?])', f"{name}?v={h}", text)
+    return text
+
 
 subprocess.run([sys.executable, "src/export_web.py"], check=True)
 
-tpl = Path("web/template.html").read_text(encoding="utf-8")
-data = Path("web/data.json").read_text(encoding="utf-8")
+OUT.mkdir(exist_ok=True)
 
-Path("docs").mkdir(exist_ok=True)
+html = stamp((SRC / "index.html").read_text(encoding="utf-8"))
+(OUT / "index.html").write_text(html, encoding="utf-8")
+for name in ASSETS:
+    shutil.copyfile(SRC / name, OUT / name)
+(OUT / ".nojekyll").write_text("", encoding="utf-8")
 
-embedded = Path("web/index.html")
-embedded.write_text(embed(tpl, data), encoding="utf-8")
+assert "__BUNDLE__" in html, "자리표시자가 사라졌습니다 — 데이터가 섞여 들어갔는지 확인하세요"
 
-remote = Path("docs/index.html")                 # __BUNDLE__ 자리표시자를 그대로 둔다
-remote.write_text(wrap(tpl), encoding="utf-8")
-
-Path("docs/.nojekyll").write_text("", encoding="utf-8")
-
-for f in (embedded, remote):
+for f in [OUT / "index.html"] + [OUT / n for n in ASSETS]:
     print(f"{f}  {f.stat().st_size:,}바이트")
