@@ -123,6 +123,31 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   text-decoration:underline;cursor:pointer;padding:4px;align-self:center}
 .linkbtn:hover{color:var(--accent)}
 
+/* ── leave comparison ── */
+.cmp{width:100%;border-collapse:collapse;font-size:13.5px;margin-bottom:13px}
+.cmp th{font-size:10.5px;color:var(--muted);font-weight:600;text-align:right;padding:0 0 7px;
+  border-bottom:1px solid var(--line);letter-spacing:.03em;white-space:nowrap}
+.cmp th:first-child{text-align:left}
+.cmp td{padding:9px 0;border-bottom:1px solid var(--line2);text-align:right;
+  font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cmp td:first-child{text-align:left;font-family:inherit;font-weight:500;padding-right:8px;white-space:normal}
+.cmp tr:last-child td{border-bottom:0}
+.cmp .dash{color:var(--muted);opacity:.45}
+.cmp tr.ok td:first-child::after{content:" ✓";color:var(--paid);font-weight:700}
+.cmp tr.bad td{background:var(--unpaid-soft);color:var(--unpaid)}
+.cmp tr.bad td:first-child::after{content:" ⚠";font-weight:700}
+.bal{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  padding:12px 14px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:13.5px}
+.bal b{font-size:21px}
+.bal.neg{background:var(--unpaid-soft);color:var(--unpaid)}
+.alert{padding:11px 13px;border-radius:10px;margin-bottom:11px;font-size:12.5px;line-height:1.6}
+.alert b{display:block;margin-bottom:2px;font-size:13px}
+.alert.bad{background:var(--unpaid-soft);color:var(--unpaid);border:1px solid var(--unpaid)}
+.alert.todo{background:var(--half-soft);color:var(--half);border:1px solid var(--half)}
+.alert.fine{background:var(--paid-soft);color:var(--paid);border:1px solid var(--paid)}
+.sub-h{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;
+  margin:22px 0 2px;font-weight:600}
+
 /* ── leave ledger ── */
 .hint{font-size:11.5px;color:var(--muted);font-weight:500}
 .lv-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
@@ -136,7 +161,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .lg:first-child{border-top:0}
 .lg .m{color:var(--muted);font-size:12px}
 .lg .ev{display:flex;flex-wrap:wrap;gap:4px 8px;font-size:12.5px}
-.lg .bal{font-weight:600;white-space:nowrap}
+.lg .lgbal{font-weight:600;white-space:nowrap;color:var(--ink2)}
 .tag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:5px;white-space:nowrap}
 .tag.acc{background:var(--accent-soft);color:var(--accent)}
 .tag.use{background:var(--paid-soft);color:var(--paid)}
@@ -203,7 +228,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .mrow{padding:13px 14px}
   .lv-sum{grid-template-columns:1fr 1fr}
   .lg{grid-template-columns:54px 1fr;row-gap:4px}
-  .lg .bal{grid-column:2;justify-self:start}
+  .lg .lgbal{grid-column:2;justify-self:start}
 }
 /* 세로로 긴 화면에서 시트가 화면을 다 덮지 않도록 */
 .sheet{max-height:min(78vh,560px);overflow-y:auto;overscroll-behavior:contain}
@@ -271,14 +296,15 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   </section>
 
   <section class="sec">
-    <div class="sec-hd"><h2>연차 현황</h2><span class="hint" id="lvAsOf"></span></div>
+    <div class="sec-hd"><h2>연차 대조</h2><span class="hint" id="lvAsOf"></span></div>
     <div class="sec-body">
-      <div class="lv-sum">
-        <div class="lv-s"><span>발생</span><b class="num" id="lvAcc"></b></div>
-        <div class="lv-s"><span>유급으로 사용</span><b class="num" id="lvUsed"></b></div>
-        <div class="lv-s"><span>잔액</span><b class="num" id="lvBal"></b></div>
-        <div class="lv-s"><span>수당으로 받음</span><b class="num" id="lvCash"></b></div>
-      </div>
+      <div id="lvAlerts"></div>
+      <table class="cmp">
+        <thead><tr><th>항목</th><th>법정</th><th>명세서</th><th>내 기록</th></tr></thead>
+        <tbody id="cmpBody"></tbody>
+      </table>
+      <div class="bal"><span>잔여 연차</span><b class="num" id="lvBal"></b></div>
+      <h3 class="sub-h">월별 원장</h3>
       <div class="ledger" id="ledger"></div>
     </div>
     <div class="note" id="lvNote"></div>
@@ -500,65 +526,127 @@ function accrualDates(){
 }
 
 function drawLeave(){
-  const accs = accrualDates();
+  const fmt = n => Math.round(n * 10) / 10;
+  const cell = v => v === null ? '<span class="dash">—</span>' : v;
+
+  /* 출처 1 — 법정 발생. 근로기준법 제60조 2항. */
   const accByMonth = {};
-  for (const d of accs) accByMonth[d.slice(0,7)] = (accByMonth[d.slice(0,7)]||0) + 1;
+  for (const d of accrualDates()) accByMonth[d.slice(0,7)] = (accByMonth[d.slice(0,7)] || 0) + 1;
 
-  // 달력 분류에서 사용·무급 집계
-  const useByMonth = {}, unpaidByMonth = {}, detail = {};
-  for (const a of B.attendance){
-    const k = kindOf(a.date); if (!(k in CONSUMES)) continue;
-    const mo = monthOf(a.date);
-    detail[mo] = detail[mo] || {};
-    detail[mo][k] = (detail[mo][k]||0) + 1;
-    if (CONSUMES[k]) useByMonth[mo] = (useByMonth[mo]||0) + CONSUMES[k];
-    if (k in DEDUCTS) unpaidByMonth[mo] = (unpaidByMonth[mo]||0) + 1;
+  /* 출처 2 — 명세서가 직접 말해주는 것. 연차수당 일수와 기본급 차감 시간뿐이고,
+     며칠 쉬었는지는 적혀 있지 않다. */
+  const cashByMonth = {}, dedByMonth = {};
+  for (const pp of B.payslips){
+    if (pp.leaveCashed)   cashByMonth[pp.period] = pp.leaveCashed;
+    if (pp.deductedHours) dedByMonth[pp.period]  = pp.deductedHours;
   }
-  const cashByMonth = {};
-  for (const pp of B.payslips) if (pp.leaveCashed) cashByMonth[pp.period] = pp.leaveCashed;
+  const havePayslip = new Set(B.payslips.map(pp => pp.period));
 
-  const months = [...new Set([...Object.keys(accByMonth), ...Object.keys(useByMonth),
-                              ...Object.keys(cashByMonth), ...Object.keys(unpaidByMonth)])].sort();
-  const box = $("ledger"); box.textContent = "";
-  let bal = 0, tAcc = 0, tUse = 0, tCash = 0, tUnpaid = 0;
+  /* 출처 3 — 내가 달력에 찍은 것. */
+  const useByMonth = {}, mineHByMonth = {}, detail = {}, untouched = {};
+  for (const a of B.attendance){
+    const mo = monthOf(a.date), base = baseKind(a);
+    if ((base === "company" || base === "personal") && !overrides.has(a.date))
+      untouched[mo] = (untouched[mo] || 0) + 1;          // 엑셀 기본값 그대로인 휴무일
+    const k = kindOf(a.date);
+    if (!(k in CONSUMES)) continue;
+    detail[mo] = detail[mo] || {};
+    detail[mo][k] = (detail[mo][k] || 0) + 1;
+    if (CONSUMES[k]) useByMonth[mo] = (useByMonth[mo] || 0) + CONSUMES[k];
+    if (k in DEDUCTS) mineHByMonth[mo] = (mineHByMonth[mo] || 0) + B.dailyHours;
+  }
+
+  const months = [...new Set([].concat(
+    Object.keys(accByMonth), Object.keys(useByMonth), Object.keys(cashByMonth),
+    Object.keys(dedByMonth), Object.keys(mineHByMonth)))].sort();
+
+  /* ── 월별 원장 ── */
   const KO = {personal:"연차", half:"반차", coAnnual:"전사연차", substitute:"대체휴무", company:"전사휴무"};
+  const box = $("ledger"); box.textContent = "";
+  let bal = 0, tAcc = 0, tUse = 0, tCash = 0, tMineH = 0, tSlipH = 0;
+  const mismatch = [], todo = [];
 
   for (const mo of months){
-    const acc = accByMonth[mo]||0, use = useByMonth[mo]||0,
-          cash = cashByMonth[mo]||0, un = unpaidByMonth[mo]||0;
-    bal += acc - use; tAcc += acc; tUse += use; tCash += cash; tUnpaid += un;
+    const acc = accByMonth[mo]||0, use = useByMonth[mo]||0, cash = cashByMonth[mo]||0;
+    const slipH = dedByMonth[mo]||0, mineH = mineHByMonth[mo]||0;
+    bal += acc - use; tAcc += acc; tUse += use; tCash += cash; tMineH += mineH; tSlipH += slipH;
+
+    const hasSlip = havePayslip.has(mo);
+    if (hasSlip && slipH !== mineH) mismatch.push({ mo, slipH, mineH });
+    if (hasSlip && untouched[mo])   todo.push({ mo, n: untouched[mo] });
 
     const row = document.createElement("div"); row.className = "lg";
-    const m = document.createElement("span"); m.className = "m num";
-    m.textContent = mo.replace("-", ".");
+    const m = document.createElement("span"); m.className = "m num"; m.textContent = mo.replace("-", ".");
     const ev = document.createElement("span"); ev.className = "ev";
-    const tag = (cls, txt) => { const e = document.createElement("span"); e.className = "tag "+cls; e.textContent = txt; ev.appendChild(e); };
+    const tag = (cls, txt) => { const e = document.createElement("span"); e.className = "tag " + cls; e.textContent = txt; ev.appendChild(e); };
     if (acc)  tag("acc",  "발생 +" + acc);
-    if (cash) tag("cash", "수당 " + cash + "일분 " + WON(cash*B.dayPay) + "원");
+    if (cash) tag("cash", "수당 " + cash + "일분");
     const d = detail[mo] || {};
     for (const k of ["personal","half","coAnnual","substitute","company"])
-      if (d[k]) tag("use", KO[k] + " " + d[k] + (k==="half" ? "회" : "일"));
-    const du = (d.unpaid||0), dcu = (d.coUnpaid||0);
-    if (du)  tag("un", "무급 " + du + "일");
-    if (dcu) tag("un", "전사무급 " + dcu + "일");
-    if (!ev.childElementCount){ const e = document.createElement("span"); e.className="m"; e.textContent="—"; ev.appendChild(e); }
-    const b = document.createElement("span"); b.className = "bal num";
-    b.textContent = (Math.round(bal*10)/10) + "일";
+      if (d[k]) tag("use", KO[k] + " " + d[k] + (k === "half" ? "회" : "일"));
+    if (d.unpaid)   tag("un", "무급 " + d.unpaid + "일");
+    if (d.coUnpaid) tag("un", "전사무급 " + d.coUnpaid + "일");
+    if (hasSlip && slipH !== mineH) tag("un", "명세서 차감 " + slipH + "시간 ≠ 내 기록 " + mineH + "시간");
+    if (!ev.childElementCount){ const e = document.createElement("span"); e.className = "m"; e.textContent = "—"; ev.appendChild(e); }
+    const b = document.createElement("span"); b.className = "lgbal num"; b.textContent = fmt(bal) + "일";
     row.append(m, ev, b); box.appendChild(row);
   }
 
-  $("lvAcc").textContent  = tAcc + "일";
-  $("lvUsed").textContent = (Math.round(tUse*10)/10) + "일";
-  $("lvBal").textContent  = (Math.round(bal*10)/10) + "일";
-  $("lvCash").textContent = tCash + "일";
-  $("lvBal").closest(".lv-s").classList.add("hi");
-  $("lvAsOf").textContent = "오늘까지 · 1개월 개근당 1일";
+  /* ── 3열 대조표 ── */
+  const rows = [
+    { label: "발생 연차",     legal: tAcc + "일", slip: null,               mine: null },
+    { label: "연차수당 지급", legal: null,        slip: tCash + "일분",     mine: null },
+    { label: "유급으로 사용", legal: null,        slip: null,               mine: fmt(tUse) + "일" },
+    { label: "무급 처리",     legal: null,        slip: tSlipH + "시간",    mine: tMineH + "시간",
+      verdict: tSlipH === tMineH ? "ok" : "bad" },
+  ];
+  const tb = $("cmpBody"); tb.textContent = "";
+  for (const r of rows){
+    const tr = document.createElement("tr");
+    if (r.verdict) tr.className = r.verdict;
+    for (const v of [r.label, r.legal, r.slip, r.mine]){
+      const td = document.createElement("td");
+      if (v === null) td.innerHTML = cell(null); else td.textContent = v;
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  }
+
+  const rest = fmt(tAcc - tUse);
+  $("lvBal").textContent = rest + "일";
+  $("lvBal").closest(".bal").classList.toggle("neg", rest < 0);
+  $("lvAsOf").textContent = "오늘까지";
+
+  /* ── 경고 ── */
+  const al = $("lvAlerts"); al.textContent = "";
+  const add = (cls, title, body) => {
+    const d = document.createElement("div"); d.className = "alert " + cls;
+    const b = document.createElement("b"); b.textContent = title;
+    d.append(b, document.createTextNode(body)); al.appendChild(d);
+  };
+  if (mismatch.length)
+    add("bad", "명세서와 내 기록이 " + mismatch.length + "개 달에서 어긋납니다",
+        mismatch.map(x => x.mo.replace("-",".") + " 명세서 " + x.slipH + "시간 / 내 기록 " + x.mineH + "시간").join(", ")
+        + " — 달력에서 그 달을 열어 무급인 날을 찍어 주세요.");
+  if (todo.length)
+    add("todo", "아직 분류하지 않은 휴무일이 " + todo.reduce((a,x)=>a+x.n,0) + "일 있습니다",
+        todo.map(x => x.mo.replace("-",".") + " " + x.n + "일").join(", ")
+        + " — 엑셀에서 읽은 잠정값이라 연차가 깎였는지 아닌지 모릅니다.");
+  if (rest < 0)
+    add("bad", "법정 발생보다 " + fmt(-rest) + "일 더 썼습니다",
+        "법정 기준으로는 " + tAcc + "일이 생겼는데 달력에는 " + fmt(tUse) + "일을 쓴 것으로 찍혀 있습니다. "
+        + "회사가 법정보다 연차를 더 준 경우이거나, 연차로 찍은 날 중 일부가 실제로는 "
+        + "대체휴무나 회사 부담 휴무일 수 있습니다.");
+  if (!mismatch.length && !todo.length && rest >= 0 && B.payslips.length)
+    add("fine", "명세서와 내 기록이 전부 맞습니다",
+        "받은 명세서 " + B.payslips.length + "장의 기본급 차감이 달력 기록과 일치합니다.");
+
   $("lvNote").textContent =
-    "발생은 근로기준법 기준(1년 미만, 1개월 개근당 1일, 최대 11일)이고 소모는 달력 분류를 따릅니다. "
-    + "회사는 그 달에 쓰지 않은 연차를 수당으로 먼저 지급하는데, 그 " + tCash + "일을 '미리 받은 것'으로 보면 잔액은 "
-    + (Math.round(bal*10)/10) + "일이고, '팔아서 없어진 것'으로 보면 " + (Math.round((bal-tCash)*10)/10)
-    + "일입니다. 어느 쪽인지는 회사에 잔여일수를 물어봐야 확정됩니다."
-    + (tUnpaid ? " 무급으로 쉰 " + tUnpaid + "일은 연차를 소모하지 않고 급여에서 차감됐습니다." : "");
+    "세 열은 서로 다른 자료입니다. "
+    + "법정은 근로기준법대로 계산한 값, 명세서는 회사가 실제로 지급·차감한 금액에서 읽은 값, "
+    + "내 기록은 달력에서 직접 찍은 값입니다. 명세서에는 며칠 쉬었는지가 적혀 있지 않아 "
+    + "대조할 수 있는 항목은 무급 처리 하나뿐입니다. 연차수당 " + tCash + "일분을 '미리 받은 것'으로 보면 "
+    + "잔여는 " + fmt(tAcc - tUse) + "일이고, '팔아서 없어진 것'으로 보면 " + fmt(tAcc - tUse - tCash) + "일입니다.";
 }
 
 /* ── 편집 시트 ── */
