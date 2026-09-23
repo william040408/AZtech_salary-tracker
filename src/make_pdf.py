@@ -15,8 +15,16 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 from playwright.sync_api import sync_playwright
 
-SRC = pathlib.Path("web/guide.html")
-OUT = pathlib.Path("급여기록부_설명.pdf")
+# python src/make_pdf.py [문서이름]  — 기본은 guide
+DOCS = {
+    "guide":  ("web/guide.html",  "급여기록부_설명.pdf"),
+    "deploy": ("web/deploy.html", "급여기록부_구조.pdf"),
+}
+_name = sys.argv[1] if len(sys.argv) > 1 else "guide"
+if _name not in DOCS:
+    sys.exit(f"[!] 모르는 문서: {_name} (가능: {', '.join(DOCS)})")
+SRC = pathlib.Path(DOCS[_name][0])
+OUT = pathlib.Path(DOCS[_name][1])
 
 PAGE_WIDTH = "118mm"      # 여백을 빼면 약 370px — 휴대폰 배치가 걸리는 폭
 PAGE_HEIGHT = "210mm"

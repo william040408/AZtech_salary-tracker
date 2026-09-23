@@ -1,0 +1,420 @@
+<title>GitHub과 Cloudflare 역할</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f3f5f8; --surface:#fff; --surface2:#f8fafb;
+  --ink:#141a21; --ink2:#3c4753; --muted:#69737f; --line:#dbe1e8; --line2:#eceff3;
+  --accent:#0a6b6b; --accent-soft:#e2f1f0;
+  --warn:#9c6607; --warn-soft:#faeed6;
+  --good:#1c7748; --good-soft:#e0f2e7;
+  --bad:#ad3b25; --bad-soft:#fae3de;
+  --shadow:0 1px 2px rgba(20,26,33,.05),0 4px 14px rgba(20,26,33,.05);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0e1319; --surface:#161d26; --surface2:#1b232d;
+  --ink:#e7edf4; --ink2:#c2ccd8; --muted:#8a95a3; --line:#252f3b; --line2:#1e2731;
+  --accent:#38c9c0; --accent-soft:#12312f;
+  --warn:#dda63f; --warn-soft:#352814;
+  --good:#4fbc83; --good-soft:#123326;
+  --bad:#e67c62; --bad-soft:#3a1e18;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);
+}}
+:root[data-theme="dark"]{
+  --ground:#0e1319; --surface:#161d26; --surface2:#1b232d;
+  --ink:#e7edf4; --ink2:#c2ccd8; --muted:#8a95a3; --line:#252f3b; --line2:#1e2731;
+  --accent:#38c9c0; --accent-soft:#12312f;
+  --warn:#dda63f; --warn-soft:#352814;
+  --good:#4fbc83; --good-soft:#123326;
+  --bad:#e67c62; --bad-soft:#3a1e18;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:"IBM Plex Sans KR",-apple-system,"Segoe UI","Malgun Gothic",sans-serif;
+  font-size:15.5px;line-height:1.75;-webkit-text-size-adjust:100%}
+code,.mono{font-family:"IBM Plex Mono",Consolas,monospace;font-size:.88em}
+.wrap{max-width:660px;margin:0 auto;padding-inline:18px;padding-block:28px 80px}
+
+header{margin-bottom:30px}
+.eyebrow{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{margin:.2em 0 .3em;font-size:29px;font-weight:700;letter-spacing:-.025em;text-wrap:balance;line-height:1.25}
+.lede{color:var(--ink2);font-size:16px;margin:0}
+
+h2{margin:44px 0 14px;font-size:20px;font-weight:700;letter-spacing:-.02em;text-wrap:balance;
+  padding-top:18px;border-top:2px solid var(--line)}
+h2 .n{color:var(--accent);font-family:"IBM Plex Mono",monospace;font-size:.78em;margin-right:.5em}
+h3{margin:26px 0 8px;font-size:16px;font-weight:600;letter-spacing:-.01em}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 14px;padding-left:1.3em}
+li{margin-bottom:6px}
+strong{font-weight:600}
+em{font-style:normal;background:var(--accent-soft);color:var(--accent);padding:1px 5px;border-radius:4px;font-weight:600}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:18px 0;box-shadow:var(--shadow)}
+.card>:last-child{margin-bottom:0}
+.card.q{border-left:3px solid var(--accent)}
+.card.warn{background:var(--warn-soft);border-color:var(--warn)}
+.card.warn strong{color:var(--warn)}
+.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:5px;
+  background:var(--accent-soft);color:var(--accent);margin-bottom:8px}
+
+pre{background:var(--surface2);border:1px solid var(--line2);border-radius:9px;padding:12px 14px;
+  overflow-x:auto;margin:14px 0;font-family:"IBM Plex Mono",Consolas,monospace;font-size:12.5px;line-height:1.65}
+code:not(pre code){background:var(--surface2);border:1px solid var(--line2);padding:1px 5px;border-radius:4px}
+
+.tw{overflow-x:auto;margin:16px 0}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:340px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line2);vertical-align:top}
+th{font-weight:600;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;
+  border-bottom:1px solid var(--line)}
+td:first-child{font-weight:600;white-space:nowrap}
+
+figure{margin:22px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 14px 12px;box-shadow:var(--shadow)}
+figure svg{display:block;width:100%;max-width:100%;height:auto;color:var(--ink2)}
+figcaption{margin-top:10px;font-size:12.5px;color:var(--muted);line-height:1.6;text-align:center}
+
+.steps{counter-reset:s;list-style:none;padding:0;margin:16px 0}
+.steps li{counter-increment:s;position:relative;padding-left:38px;margin-bottom:16px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;
+  background:var(--accent);color:#fff;font-size:12.5px;font-weight:700;display:grid;place-items:center;
+  font-family:"IBM Plex Mono",monospace}
+.steps b{display:block;font-size:15.5px}
+.steps span{color:var(--muted);font-size:14px}
+
+dl{margin:16px 0}
+dt{font-weight:700;margin-top:14px;font-size:15px}
+dt:first-child{margin-top:0}
+dd{margin:2px 0 0;color:var(--ink2);font-size:14.5px}
+
+.links a{display:block;padding:11px 13px;background:var(--surface2);border:1px solid var(--line2);
+  border-radius:9px;margin-bottom:8px;text-decoration:none;color:var(--ink)}
+.links a:hover{border-color:var(--accent)}
+.links b{display:block;font-size:14px}
+.links span{font-size:11.5px;color:var(--muted);word-break:break-all;font-family:"IBM Plex Mono",monospace}
+
+@media (max-width:520px){
+  body{font-size:15px}
+  .wrap{padding-inline:16px;padding-block:22px 60px}
+  h1{font-size:24px} h2{font-size:18px;margin-top:36px} h3{font-size:15px}
+  .card{padding:14px 15px}
+  figure{padding:12px 10px 10px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">git push 하면 정확히 무엇이 움직이는가</div>
+  <h1>GitHub과 Cloudflare, 누가 뭘 하나</h1>
+  <p class="lede">두 이름 아래에 사실은 다섯 개의 서비스가 따로 돌고 있습니다.
+  그걸 나눠 보면 "고치면 반영된다"가 정확히 어떤 경로인지 드러납니다.</p>
+</header>
+
+<h2><span class="n">01</span>왜 헷갈리나</h2>
+
+<p><strong>"GitHub"은 한 가지가 아닙니다.</strong> 서로 다른 세 서비스가 한 이름,
+한 계정 아래 있을 뿐입니다. Cloudflare도 둘입니다.</p>
+
+<p>그래서 <em>"GitHub이 알아서 업데이트해준다"</em> 는 말이 애매해집니다.
+셋 중 무엇이 무엇을 업데이트한다는 뜻인지가 빠져 있으니까요.
+이 문서는 그 다섯을 하나씩 떼어 봅니다.</p>
+
+<h2><span class="n">02</span>GitHub의 세 얼굴</h2>
+
+<dl>
+  <dt>① 창고 <span class="mono">(Repository)</span></dt>
+  <dd>코드 파일을 보관합니다. 바꾼 기록을 전부 남겨서 언제든 되돌릴 수 있습니다.
+  <code>git push</code> 는 노트북의 파일을 이 창고로 보내는 명령입니다.</dd>
+
+  <dt>② 자판기 <span class="mono">(Pages)</span></dt>
+  <dd>창고에 있는 파일 중 <code>docs</code> 폴더만 인터넷에 내보냅니다.
+  물어본 파일을 그대로 줄 뿐, 생각도 기억도 하지 않습니다.</dd>
+
+  <dt>③ 일꾼 <span class="mono">(Actions)</span></dt>
+  <dd>시키면 깨어나서 명령을 실행하고 다시 잠듭니다. 우리는 메일에서 명세서를
+  받아오는 일을 시킵니다. 평소에는 꺼져 있습니다.</dd>
+</dl>
+
+<div class="card warn">
+<p><strong>셋은 서로 자동으로 엮이지 않습니다.</strong> 창고가 바뀌었다고 일꾼이 깨어나지 않고,
+일꾼이 일했다고 자판기가 바뀌지 않습니다. 각각 따로 움직입니다.</p>
+</div>
+
+<h2><span class="n">03</span>Cloudflare의 두 얼굴</h2>
+
+<dl>
+  <dt>④ 문지기 <span class="mono">(Worker)</span></dt>
+  <dd>요청을 받고 암구호를 확인해서 내줄지 말지 판단합니다. 24시간 켜져 있습니다.
+  우리가 준 지시사항이 <code>worker/worker.js</code> 파일입니다.</dd>
+
+  <dt>⑤ 금고 <span class="mono">(KV)</span></dt>
+  <dd>문지기가 물건을 넣어두는 곳. 급여명세서, 근태, 달력에 찍은 분류, 계약 조건이
+  전부 여기 있습니다.</dd>
+</dl>
+
+<figure>
+<svg viewBox="0 0 380 300" role="img" aria-label="GitHub 아래에 창고 자판기 일꾼 세 서비스가, Cloudflare 아래에 문지기와 금고 두 서비스가 있고, 폰은 자판기와 문지기 양쪽에 따로 요청한다">
+  <defs>
+    <marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0,1 10,5 0,9" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <rect x="4" y="4" width="176" height="182" rx="10" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="5 4" opacity=".5"/>
+  <text x="14" y="22" font-size="11.5" font-weight="700" fill="currentColor">GitHub</text>
+  <rect x="14" y="32" width="156" height="40" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="92" y="50" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">① 창고</text>
+  <text x="92" y="65" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">코드와 변경 기록</text>
+  <rect x="14" y="80" width="156" height="40" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="92" y="98" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">② 자판기</text>
+  <text x="92" y="113" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">docs 폴더를 웹으로</text>
+  <rect x="14" y="128" width="156" height="40" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="92" y="146" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">③ 일꾼</text>
+  <text x="92" y="161" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">시키면 깨어나 실행</text>
+
+  <rect x="200" y="4" width="176" height="134" rx="10" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="5 4" opacity=".5"/>
+  <text x="210" y="22" font-size="11.5" font-weight="700" fill="currentColor">Cloudflare</text>
+  <rect x="210" y="32" width="156" height="40" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="288" y="50" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">④ 문지기</text>
+  <text x="288" y="65" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">암구호 확인</text>
+  <rect x="210" y="80" width="156" height="40" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="288" y="98" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">⑤ 금고</text>
+  <text x="288" y="113" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">급여 · 근태 · 내 기록</text>
+
+  <rect x="110" y="248" width="160" height="40" rx="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="190" y="272" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">폰 · 노트북</text>
+
+  <line x1="120" y1="246" x2="92" y2="124" stroke="currentColor" stroke-width="1.5" marker-end="url(#d1)"/>
+  <text x="6" y="218" font-size="10" fill="currentColor">화면 파일 달라고</text>
+  <line x1="260" y1="246" x2="288" y2="76" stroke="currentColor" stroke-width="1.5" marker-end="url(#d1)"/>
+  <text x="374" y="218" text-anchor="end" font-size="10" fill="currentColor">급여 숫자 달라고</text>
+</svg>
+<figcaption>폰은 자판기와 문지기에게 <b>따로따로</b> 물어봅니다. GitHub과 Cloudflare 사이로 급여 데이터가 흐르는 게 아닙니다.</figcaption>
+</figure>
+
+<h2><span class="n">04</span>가장 흔한 오해</h2>
+
+<div class="card q">
+<p><strong>"GitHub이 Cloudflare한테 데이터를 넘겨준다"</strong> — 아닙니다.</p>
+<p>웹사이트가 열릴 때 둘 사이로는 아무것도 흐르지 않습니다.
+<strong>폰이 양쪽에 각각 물어봅니다.</strong> 자판기에서 화면 파일을 받고,
+문지기에게 암구호를 내고 숫자를 받습니다. 둘은 서로를 모릅니다.</p>
+</div>
+
+<p>둘이 직접 이야기하는 경우는 <strong>딱 두 번</strong>뿐이고, 둘 다 급여 데이터와는 무관합니다.</p>
+
+<div class="tw">
+<table>
+  <tr><th>언제</th><th>누가 누구에게</th><th>무엇을</th></tr>
+  <tr><td>코드를 올릴 때</td><td>Cloudflare → GitHub</td><td>문지기 코드를 가져감</td></tr>
+  <tr><td>버튼을 누를 때</td><td>Cloudflare → GitHub</td><td>일꾼을 깨움</td></tr>
+</table>
+</div>
+
+<p>둘 다 <strong>Cloudflare가 GitHub에게 말을 거는 방향</strong>입니다. 반대 방향은 없습니다.</p>
+
+<h2><span class="n">05</span>코드를 고쳤을 때 <span class="mono" style="font-size:.8em">git push</span></h2>
+
+<p>이게 가장 자주 일어나는 일입니다. <strong>한 번의 push가 두 곳을 각각 움직입니다.</strong></p>
+
+<figure>
+<svg viewBox="0 0 380 268" role="img" aria-label="git push는 창고를 갱신하고, 자판기와 문지기가 각각 창고에서 가져간다. 일꾼은 push로는 깨어나지 않는다">
+  <defs>
+    <marker id="d2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0,1 10,5 0,9" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <rect x="110" y="4" width="160" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="190" y="26" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">내 노트북</text>
+  <line x1="190" y1="40" x2="190" y2="72" stroke="currentColor" stroke-width="1.5" marker-end="url(#d2)"/>
+  <text x="197" y="60" font-size="10.5" fill="currentColor">git push</text>
+
+  <rect x="110" y="76" width="160" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="190" y="98" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">① 창고</text>
+
+  <line x1="150" y1="112" x2="86" y2="158" stroke="currentColor" stroke-width="1.5" marker-end="url(#d2)"/>
+  <line x1="230" y1="112" x2="294" y2="158" stroke="currentColor" stroke-width="1.5" marker-end="url(#d2)"/>
+  <text x="6" y="136" font-size="10" fill="currentColor">docs 폴더</text>
+  <text x="374" y="136" text-anchor="end" font-size="10" fill="currentColor">worker.js</text>
+
+  <rect x="6" y="162" width="160" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="86" y="182" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">② 자판기</text>
+  <text x="86" y="198" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">약 1분 뒤 새 화면</text>
+
+  <rect x="214" y="162" width="160" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="294" y="182" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">④ 문지기</text>
+  <text x="294" y="198" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">약 2분 뒤 새 규칙</text>
+
+  <rect x="110" y="228" width="160" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 4" opacity=".45"/>
+  <text x="190" y="249" text-anchor="middle" font-size="11" fill="currentColor" opacity=".6">③ 일꾼 — 안 깨어남</text>
+</svg>
+<figcaption>자판기와 문지기가 각자 창고를 보고 가져갑니다. 서로 기다리지 않고 따로 끝납니다. 일꾼은 <b>버튼을 눌러야만</b> 깨어납니다.</figcaption>
+</figure>
+
+<div class="tw">
+<table>
+  <tr><th>무엇이</th><th>무엇을 보고</th><th>언제</th></tr>
+  <tr><td>② 자판기</td><td><code>docs/index.html</code></td><td>약 1분</td></tr>
+  <tr><td>④ 문지기</td><td><code>worker/worker.js</code><br><code>wrangler.jsonc</code></td><td>약 2분</td></tr>
+  <tr><td>③ 일꾼</td><td>— (움직이지 않음)</td><td>—</td></tr>
+  <tr><td>⑤ 금고</td><td>— (건드리지 않음)</td><td>—</td></tr>
+</table>
+</div>
+
+<p><strong>금고는 절대 안 건드립니다.</strong> 그래서 코드를 아무리 고쳐도
+급여 데이터와 달력 기록은 그대로입니다.</p>
+
+<h2><span class="n">06</span>사이트를 열었을 때</h2>
+
+<ol class="steps">
+  <li><b>자판기에서 화면 파일을 받습니다</b>
+    <span>숫자가 하나도 없는 빈 껍데기입니다. 이 파일은 누구나 받을 수 있습니다.</span></li>
+  <li><b>브라우저가 그 파일을 읽고 화면을 그립니다</b>
+    <span>아직 표가 비어 있습니다.</span></li>
+  <li><b>저장해 둔 암구호로 문지기에게 요청합니다</b>
+    <span>암구호는 처음 연결할 때 그 기기에 저장됩니다.</span></li>
+  <li><b>문지기가 확인하고 금고에서 꺼내 줍니다</b>
+    <span>틀리면 아무것도 안 줍니다.</span></li>
+  <li><b>빈칸이 채워집니다</b>
+    <span>여기서 처음으로 급여 숫자가 화면에 등장합니다.</span></li>
+</ol>
+
+<h2><span class="n">07</span>불러오기 버튼을 눌렀을 때</h2>
+
+<p>가장 여러 단계를 거칩니다. <strong>브라우저는 이메일을 읽을 수 없기 때문</strong>에
+남을 시켜야 합니다.</p>
+
+<figure>
+<svg viewBox="0 0 380 300" role="img" aria-label="폰이 문지기에게 요청하면 문지기가 토큰으로 일꾼을 깨우고, 일꾼이 메일을 읽어 명세서를 받아 금고에 넣는다. 폰은 금고의 갱신 시각을 보고 완료를 안다">
+  <defs>
+    <marker id="d3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0,1 10,5 0,9" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <rect x="8" y="6" width="120" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="68" y="28" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">폰</text>
+  <line x1="130" y1="23" x2="196" y2="23" stroke="currentColor" stroke-width="1.5" marker-end="url(#d3)"/>
+  <text x="163" y="16" text-anchor="middle" font-size="9.5" fill="currentColor">① 암구호</text>
+  <rect x="198" y="6" width="174" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="285" y="28" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">④ 문지기</text>
+
+  <line x1="285" y1="42" x2="285" y2="76" stroke="currentColor" stroke-width="1.5" marker-end="url(#d3)"/>
+  <text x="292" y="63" font-size="9.5" fill="currentColor">② GH_TOKEN 으로 깨움</text>
+  <rect x="198" y="80" width="174" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="285" y="102" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">③ 일꾼</text>
+
+  <line x1="285" y1="116" x2="285" y2="150" stroke="currentColor" stroke-width="1.5" marker-end="url(#d3)"/>
+  <text x="292" y="137" font-size="9.5" fill="currentColor">③ 앱 비밀번호</text>
+  <rect x="198" y="154" width="174" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="285" y="174" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">메일함 · 이카운트</text>
+  <text x="285" y="190" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">명세서를 읽어 옴</text>
+
+  <line x1="198" y1="178" x2="130" y2="178" stroke="currentColor" stroke-width="1.5" marker-end="url(#d3)"/>
+  <rect x="8" y="154" width="120" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="68" y="174" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">⑤ 금고</text>
+  <text x="68" y="190" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">결과 저장</text>
+  <text x="163" y="214" text-anchor="middle" font-size="9.5" fill="currentColor">④ 암구호로 넣음</text>
+
+  <line x1="68" y1="206" x2="68" y2="248" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#d3)"/>
+  <rect x="8" y="252" width="364" height="42" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="190" y="270" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor">⑤ 폰이 15초마다 금고를 확인</text>
+  <text x="190" y="285" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">갱신 시각이 바뀌면 화면을 다시 그림 (보통 2~3분)</text>
+</svg>
+<figcaption>폰은 <b>GH_TOKEN 을 모릅니다.</b> 문지기가 대신 들고 있다가 암구호가 맞을 때만 씁니다.</figcaption>
+</figure>
+
+<h2><span class="n">08</span>달력을 눌렀을 때</h2>
+
+<p>가장 단순합니다. <strong>GitHub은 전혀 관여하지 않습니다.</strong></p>
+
+<pre>폰 ──암구호──▶ ④ 문지기 ──▶ ⑤ 금고에 저장
+                                    │
+       다른 기기에서 열면 ◀──────────┘</pre>
+
+<p>누르는 즉시 저장되고, 노트북에서 열면 그 값이 그대로 보입니다.
+명령어도 <code>git push</code> 도 필요 없습니다.</p>
+
+<h2><span class="n">09</span>노트북에서 명세서를 넣을 때</h2>
+
+<p><code>python src/push_data.py</code> 는 <strong>창고를 거치지 않고 금고로 바로 갑니다.</strong>
+급여 데이터를 창고에 넣으면 공개되기 때문입니다.</p>
+
+<pre>내 노트북 ──암구호──▶ ⑤ 금고
+   (창고를 안 거침)</pre>
+
+<p>이 명령은 계약 조건(<code>config.json</code>)도 함께 올립니다.
+일꾼은 실행할 때마다 금고에서 그 값을 받아가므로, 시급이 바뀌어도
+고칠 곳은 노트북의 파일 하나뿐입니다.</p>
+
+<h2><span class="n">10</span>열쇠 여섯 개</h2>
+
+<p>열쇠가 흩어져 있는 게 아니라, <strong>일하는 곳마다 그 일에 필요한 것이 하나씩</strong> 있습니다.
+세 대의 컴퓨터는 서로의 저장소를 볼 수 없어서, 같은 값을 두 군데 넣기도 합니다.</p>
+
+<div class="tw">
+<table>
+  <tr><th>열쇠</th><th>어디에</th><th>무엇을 여나</th></tr>
+  <tr><td>PASSPHRASE</td><td>Cloudflare</td><td>금고 — 문지기가 대조할 원본</td></tr>
+  <tr><td>GH_TOKEN</td><td>Cloudflare</td><td>일꾼 — 깨우는 신분증</td></tr>
+  <tr><td>GMAIL_USER<br>GMAIL_APP_PASSWORD</td><td>GitHub</td><td>메일함 — 일꾼이 씀</td></tr>
+  <tr><td>WORKER_URL<br>WORKER_PASS</td><td>GitHub</td><td>금고 — 일꾼이 결과를 넣음</td></tr>
+  <tr><td>(전부)</td><td>노트북 <code>.env</code></td><td>노트북에서도 같은 일을 하므로</td></tr>
+</table>
+</div>
+
+<p><code>PASSPHRASE</code> 와 <code>WORKER_PASS</code> 는 <strong>같은 값</strong>입니다.
+한쪽은 자물쇠(내가 지키는 문), 한쪽은 열쇠(남의 문을 여는 쪽)라 이름만 다릅니다.</p>
+
+<div class="card">
+<p><strong>하나가 새도 나머지는 멀쩡합니다.</strong> 폰은 <code>GH_TOKEN</code> 을 모르고,
+일꾼은 화면을 못 건드리고, 문지기는 메일을 못 읽습니다.
+각자 자기 일에 필요한 것만 들고 있습니다.</p>
+</div>
+
+<h2><span class="n">11</span>자주 헷갈리는 것</h2>
+
+<dl>
+  <dt>코드를 고쳐서 올리면 명세서도 갱신되나?</dt>
+  <dd><strong>아니요.</strong> <code>git push</code> 는 화면과 문지기 규칙만 바꿉니다.
+  명세서는 버튼을 누르거나 노트북에서 올려야 들어옵니다.</dd>
+
+  <dt>버튼을 누르면 화면 기능도 바뀌나?</dt>
+  <dd><strong>아니요.</strong> 버튼은 금고 안의 데이터만 갱신합니다.
+  화면을 바꾸려면 코드를 고쳐서 올려야 합니다.</dd>
+
+  <dt>GitHub 저장소가 공개인데 급여가 새어나가지 않나?</dt>
+  <dd><strong>새어나가지 않습니다.</strong> 창고에는 급여 숫자가 한 개도 없습니다.
+  전부 금고에 있고, 금고는 암구호가 있어야 열립니다.</dd>
+
+  <dt>Pages 주소를 남이 알면 내 급여를 보나?</dt>
+  <dd><strong>못 봅니다.</strong> 열어도 "저장소 연결" 화면만 뜹니다.
+  암구호를 넣어야 숫자가 채워집니다.</dd>
+
+  <dt>Cloudflare가 멈추면 사이트가 죽나?</dt>
+  <dd>화면은 뜨지만 숫자가 안 채워집니다. 반대로 Pages가 멈추면 화면이 안 뜨지만
+  금고의 데이터는 그대로입니다. <strong>둘은 따로 움직입니다.</strong></dd>
+</dl>
+
+<h2><span class="n">12</span>안 될 때 어디를 보나</h2>
+
+<div class="tw">
+<table>
+  <tr><th>증상</th><th>의심할 곳</th></tr>
+  <tr><td>화면이 아예 안 뜸</td><td>② 자판기 — GitHub 저장소 Settings → Pages</td></tr>
+  <tr><td>"저장소 연결" 화면만 계속 뜸</td><td>주소나 암구호 오타, 또는 ④ 문지기</td></tr>
+  <tr><td>숫자가 안 채워짐</td><td>④ 문지기 — Cloudflare Workers 화면</td></tr>
+  <tr><td>달력을 눌러도 저장이 안 됨</td><td>④ 문지기 또는 ⑤ 금고 바인딩</td></tr>
+  <tr><td>불러오기 버튼이 실패</td><td>③ 일꾼 — GitHub 저장소 Actions 탭의 로그</td></tr>
+  <tr><td>고쳤는데 화면이 그대로</td><td>1~2분 기다린 뒤 새로고침. 그래도면 ② 자판기</td></tr>
+</table>
+</div>
+
+<div class="card q">
+<p><strong>어느 쪽이 문제인지 가르는 가장 빠른 방법</strong> — 사이트를 열었을 때
+화면이 뜨는지 보세요. 뜨면 자판기는 멀쩡하고, 숫자가 안 채워지면 문지기나 금고 쪽입니다.</p>
+</div>
+
+</div>
