@@ -1,4 +1,4 @@
-<title>GitHub과 Cloudflare 역할</title>
+<title>이 시스템은 어떻게 돌아가는가</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 :root{
@@ -101,301 +101,580 @@ dd{margin:2px 0 0;color:var(--ink2);font-size:14.5px}
   figure{padding:12px 10px 10px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* 이 문서 전용 — 본문이 길어 기본보다 작게 */
+body{font-size:14px;line-height:1.7}
+h1{font-size:25px} h2{font-size:17.5px;margin-top:38px;padding-top:15px} h3{font-size:14.5px;margin-top:20px}
+.lede{font-size:14px}
+p{margin-bottom:11px}
+table{font-size:12px} th,td{padding:6px 7px} th{font-size:10.5px}
+pre{font-size:11px;padding:10px 12px;line-height:1.6}
+dt{font-size:13.5px;margin-top:11px} dd{font-size:13px}
+.steps b{font-size:14px} .steps span{font-size:12.5px}
+.steps li{padding-left:34px;margin-bottom:13px}
+.steps li::before{width:23px;height:23px;font-size:11.5px}
+.card{padding:13px 15px;margin:15px 0}
+figcaption{font-size:11.5px}
+ul,ol{padding-left:1.25em} li{margin-bottom:4px}
+@media (max-width:520px){ body{font-size:13.5px} h1{font-size:21px} h2{font-size:16.5px} }
 </style>
 
 <div class="wrap">
 <header>
-  <div class="eyebrow">git push 하면 정확히 무엇이 움직이는가</div>
-  <h1>GitHub과 Cloudflare, 누가 뭘 하나</h1>
-  <p class="lede">두 이름 아래에 사실은 다섯 개의 서비스가 따로 돌고 있습니다.
-  그걸 나눠 보면 "고치면 반영된다"가 정확히 어떤 경로인지 드러납니다.</p>
+  <div class="eyebrow">용어를 피하지 않고, 대신 전부 설명합니다</div>
+  <h1>이 시스템은 어떻게 돌아가는가</h1>
+  <p class="lede">GitHub·Cloudflare·Google 아래에 일곱 개의 서비스가 따로 돌고 있습니다.
+  각각이 무엇이고, 왜 그 자리에 있고, <span class="mono">git push</span> 가 정확히 무엇을
+  움직이는지를 바닥부터 설명합니다.</p>
 </header>
 
-<h2><span class="n">01</span>왜 헷갈리나</h2>
+<div class="card q">
+<p><strong>읽는 법.</strong> 새 용어는 <b>굵게</b> 나오고 바로 뒤에 뜻이 붙습니다.
+별명(문지기 같은)에는 항상 <span class="mono">소속 · 정식 명칭</span> 을 같이 적었습니다.
+맨 뒤에 용어 사전이 있습니다.</p>
+</div>
 
-<p><strong>"GitHub"은 한 가지가 아닙니다.</strong> 서로 다른 세 서비스가 한 이름,
-한 계정 아래 있을 뿐입니다. Cloudflare도 둘입니다.</p>
+<h2><span class="n">01</span>등장인물 일곱</h2>
 
-<p>그래서 <em>"GitHub이 알아서 업데이트해준다"</em> 는 말이 애매해집니다.
-셋 중 무엇이 무엇을 업데이트한다는 뜻인지가 빠져 있으니까요.
-이 문서는 그 다섯을 하나씩 떼어 봅니다.</p>
+<p>먼저 전체 배역표입니다. 이 표만 손에 들고 있으면 나머지는 따라옵니다.</p>
 
-<h2><span class="n">02</span>GitHub의 세 얼굴</h2>
+<div class="tw">
+<table>
+  <tr><th>별명</th><th>소속</th><th>정식 명칭</th><th>하는 일</th></tr>
+  <tr><td>① 창고</td><td>GitHub</td><td class="mono">Repository</td><td>코드 보관, 변경 이력</td></tr>
+  <tr><td>② 자판기</td><td>GitHub</td><td class="mono">Pages</td><td>화면 파일을 웹에 내보냄</td></tr>
+  <tr><td>③ 일꾼</td><td>GitHub</td><td class="mono">Actions</td><td>시키면 깨어나 명령 실행</td></tr>
+  <tr><td>④ 문지기</td><td>Cloudflare</td><td class="mono">Workers</td><td>요청 심사, 중계</td></tr>
+  <tr><td>⑤ 금고</td><td>Cloudflare</td><td class="mono">Workers KV</td><td>데이터 보관</td></tr>
+  <tr><td>⑥ 메일함</td><td>Google</td><td class="mono">Gmail (IMAP)</td><td>명세서 알림이 도착</td></tr>
+  <tr><td>⑦ 문서 창구</td><td>이카운트</td><td class="mono">전자문서 뷰어</td><td>실제 명세서가 있는 곳</td></tr>
+</table>
+</div>
 
-<dl>
-  <dt>① 창고 <span class="mono">(Repository)</span></dt>
-  <dd>코드 파일을 보관합니다. 바꾼 기록을 전부 남겨서 언제든 되돌릴 수 있습니다.
-  <code>git push</code> 는 노트북의 파일을 이 창고로 보내는 명령입니다.</dd>
+<p>여기에 <strong>내 노트북</strong>과 <strong>폰</strong>이 더해져 아홉이 등장합니다.</p>
 
-  <dt>② 자판기 <span class="mono">(Pages)</span></dt>
-  <dd>창고에 있는 파일 중 <code>docs</code> 폴더만 인터넷에 내보냅니다.
-  물어본 파일을 그대로 줄 뿐, 생각도 기억도 하지 않습니다.</dd>
+<h2><span class="n">02</span>바닥부터 — 인터넷에서 무슨 일이 일어나나</h2>
 
-  <dt>③ 일꾼 <span class="mono">(Actions)</span></dt>
-  <dd>시키면 깨어나서 명령을 실행하고 다시 잠듭니다. 우리는 메일에서 명세서를
-  받아오는 일을 시킵니다. 평소에는 꺼져 있습니다.</dd>
-</dl>
+<h3>클라이언트와 서버</h3>
+
+<p><b>서버</b>(server)는 <em>요청을 받아 답을 돌려주는 프로그램</em>입니다. 그 프로그램이 도는
+컴퓨터도 서버라고 부릅니다. <b>클라이언트</b>(client)는 <em>요청을 보내는 쪽</em>입니다.
+웹에서는 브라우저가 클라이언트입니다.</p>
+
+<p>"서버를 빌렸다"는 말은 <strong>24시간 켜져 있고 요청에 답하는 컴퓨터를 빌렸다</strong>는 뜻입니다.
+특별한 기계가 아닙니다.</p>
+
+<h3>HTTP — 주고받는 약속</h3>
+
+<p><b>HTTP</b>(HyperText Transfer Protocol)는 <em>클라이언트와 서버가 대화하는 규칙</em>입니다.
+<b>프로토콜</b>(protocol)은 <em>주고받는 형식에 대한 약속</em>을 뜻합니다.
+<b>HTTPS</b> 는 그 대화를 암호화한 것으로, 중간에서 엿들어도 내용을 알 수 없습니다.</p>
+
+<figure>
+<svg viewBox="0 0 380 150" role="img" aria-label="브라우저가 서버에 GET 요청을 보내면 서버가 200 OK와 파일을 돌려준다">
+  <defs><marker id="e1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><polygon points="0,1 10,5 0,9" fill="currentColor"/></marker></defs>
+  <rect x="8" y="46" width="120" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="68" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">브라우저</text>
+  <text x="68" y="84" text-anchor="middle" font-size="9.5" fill="currentColor" opacity=".7">클라이언트</text>
+  <rect x="252" y="46" width="120" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="312" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">서버</text>
+  <text x="312" y="84" text-anchor="middle" font-size="9.5" fill="currentColor" opacity=".7">항상 켜져 있음</text>
+  <line x1="130" y1="60" x2="250" y2="60" stroke="currentColor" stroke-width="1.5" marker-end="url(#e1)"/>
+  <text x="190" y="52" text-anchor="middle" font-size="9.5" fill="currentColor">요청 GET /index.html</text>
+  <line x1="250" y1="86" x2="130" y2="86" stroke="currentColor" stroke-width="1.5" marker-end="url(#e1)"/>
+  <text x="190" y="104" text-anchor="middle" font-size="9.5" fill="currentColor">응답 200 OK + 파일 내용</text>
+  <text x="190" y="132" text-anchor="middle" font-size="9.5" fill="currentColor" opacity=".65">이 한 쌍이 HTTP 의 전부다</text>
+</svg>
+<figcaption>요청 하나에 응답 하나. 웹에서 일어나는 모든 일이 이 쌍의 반복입니다.</figcaption>
+</figure>
+
+<h3>메서드 — 무엇을 하려는지</h3>
+
+<p>요청에는 <b>메서드</b>(method)가 붙습니다. <em>무엇을 하려는지 알리는 한 단어</em>입니다.</p>
+
+<div class="tw">
+<table>
+  <tr><th>메서드</th><th>뜻</th><th>우리 시스템에서</th></tr>
+  <tr><td class="mono">GET</td><td>달라</td><td>화면 파일, 급여 데이터 읽기</td></tr>
+  <tr><td class="mono">PUT</td><td>이걸로 바꿔라</td><td>금고에 데이터 쓰기</td></tr>
+  <tr><td class="mono">POST</td><td>이걸 처리해라</td><td>일꾼 깨우기</td></tr>
+  <tr><td class="mono">OPTIONS</td><td>뭐가 허용되나</td><td>브라우저가 미리 물어봄 (뒤에 설명)</td></tr>
+</table>
+</div>
+
+<h3>상태 코드 — 결과를 알리는 숫자</h3>
+
+<p>응답 맨 앞에는 <b>상태 코드</b>(status code)가 붙습니다. <em>세 자리 숫자로 결과를 알리는 것</em>입니다.</p>
+
+<div class="tw">
+<table>
+  <tr><th>코드</th><th>뜻</th><th>언제 보나</th></tr>
+  <tr><td class="mono">200</td><td>성공</td><td>정상</td></tr>
+  <tr><td class="mono">401</td><td>신원 확인 실패</td><td>암구호가 틀렸을 때</td></tr>
+  <tr><td class="mono">404</td><td>그런 것 없음</td><td>없는 주소를 부를 때</td></tr>
+  <tr><td class="mono">500</td><td>서버가 터짐</td><td>설정이 빠졌을 때</td></tr>
+</table>
+</div>
+
+<h3>주소 — 어디의 무엇인지</h3>
+
+<pre>https://william040408.github.io/AZtech_salary-tracker/
+└─┬─┘   └────────┬────────────┘└────────┬───────────┘
+프로토콜      호스트(도메인)            경로</pre>
+
+<p><b>도메인</b>(domain)은 <em>서버를 가리키는 사람이 읽을 수 있는 이름</em>입니다.
+실제 컴퓨터는 <b>IP 주소</b>(숫자로 된 주소)로 찾는데, <b>DNS</b>(Domain Name System,
+<em>도메인을 IP로 바꿔주는 전화번호부</em>)가 그 변환을 해 줍니다.
+그래서 주소를 치면 브라우저가 먼저 DNS에 물어보고, 받은 IP로 요청을 보냅니다.</p>
+
+<h2><span class="n">03</span>GitHub — 세 개의 서비스</h2>
+
+<p>GitHub 은 한 회사, 한 계정 아래 여러 서비스를 묶어 둔 것입니다.
+우리는 그중 셋을 씁니다. <strong>셋은 서로 자동으로 엮이지 않습니다.</strong></p>
+
+<h3>① 창고 — GitHub · Repository</h3>
+
+<p><b>Git</b>은 <em>파일의 변경 이력을 기록하는 프로그램</em>이고,
+<b>리포지터리</b>(repository, 줄여서 repo)는 <em>그 이력이 담긴 저장 공간</em>입니다.
+GitHub 은 그 저장 공간을 인터넷에 올려 두는 서비스입니다.</p>
+
+<p>기록 단위를 <b>커밋</b>(commit)이라 부릅니다. <em>"이 시점의 파일들을 이런 이유로 이렇게
+바꿨다"는 한 덩어리</em>입니다. 지금까지 30번 넘게 쌓였고, 아무 시점으로나 되돌릴 수 있습니다.</p>
+
+<p><span class="mono">git push</span> 는 <em>노트북의 커밋을 창고로 보내는 명령</em>입니다.
+<b>브랜치</b>(branch, <em>갈라진 작업 줄기</em>)는 여럿 만들 수 있는데 우리는
+<span class="mono">main</span> 하나만 씁니다.</p>
+
+<h3>② 자판기 — GitHub · Pages</h3>
+
+<p><b>정적 호스팅</b>(static hosting)입니다. <em>미리 만들어 둔 파일을 요청한 그대로
+돌려주기만 하는 서비스</em>를 뜻합니다. "정적"(static)은 <em>요청마다 내용이 달라지지 않는다</em>는
+뜻입니다.</p>
+
+<p>계산도, 판단도, 기억도 하지 않습니다. 그래서 빠르고 공짜지만
+<strong>입력을 저장할 수 없고, 누가 요청하든 똑같이 내줍니다.</strong>
+급여 숫자를 여기 둘 수 없는 이유입니다.</p>
+
+<p>Pages 는 창고의 <span class="mono">docs</span> 폴더만 내보내도록 설정돼 있습니다.
+창고가 바뀌면 그 폴더를 다시 읽어 갑니다.</p>
+
+<h3>③ 일꾼 — GitHub · Actions</h3>
+
+<p><b>CI/CD</b> 도구입니다. 원래는 <em>코드가 바뀔 때마다 자동으로 검사하고 배포하는</em>
+용도(Continuous Integration / Continuous Delivery)인데, 실체는
+<strong>"명령을 대신 실행해 주는 일회용 컴퓨터"</strong>입니다.</p>
+
+<p>깨어날 때마다 <b>러너</b>(runner, <em>실제로 명령을 실행하는 가상 컴퓨터</em>)가 새로 만들어집니다.
+<strong>매번 빈 상태로 시작</strong>하고 일이 끝나면 통째로 사라집니다.
+이 성질이 나중에 중요한 문제를 만듭니다(⑨장).</p>
+
+<p>무엇을 할지는 <b>워크플로</b>(workflow, <em>단계별 작업 정의 파일</em>)에 적습니다.
+우리 파일은 <span class="mono">.github/workflows/refresh.yml</span> 이고,
+<b>YAML</b>(<em>들여쓰기로 구조를 나타내는 설정 파일 형식</em>)로 쓰여 있습니다.</p>
+
+<p>언제 깨어날지는 <b>트리거</b>(trigger, <em>실행 조건</em>)가 정합니다.
+우리는 <span class="mono">workflow_dispatch</span> 하나만 걸어 뒀습니다.
+<em>"밖에서 불러야만 깨어난다"</em>는 뜻입니다. 그래서
+<strong><span class="mono">git push</span> 로는 일꾼이 깨어나지 않습니다.</strong></p>
+
+<h2><span class="n">04</span>Cloudflare — 두 개의 서비스</h2>
+
+<h3>④ 문지기 — Cloudflare · Workers</h3>
+
+<p><b>서버리스</b>(serverless) 방식입니다. <em>서버가 없다는 뜻이 아니라, 서버를 내가 관리하지
+않는다</em>는 뜻입니다. 요청이 올 때만 코드가 잠깐 실행되고 끝납니다. 놀고 있을 때는 비용도
+자원도 쓰지 않습니다.</p>
+
+<p><b>엣지</b>(edge)에서 돕니다. <em>전 세계에 흩어진 서버 중 요청자와 가장 가까운 곳</em>을
+뜻합니다. 그래서 응답이 빠릅니다.</p>
+
+<p>자판기와 결정적으로 다른 점은 <strong>판단을 한다</strong>는 것입니다.
+우리가 준 지시사항이 <span class="mono">worker/worker.js</span> 이고, 이렇게 적혀 있습니다.</p>
+
+<ul>
+  <li>암구호가 틀리면 <span class="mono">401</span> 만 돌려주고 끝내라</li>
+  <li>맞으면 금고에서 꺼내 줘라</li>
+  <li>우리 사이트에서 온 요청만 받아라</li>
+  <li><span class="mono">/refresh</span> 요청이 오면 일꾼을 깨워라</li>
+</ul>
+
+<h3>⑤ 금고 — Cloudflare · Workers KV</h3>
+
+<p><b>키-값 저장소</b>(key-value store)입니다. <em>이름표(키)를 붙여 값을 넣어 두고, 그 이름표로
+꺼내는 가장 단순한 형태의 데이터베이스</em>입니다. 사물함을 떠올리면 됩니다.</p>
+
+<div class="tw">
+<table>
+  <tr><th>키</th><th>값</th></tr>
+  <tr><td class="mono">bundle</td><td>명세서 6장 + 근태 203일</td></tr>
+  <tr><td class="mono">leave</td><td>달력에 찍은 분류</td></tr>
+  <tr><td class="mono">config</td><td>시급, 소정근로시간, 입사일</td></tr>
+  <tr><td class="mono">meta</td><td>마지막 갱신 시각</td></tr>
+</table>
+</div>
+
+<p>값은 <b>JSON</b>(<em>중괄호와 따옴표로 자료를 표현하는 글자 형식</em>)으로 저장합니다.
+사람도 읽을 수 있고 프로그램도 바로 해석할 수 있어서 널리 쓰입니다.</p>
+
+<h2><span class="n">05</span>Google — 메일을 여는 부분</h2>
+
+<h3>⑥ 메일함 — Google · Gmail</h3>
+
+<p>매달 이카운트가 <strong>"문서가 도착했다"는 알림 메일</strong>을 보냅니다.
+<strong>그 메일 본문에는 금액이 한 글자도 없습니다.</strong> 링크 하나뿐입니다.</p>
+
+<h3>IMAP — 메일을 읽는 규칙</h3>
+
+<p><b>IMAP</b>(Internet Message Access Protocol)은 <em>서버에 있는 메일을 프로그램이 읽어
+가는 프로토콜</em>입니다. 메일을 보낼 때 쓰는 <b>SMTP</b> 와 짝을 이룹니다.
+우리는 읽기만 하므로 IMAP 만 씁니다.</p>
 
 <div class="card warn">
-<p><strong>셋은 서로 자동으로 엮이지 않습니다.</strong> 창고가 바뀌었다고 일꾼이 깨어나지 않고,
-일꾼이 일했다고 자판기가 바뀌지 않습니다. 각각 따로 움직입니다.</p>
+<p><strong>브라우저는 IMAP 을 말하지 못합니다.</strong> 브라우저가 할 수 있는 건 HTTP 하나뿐입니다.
+일부러 그렇게 막아 둔 것입니다 — 아무 웹사이트나 방문자의 메일을 읽을 수 있으면 큰일이니까요.</p>
+<p>그래서 <strong>웹 버튼이 직접 메일을 열 수 없고</strong>, IMAP 을 말할 수 있는
+③ 일꾼(GitHub Actions)에게 시키는 것입니다.</p>
 </div>
 
-<h2><span class="n">03</span>Cloudflare의 두 얼굴</h2>
+<h3>앱 비밀번호 — 프로그램 전용 열쇠</h3>
 
-<dl>
-  <dt>④ 문지기 <span class="mono">(Worker)</span></dt>
-  <dd>요청을 받고 암구호를 확인해서 내줄지 말지 판단합니다. 24시간 켜져 있습니다.
-  우리가 준 지시사항이 <code>worker/worker.js</code> 파일입니다.</dd>
+<p>프로그램이 메일함에 들어가려면 로그인이 필요합니다. 그런데 진짜 계정 비밀번호를 주는 건
+위험합니다. 그 하나로 Gmail·드라이브·유튜브·결제가 전부 열리고,
+<b>2단계 인증</b>(비밀번호 외에 휴대폰 확인을 한 번 더 하는 것)을 켜 두면 어차피 통과도 못 합니다.</p>
 
-  <dt>⑤ 금고 <span class="mono">(KV)</span></dt>
-  <dd>문지기가 물건을 넣어두는 곳. 급여명세서, 근태, 달력에 찍은 분류, 계약 조건이
-  전부 여기 있습니다.</dd>
-</dl>
+<p><b>앱 비밀번호</b>(app password)는 <em>특정 프로그램 하나만을 위해 따로 발급하는 16자리
+비밀번호</em>입니다.</p>
+
+<div class="tw">
+<table>
+  <tr><th></th><th>계정 비밀번호</th><th>앱 비밀번호</th></tr>
+  <tr><td>범위</td><td>구글 전체</td><td>IMAP·SMTP 접속만</td></tr>
+  <tr><td>개수</td><td>하나</td><td>용도별로 여러 개</td></tr>
+  <tr><td>폐기</td><td>바꾸면 전부 재로그인</td><td>그것만 삭제</td></tr>
+  <tr><td>2단계 인증</td><td>거쳐야 함</td><td>묻지 않음</td></tr>
+</table>
+</div>
+
+<p>더 좁은 권한이 필요하면 <b>OAuth</b>(<em>비밀번호를 주지 않고 "메일 읽기"처럼 특정 권한만
+위임하는 방식</em>)를 써야 하지만, 설정이 훨씬 복잡해서 쓰지 않았습니다.
+그래서 <strong>앱 비밀번호는 "Gmail 읽기"가 아니라 "Gmail 전체 접근"</strong>이라는 점은
+알고 있어야 합니다.</p>
+
+<h3>⑦ 문서 창구 — 이카운트 전자문서</h3>
+
+<p>메일의 링크를 따라가면 명세서가 열립니다. 그 과정이 이렇습니다.</p>
+
+<ol>
+  <li>메일 본문의 <span class="mono">l.ecount.com/····</span> — <b>단축 URL</b>
+  (<em>짧은 주소를 실제 주소로 바꿔 주는 중계</em>)</li>
+  <li>중계 페이지로 넘어가고, 그 페이지의 자바스크립트가 실제 주소를 계산</li>
+  <li><b>세션</b>(session, <em>"이 사람이 맞다"는 상태를 잠시 기억해 두는 것</em>)이 만들어지고
+  명세서 화면이 뜸</li>
+</ol>
+
+<div class="card warn">
+<p><strong>링크는 3개월이면 만료됩니다.</strong> 이카운트가 그렇게 정해 뒀습니다.
+실제로 2~5월분은 이미 만료돼서 받아올 수 없었고, 남아 있던 텍스트로 겨우 복구했습니다.
+매달 한 번은 받아 둬야 하는 이유입니다.</p>
+</div>
+
+<h3>헤드리스 브라우저 — 사람 없이 페이지 열기</h3>
+
+<p>위 과정은 자바스크립트가 돌아야 완성됩니다. 단순히 주소를 부르는 것만으로는 안 됩니다.</p>
+
+<p>그래서 <b>헤드리스 브라우저</b>(headless browser, <em>화면 없이 동작하는 진짜 브라우저</em>)를
+씁니다. 우리가 쓰는 도구가 <b>Playwright</b> 입니다. 크롬을 화면 없이 띄워 페이지를 열고,
+자바스크립트가 다 돌기를 기다린 뒤, 완성된 화면에서 글자를 읽어 옵니다.</p>
+
+<p>이카운트의 내부 동작을 흉내 내지 않고 <strong>진짜 브라우저가 진짜로 페이지를 열게</strong>
+두었기 때문에, 이카운트가 내부를 바꿔도 잘 깨지지 않습니다.</p>
+
+<h2><span class="n">06</span>인증 — 누가 무엇을 열 수 있나</h2>
+
+<h3>공유 비밀 — 암구호</h3>
+
+<p>가장 단순한 방식입니다. <b>공유 비밀</b>(shared secret)은 <em>양쪽이 같은 값을 알고 있고,
+그 값이 일치하면 통과시키는 것</em>입니다.</p>
+
+<p>우리 페이지는 요청마다 <b>헤더</b>(header, <em>요청에 덧붙이는 부가 정보 칸</em>)에
+<span class="mono">x-pass: 암구호</span> 를 실어 보냅니다.
+④ 문지기가 자기가 가진 <span class="mono">PASSPHRASE</span> 와 비교합니다.</p>
+
+<h3>토큰 — 프로그램용 신분증</h3>
+
+<p><b>토큰</b>(token)은 <em>프로그램이 쓰는 비밀번호</em>인데, 사람 비밀번호와 세 가지가 다릅니다.</p>
+
+<ul>
+  <li><strong>권한을 좁힐 수 있습니다.</strong> 우리 <span class="mono">GH_TOKEN</span> 은
+  "이 저장소의 Actions 만" 건드릴 수 있습니다</li>
+  <li><strong>여러 개를 따로 만들 수 있습니다.</strong> 하나가 새면 그것만 폐기하면 됩니다</li>
+  <li><strong>만료 기한을 둡니다.</strong> 우리는 1년으로 잡았습니다</li>
+</ul>
+
+<h3>CORS — 브라우저가 미리 물어보는 것</h3>
+
+<p>브라우저에는 <b>동일 출처 정책</b>(same-origin policy)이 있습니다.
+<em>어떤 사이트의 스크립트가 다른 주소로 요청을 보내는 것을 기본적으로 막는 규칙</em>입니다.
+악성 사이트가 몰래 내 은행 서버에 요청을 보내는 걸 막기 위한 장치입니다.</p>
+
+<p>그런데 우리 페이지는 <span class="mono">github.io</span> 에 있고 데이터는
+<span class="mono">workers.dev</span> 에 있습니다. <strong>출처가 다릅니다.</strong>
+그대로면 브라우저가 막습니다.</p>
+
+<p>이걸 푸는 방식이 <b>CORS</b>(Cross-Origin Resource Sharing,
+<em>서버가 "저 출처는 허용한다"고 밝히면 브라우저가 통과시켜 주는 규칙</em>)입니다.
+문지기가 응답에 이렇게 적어 보냅니다.</p>
+
+<pre>Access-Control-Allow-Origin: https://william040408.github.io</pre>
+
+<p>브라우저는 본 요청을 보내기 전에 <span class="mono">OPTIONS</span> 로 한 번 미리
+물어봅니다. 이걸 <b>프리플라이트</b>(preflight, <em>사전 확인 요청</em>)라 합니다.
+Cloudflare 설정의 <span class="mono">ALLOW_ORIGIN</span> 이 바로 이 값입니다.</p>
+
+<h3>시크릿 — 비밀을 두는 곳</h3>
+
+<p><b>시크릿</b>(secret)은 <em>암호화해서 보관하고 실행할 때만 꺼내 쓰는 값</em>입니다.
+코드 파일에 적으면 창고에 올라가 공개되므로, 각 플랫폼이 제공하는 시크릿 저장소에 넣습니다.
+로그에도 <span class="mono">***</span> 로 가려져 찍힙니다.</p>
+
+<p>노트북에서는 <b>환경 변수</b>(environment variable, <em>프로그램에 값을 전달하는 이름표</em>)
+형태로 <span class="mono">.env</span> 파일에 둡니다. 이 파일은
+<span class="mono">.gitignore</span>(<em>창고에 올리지 않을 파일 목록</em>)에 들어 있습니다.</p>
+
+<h2><span class="n">07</span>전체 구성도</h2>
 
 <figure>
-<svg viewBox="0 0 380 300" role="img" aria-label="GitHub 아래에 창고 자판기 일꾼 세 서비스가, Cloudflare 아래에 문지기와 금고 두 서비스가 있고, 폰은 자판기와 문지기 양쪽에 따로 요청한다">
-  <defs>
-    <marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <polygon points="0,1 10,5 0,9" fill="currentColor"/>
-    </marker>
-  </defs>
+<svg viewBox="0 0 380 300" role="img" aria-label="폰은 GitHub Pages에서 화면 파일을, Cloudflare Workers를 거쳐 KV에서 급여 숫자를 따로 받아온다">
+  <defs><marker id="e2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><polygon points="0,1 10,5 0,9" fill="currentColor"/></marker></defs>
 
-  <rect x="4" y="4" width="176" height="182" rx="10" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="5 4" opacity=".5"/>
-  <text x="14" y="22" font-size="11.5" font-weight="700" fill="currentColor">GitHub</text>
-  <rect x="14" y="32" width="156" height="40" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="92" y="50" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">① 창고</text>
-  <text x="92" y="65" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">코드와 변경 기록</text>
-  <rect x="14" y="80" width="156" height="40" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="92" y="98" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">② 자판기</text>
-  <text x="92" y="113" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">docs 폴더를 웹으로</text>
-  <rect x="14" y="128" width="156" height="40" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="92" y="146" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">③ 일꾼</text>
-  <text x="92" y="161" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">시키면 깨어나 실행</text>
+  <rect x="4" y="4" width="176" height="80" rx="10" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="5 4" opacity=".45"/>
+  <text x="14" y="20" font-size="10.5" font-weight="700" fill="currentColor">GitHub</text>
+  <rect x="14" y="28" width="156" height="46" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="92" y="46" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor">② 자판기</text>
+  <text x="92" y="62" text-anchor="middle" font-size="9.5" fill="currentColor" opacity=".7">GitHub Pages</text>
 
-  <rect x="200" y="4" width="176" height="134" rx="10" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="5 4" opacity=".5"/>
-  <text x="210" y="22" font-size="11.5" font-weight="700" fill="currentColor">Cloudflare</text>
-  <rect x="210" y="32" width="156" height="40" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="288" y="50" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">④ 문지기</text>
-  <text x="288" y="65" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">암구호 확인</text>
-  <rect x="210" y="80" width="156" height="40" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
-  <text x="288" y="98" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">⑤ 금고</text>
-  <text x="288" y="113" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">급여 · 근태 · 내 기록</text>
+  <rect x="200" y="4" width="176" height="184" rx="10" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="5 4" opacity=".45"/>
+  <text x="210" y="20" font-size="10.5" font-weight="700" fill="currentColor">Cloudflare</text>
+  <rect x="210" y="28" width="156" height="46" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="288" y="46" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor">④ 문지기</text>
+  <text x="288" y="62" text-anchor="middle" font-size="9.5" fill="currentColor" opacity=".7">Cloudflare Workers</text>
+  <line x1="288" y1="76" x2="288" y2="120" stroke="currentColor" stroke-width="1.5" marker-end="url(#e2)"/>
+  <text x="295" y="102" font-size="9.5" fill="currentColor" opacity=".75">읽고 씀</text>
+  <rect x="210" y="124" width="156" height="46" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="288" y="142" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor">⑤ 금고</text>
+  <text x="288" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity=".7">Workers KV</text>
 
-  <rect x="110" y="248" width="160" height="40" rx="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="190" y="272" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">폰 · 노트북</text>
+  <rect x="110" y="248" width="160" height="44" rx="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="190" y="268" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">폰 · 노트북</text>
+  <text x="190" y="284" text-anchor="middle" font-size="9.5" fill="currentColor" opacity=".7">브라우저 = 클라이언트</text>
 
-  <line x1="120" y1="246" x2="92" y2="124" stroke="currentColor" stroke-width="1.5" marker-end="url(#d1)"/>
-  <text x="6" y="218" font-size="10" fill="currentColor">화면 파일 달라고</text>
-  <line x1="260" y1="246" x2="288" y2="76" stroke="currentColor" stroke-width="1.5" marker-end="url(#d1)"/>
-  <text x="374" y="218" text-anchor="end" font-size="10" fill="currentColor">급여 숫자 달라고</text>
+  <line x1="130" y1="246" x2="92" y2="80" stroke="currentColor" stroke-width="1.5" marker-end="url(#e2)"/>
+  <text x="4" y="176" font-size="9.5" fill="currentColor">GET 화면 파일</text>
+  <text x="4" y="190" font-size="9.5" fill="currentColor" opacity=".6">숫자 없음</text>
+  <line x1="250" y1="246" x2="288" y2="196" stroke="currentColor" stroke-width="1.5" marker-end="url(#e2)"/>
+  <text x="376" y="222" text-anchor="end" font-size="9.5" fill="currentColor">GET 급여 숫자</text>
+  <text x="376" y="236" text-anchor="end" font-size="9.5" fill="currentColor" opacity=".6">x-pass 헤더</text>
 </svg>
-<figcaption>폰은 자판기와 문지기에게 <b>따로따로</b> 물어봅니다. GitHub과 Cloudflare 사이로 급여 데이터가 흐르는 게 아닙니다.</figcaption>
+<figcaption>폰이 <b>두 회사에 각각</b> 요청합니다. GitHub 과 Cloudflare 사이로 급여 데이터가 흐르는 게 아닙니다.</figcaption>
 </figure>
-
-<h2><span class="n">04</span>가장 흔한 오해</h2>
 
 <div class="card q">
-<p><strong>"GitHub이 Cloudflare한테 데이터를 넘겨준다"</strong> — 아닙니다.</p>
-<p>웹사이트가 열릴 때 둘 사이로는 아무것도 흐르지 않습니다.
-<strong>폰이 양쪽에 각각 물어봅니다.</strong> 자판기에서 화면 파일을 받고,
-문지기에게 암구호를 내고 숫자를 받습니다. 둘은 서로를 모릅니다.</p>
+<p><strong>가장 흔한 오해.</strong> "GitHub 이 Cloudflare 한테 데이터를 넘겨준다" — 그런 일은
+없습니다. 둘이 직접 이야기하는 경우는 딱 두 번이고 둘 다
+<strong>Cloudflare 가 GitHub 에게 말을 거는 방향</strong>이며, 급여 데이터와 무관합니다.</p>
+<ul>
+  <li>코드를 올릴 때 — Cloudflare 가 창고에서 문지기 코드를 가져감</li>
+  <li>버튼을 누를 때 — 문지기가 GitHub API 로 일꾼을 깨움</li>
+</ul>
 </div>
 
-<p>둘이 직접 이야기하는 경우는 <strong>딱 두 번</strong>뿐이고, 둘 다 급여 데이터와는 무관합니다.</p>
+<h2><span class="n">08</span>상황별로 무엇이 움직이나</h2>
 
-<div class="tw">
-<table>
-  <tr><th>언제</th><th>누가 누구에게</th><th>무엇을</th></tr>
-  <tr><td>코드를 올릴 때</td><td>Cloudflare → GitHub</td><td>문지기 코드를 가져감</td></tr>
-  <tr><td>버튼을 누를 때</td><td>Cloudflare → GitHub</td><td>일꾼을 깨움</td></tr>
-</table>
-</div>
-
-<p>둘 다 <strong>Cloudflare가 GitHub에게 말을 거는 방향</strong>입니다. 반대 방향은 없습니다.</p>
-
-<h2><span class="n">05</span>코드를 고쳤을 때 <span class="mono" style="font-size:.8em">git push</span></h2>
-
-<p>이게 가장 자주 일어나는 일입니다. <strong>한 번의 push가 두 곳을 각각 움직입니다.</strong></p>
+<h3>㉮ 코드를 고쳐 올릴 때 — <span class="mono">git push</span></h3>
 
 <figure>
-<svg viewBox="0 0 380 268" role="img" aria-label="git push는 창고를 갱신하고, 자판기와 문지기가 각각 창고에서 가져간다. 일꾼은 push로는 깨어나지 않는다">
-  <defs>
-    <marker id="d2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <polygon points="0,1 10,5 0,9" fill="currentColor"/>
-    </marker>
-  </defs>
-
-  <rect x="110" y="4" width="160" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="190" y="26" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">내 노트북</text>
-  <line x1="190" y1="40" x2="190" y2="72" stroke="currentColor" stroke-width="1.5" marker-end="url(#d2)"/>
-  <text x="197" y="60" font-size="10.5" fill="currentColor">git push</text>
-
-  <rect x="110" y="76" width="160" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="190" y="98" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">① 창고</text>
-
-  <line x1="150" y1="112" x2="86" y2="158" stroke="currentColor" stroke-width="1.5" marker-end="url(#d2)"/>
-  <line x1="230" y1="112" x2="294" y2="158" stroke="currentColor" stroke-width="1.5" marker-end="url(#d2)"/>
-  <text x="6" y="136" font-size="10" fill="currentColor">docs 폴더</text>
-  <text x="374" y="136" text-anchor="end" font-size="10" fill="currentColor">worker.js</text>
-
-  <rect x="6" y="162" width="160" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="86" y="182" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">② 자판기</text>
-  <text x="86" y="198" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">약 1분 뒤 새 화면</text>
-
-  <rect x="214" y="162" width="160" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="294" y="182" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">④ 문지기</text>
-  <text x="294" y="198" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">약 2분 뒤 새 규칙</text>
-
-  <rect x="110" y="228" width="160" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 4" opacity=".45"/>
-  <text x="190" y="249" text-anchor="middle" font-size="11" fill="currentColor" opacity=".6">③ 일꾼 — 안 깨어남</text>
+<svg viewBox="0 0 380 262" role="img" aria-label="git push는 창고를 갱신하고 자판기와 문지기가 각각 창고에서 가져간다. 일꾼과 금고는 움직이지 않는다">
+  <defs><marker id="e3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><polygon points="0,1 10,5 0,9" fill="currentColor"/></marker></defs>
+  <rect x="110" y="4" width="160" height="32" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="190" y="25" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor">내 노트북</text>
+  <line x1="190" y1="38" x2="190" y2="68" stroke="currentColor" stroke-width="1.5" marker-end="url(#e3)"/>
+  <text x="197" y="57" font-size="9.5" fill="currentColor">git push</text>
+  <rect x="110" y="72" width="160" height="44" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="190" y="90" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor">① 창고</text>
+  <text x="190" y="106" text-anchor="middle" font-size="9.5" fill="currentColor" opacity=".7">GitHub Repository</text>
+  <line x1="150" y1="118" x2="86" y2="156" stroke="currentColor" stroke-width="1.5" marker-end="url(#e3)"/>
+  <line x1="230" y1="118" x2="294" y2="156" stroke="currentColor" stroke-width="1.5" marker-end="url(#e3)"/>
+  <text x="4" y="140" font-size="9" fill="currentColor">docs/</text>
+  <text x="376" y="140" text-anchor="end" font-size="9" fill="currentColor">worker.js</text>
+  <rect x="6" y="160" width="160" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="86" y="178" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor">② 자판기</text>
+  <text x="86" y="193" text-anchor="middle" font-size="9" fill="currentColor" opacity=".7">GitHub Pages</text>
+  <text x="86" y="205" text-anchor="middle" font-size="9" fill="currentColor" opacity=".7">약 1분</text>
+  <rect x="214" y="160" width="160" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="294" y="178" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor">④ 문지기</text>
+  <text x="294" y="193" text-anchor="middle" font-size="9" fill="currentColor" opacity=".7">Cloudflare Workers</text>
+  <text x="294" y="205" text-anchor="middle" font-size="9" fill="currentColor" opacity=".7">약 2분</text>
+  <rect x="60" y="224" width="260" height="32" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 4" opacity=".45"/>
+  <text x="190" y="244" text-anchor="middle" font-size="10" fill="currentColor" opacity=".6">③ 일꾼과 ⑤ 금고는 움직이지 않음</text>
 </svg>
-<figcaption>자판기와 문지기가 각자 창고를 보고 가져갑니다. 서로 기다리지 않고 따로 끝납니다. 일꾼은 <b>버튼을 눌러야만</b> 깨어납니다.</figcaption>
+<figcaption>자판기와 문지기가 각자 창고를 보고 따로 가져갑니다. 서로 기다리지도, 통신하지도 않습니다.</figcaption>
 </figure>
 
-<div class="tw">
-<table>
-  <tr><th>무엇이</th><th>무엇을 보고</th><th>언제</th></tr>
-  <tr><td>② 자판기</td><td><code>docs/index.html</code></td><td>약 1분</td></tr>
-  <tr><td>④ 문지기</td><td><code>worker/worker.js</code><br><code>wrangler.jsonc</code></td><td>약 2분</td></tr>
-  <tr><td>③ 일꾼</td><td>— (움직이지 않음)</td><td>—</td></tr>
-  <tr><td>⑤ 금고</td><td>— (건드리지 않음)</td><td>—</td></tr>
-</table>
-</div>
+<p><strong>금고는 건드리지 않습니다.</strong> 그래서 코드를 아무리 고쳐도 급여 데이터와
+달력 기록은 그대로입니다.</p>
 
-<p><strong>금고는 절대 안 건드립니다.</strong> 그래서 코드를 아무리 고쳐도
-급여 데이터와 달력 기록은 그대로입니다.</p>
-
-<h2><span class="n">06</span>사이트를 열었을 때</h2>
+<h3>㉯ 사이트를 열었을 때</h3>
 
 <ol class="steps">
-  <li><b>자판기에서 화면 파일을 받습니다</b>
-    <span>숫자가 하나도 없는 빈 껍데기입니다. 이 파일은 누구나 받을 수 있습니다.</span></li>
-  <li><b>브라우저가 그 파일을 읽고 화면을 그립니다</b>
+  <li><b>DNS 로 주소를 찾고 ② 자판기에 GET</b>
+    <span>숫자가 하나도 없는 화면 파일이 옵니다. 이 파일은 누구나 받을 수 있습니다.</span></li>
+  <li><b>브라우저가 HTML·CSS·JavaScript 를 읽어 화면을 그림</b>
     <span>아직 표가 비어 있습니다.</span></li>
-  <li><b>저장해 둔 암구호로 문지기에게 요청합니다</b>
-    <span>암구호는 처음 연결할 때 그 기기에 저장됩니다.</span></li>
-  <li><b>문지기가 확인하고 금고에서 꺼내 줍니다</b>
-    <span>틀리면 아무것도 안 줍니다.</span></li>
-  <li><b>빈칸이 채워집니다</b>
+  <li><b>저장해 둔 암구호를 헤더에 실어 ④ 문지기에 GET</b>
+    <span>그 전에 브라우저가 OPTIONS 로 프리플라이트를 한 번 보냅니다.</span></li>
+  <li><b>문지기가 대조하고 ⑤ 금고에서 꺼내 JSON 으로 돌려줌</b>
+    <span>틀리면 401 만 돌아오고 아무것도 안 옵니다.</span></li>
+  <li><b>JavaScript 가 빈칸을 채움</b>
     <span>여기서 처음으로 급여 숫자가 화면에 등장합니다.</span></li>
 </ol>
 
-<h2><span class="n">07</span>불러오기 버튼을 눌렀을 때</h2>
+<h3>㉰ 달력을 눌렀을 때</h3>
 
-<p>가장 여러 단계를 거칩니다. <strong>브라우저는 이메일을 읽을 수 없기 때문</strong>에
-남을 시켜야 합니다.</p>
+<pre>폰 ──PUT /leave (x-pass)──▶ ④ 문지기 ──▶ ⑤ 금고
+GitHub 은 전혀 관여하지 않음</pre>
+
+<h3>㉱ 불러오기 버튼을 눌렀을 때</h3>
 
 <figure>
-<svg viewBox="0 0 380 300" role="img" aria-label="폰이 문지기에게 요청하면 문지기가 토큰으로 일꾼을 깨우고, 일꾼이 메일을 읽어 명세서를 받아 금고에 넣는다. 폰은 금고의 갱신 시각을 보고 완료를 안다">
-  <defs>
-    <marker id="d3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <polygon points="0,1 10,5 0,9" fill="currentColor"/>
-    </marker>
-  </defs>
+<svg viewBox="0 0 380 320" role="img" aria-label="폰이 문지기에 POST refresh를 보내면 문지기가 GitHub API로 일꾼을 깨우고, 일꾼이 IMAP으로 메일을 읽고 헤드리스 브라우저로 이카운트를 열어 명세서를 받아 금고에 넣는다">
+  <defs><marker id="e4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><polygon points="0,1 10,5 0,9" fill="currentColor"/></marker></defs>
 
-  <rect x="8" y="6" width="120" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="68" y="28" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">폰</text>
-  <line x1="130" y1="23" x2="196" y2="23" stroke="currentColor" stroke-width="1.5" marker-end="url(#d3)"/>
-  <text x="163" y="16" text-anchor="middle" font-size="9.5" fill="currentColor">① 암구호</text>
-  <rect x="198" y="6" width="174" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="285" y="28" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">④ 문지기</text>
+  <rect x="8" y="4" width="108" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="62" y="25" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor">폰</text>
+  <line x1="118" y1="21" x2="196" y2="21" stroke="currentColor" stroke-width="1.5" marker-end="url(#e4)"/>
+  <text x="157" y="14" text-anchor="middle" font-size="9" fill="currentColor">① POST /refresh</text>
+  <rect x="198" y="4" width="174" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="285" y="19" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">④ 문지기</text>
+  <text x="285" y="32" text-anchor="middle" font-size="8.5" fill="currentColor" opacity=".7">Cloudflare Workers</text>
 
-  <line x1="285" y1="42" x2="285" y2="76" stroke="currentColor" stroke-width="1.5" marker-end="url(#d3)"/>
-  <text x="292" y="63" font-size="9.5" fill="currentColor">② GH_TOKEN 으로 깨움</text>
-  <rect x="198" y="80" width="174" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="285" y="102" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">③ 일꾼</text>
+  <line x1="285" y1="40" x2="285" y2="72" stroke="currentColor" stroke-width="1.5" marker-end="url(#e4)"/>
+  <text x="292" y="60" font-size="9" fill="currentColor">② GH_TOKEN 으로 GitHub API</text>
+  <rect x="198" y="76" width="174" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="285" y="91" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">③ 일꾼</text>
+  <text x="285" y="104" text-anchor="middle" font-size="8.5" fill="currentColor" opacity=".7">GitHub Actions</text>
 
-  <line x1="285" y1="116" x2="285" y2="150" stroke="currentColor" stroke-width="1.5" marker-end="url(#d3)"/>
-  <text x="292" y="137" font-size="9.5" fill="currentColor">③ 앱 비밀번호</text>
-  <rect x="198" y="154" width="174" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="285" y="174" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">메일함 · 이카운트</text>
-  <text x="285" y="190" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">명세서를 읽어 옴</text>
+  <line x1="285" y1="112" x2="285" y2="144" stroke="currentColor" stroke-width="1.5" marker-end="url(#e4)"/>
+  <text x="292" y="132" font-size="9" fill="currentColor">③ IMAP · 앱 비밀번호</text>
+  <rect x="198" y="148" width="174" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="285" y="163" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">⑥ 메일함</text>
+  <text x="285" y="176" text-anchor="middle" font-size="8.5" fill="currentColor" opacity=".7">Google Gmail</text>
 
-  <line x1="198" y1="178" x2="130" y2="178" stroke="currentColor" stroke-width="1.5" marker-end="url(#d3)"/>
-  <rect x="8" y="154" width="120" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
-  <text x="68" y="174" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">⑤ 금고</text>
-  <text x="68" y="190" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">결과 저장</text>
-  <text x="163" y="214" text-anchor="middle" font-size="9.5" fill="currentColor">④ 암구호로 넣음</text>
+  <line x1="285" y1="184" x2="285" y2="216" stroke="currentColor" stroke-width="1.5" marker-end="url(#e4)"/>
+  <text x="292" y="204" font-size="9" fill="currentColor">④ 링크를 헤드리스로 염</text>
+  <rect x="198" y="220" width="174" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="285" y="235" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">⑦ 문서 창구</text>
+  <text x="285" y="248" text-anchor="middle" font-size="8.5" fill="currentColor" opacity=".7">이카운트 전자문서</text>
 
-  <line x1="68" y1="206" x2="68" y2="248" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#d3)"/>
-  <rect x="8" y="252" width="364" height="42" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
-  <text x="190" y="270" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor">⑤ 폰이 15초마다 금고를 확인</text>
-  <text x="190" y="285" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">갱신 시각이 바뀌면 화면을 다시 그림 (보통 2~3분)</text>
+  <line x1="196" y1="237" x2="120" y2="237" stroke="currentColor" stroke-width="1.5" marker-end="url(#e4)"/>
+  <rect x="8" y="220" width="110" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="63" y="235" text-anchor="middle" font-size="11" font-weight="600" fill="currentColor">⑤ 금고</text>
+  <text x="63" y="248" text-anchor="middle" font-size="8.5" fill="currentColor" opacity=".7">Workers KV</text>
+  <text x="157" y="268" text-anchor="middle" font-size="9" fill="currentColor">⑤ PUT /bundle</text>
+
+  <line x1="63" y1="256" x2="63" y2="282" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#e4)"/>
+  <rect x="8" y="286" width="364" height="30" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="190" y="305" text-anchor="middle" font-size="10" fill="currentColor">⑥ 폰이 15초마다 GET /meta — 갱신 시각이 바뀌면 다시 그림</text>
 </svg>
-<figcaption>폰은 <b>GH_TOKEN 을 모릅니다.</b> 문지기가 대신 들고 있다가 암구호가 맞을 때만 씁니다.</figcaption>
+<figcaption>폰은 <b>GH_TOKEN 을 모릅니다.</b> 문지기가 대신 들고 있다가 암구호가 맞을 때만 씁니다. 전체 2~3분.</figcaption>
 </figure>
 
-<h2><span class="n">08</span>달력을 눌렀을 때</h2>
+<h3>㉲ 노트북에서 명세서를 넣을 때</h3>
 
-<p>가장 단순합니다. <strong>GitHub은 전혀 관여하지 않습니다.</strong></p>
+<pre>내 노트북 ──PUT /bundle, /config──▶ ⑤ 금고
+① 창고를 거치지 않음 (거치면 급여가 공개되므로)</pre>
 
-<pre>폰 ──암구호──▶ ④ 문지기 ──▶ ⑤ 금고에 저장
-                                    │
-       다른 기기에서 열면 ◀──────────┘</pre>
+<h2><span class="n">09</span>왜 이렇게 나눴나 — 설계 이유</h2>
 
-<p>누르는 즉시 저장되고, 노트북에서 열면 그 값이 그대로 보입니다.
-명령어도 <code>git push</code> 도 필요 없습니다.</p>
+<h3>자판기만으로 안 되는 이유</h3>
 
-<h2><span class="n">09</span>노트북에서 명세서를 넣을 때</h2>
+<p>정적 호스팅은 <strong>기억도 판단도 못 합니다.</strong> 입력을 저장할 곳이 없고,
+급여를 두면 누구나 봅니다. 그래서 판단하는 ④ 문지기와 기억하는 ⑤ 금고가 필요했습니다.</p>
 
-<p><code>python src/push_data.py</code> 는 <strong>창고를 거치지 않고 금고로 바로 갑니다.</strong>
-급여 데이터를 창고에 넣으면 공개되기 때문입니다.</p>
+<h3>버튼이 직접 메일을 못 읽는 이유</h3>
 
-<pre>내 노트북 ──암구호──▶ ⑤ 금고
-   (창고를 안 거침)</pre>
+<p>브라우저는 HTTP 만 말합니다. IMAP 을 말할 수 없고, 헤드리스 브라우저를 띄울 수도 없습니다.
+그래서 그걸 할 수 있는 ③ 일꾼에게 시킵니다.</p>
 
-<p>이 명령은 계약 조건(<code>config.json</code>)도 함께 올립니다.
-일꾼은 실행할 때마다 금고에서 그 값을 받아가므로, 시급이 바뀌어도
-고칠 곳은 노트북의 파일 하나뿐입니다.</p>
+<h3>문지기를 거쳐 일꾼을 깨우는 이유</h3>
 
-<h2><span class="n">10</span>열쇠 여섯 개</h2>
+<p>폰에서 GitHub 을 직접 깨우려면 <span class="mono">GH_TOKEN</span> 이 페이지 안에 있어야
+하는데, 그러면 <strong>페이지를 여는 누구나 그 토큰을 봅니다.</strong>
+문지기가 대신 들고 있으면 토큰은 서버 쪽에만 남습니다.</p>
 
-<p>열쇠가 흩어져 있는 게 아니라, <strong>일하는 곳마다 그 일에 필요한 것이 하나씩</strong> 있습니다.
-세 대의 컴퓨터는 서로의 저장소를 볼 수 없어서, 같은 값을 두 군데 넣기도 합니다.</p>
+<h3>계약 조건을 금고에 둔 이유</h3>
+
+<p>시급은 최저임금이 오르면 바뀝니다. 설정을 GitHub 시크릿에 복사해 두면 원본을 고쳐도
+일꾼은 옛 값으로 계산하는데, <strong>조용히 어긋나서 알아채기 어렵습니다.</strong>
+금고에 한 벌만 두고 일꾼이 매번 받아 가게 했습니다.</p>
+
+<h3>명세서를 덮어쓰지 않고 합치는 이유</h3>
+
+<p>③ 일꾼의 러너는 <strong>매번 빈 상태로 시작</strong>합니다(③장). 그래서 그 시점에 링크가
+살아 있는 명세서만 받습니다. 그대로 올리면 링크가 만료된 옛 명세서가 사라지는데
+다시 받아올 방법이 없습니다. <strong>실제로 3~5월분이 지워졌다가 복구했습니다.</strong>
+지금은 기간을 열쇠로 합치고, 금고를 읽지 못하면 아예 올리지 않고 멈춥니다.</p>
+
+<h2><span class="n">10</span>열쇠 여섯</h2>
+
+<p>흩어져 있는 게 아니라 <strong>일하는 곳마다 그 일에 필요한 것이 하나씩</strong> 있습니다.
+세 대의 컴퓨터(노트북·문지기·일꾼)는 서로의 저장소를 볼 수 없습니다.</p>
 
 <div class="tw">
 <table>
-  <tr><th>열쇠</th><th>어디에</th><th>무엇을 여나</th></tr>
-  <tr><td>PASSPHRASE</td><td>Cloudflare</td><td>금고 — 문지기가 대조할 원본</td></tr>
-  <tr><td>GH_TOKEN</td><td>Cloudflare</td><td>일꾼 — 깨우는 신분증</td></tr>
-  <tr><td>GMAIL_USER<br>GMAIL_APP_PASSWORD</td><td>GitHub</td><td>메일함 — 일꾼이 씀</td></tr>
-  <tr><td>WORKER_URL<br>WORKER_PASS</td><td>GitHub</td><td>금고 — 일꾼이 결과를 넣음</td></tr>
-  <tr><td>(전부)</td><td>노트북 <code>.env</code></td><td>노트북에서도 같은 일을 하므로</td></tr>
+  <tr><th>이름</th><th>어디에</th><th>무엇을 여나</th><th>쓰는 쪽</th></tr>
+  <tr><td class="mono">PASSPHRASE</td><td>Cloudflare 시크릿</td><td>금고</td><td>문지기가 대조</td></tr>
+  <tr><td class="mono">GH_TOKEN</td><td>Cloudflare 시크릿</td><td>일꾼</td><td>문지기가 깨움</td></tr>
+  <tr><td class="mono">GMAIL_USER<br>GMAIL_APP_PASSWORD</td><td>GitHub 시크릿</td><td>메일함</td><td>일꾼이 IMAP 접속</td></tr>
+  <tr><td class="mono">WORKER_URL<br>WORKER_PASS</td><td>GitHub 시크릿</td><td>금고</td><td>일꾼이 결과 저장</td></tr>
+  <tr><td>(전부)</td><td>노트북 <span class="mono">.env</span></td><td>전부</td><td>노트북에서 직접 할 때</td></tr>
 </table>
 </div>
 
-<p><code>PASSPHRASE</code> 와 <code>WORKER_PASS</code> 는 <strong>같은 값</strong>입니다.
-한쪽은 자물쇠(내가 지키는 문), 한쪽은 열쇠(남의 문을 여는 쪽)라 이름만 다릅니다.</p>
+<p><span class="mono">PASSPHRASE</span> 와 <span class="mono">WORKER_PASS</span> 는
+<strong>같은 값</strong>입니다. 한쪽은 자물쇠(내가 지키는 문), 한쪽은 열쇠(남의 문을 여는 쪽)라
+이름만 다릅니다.</p>
 
 <div class="card">
-<p><strong>하나가 새도 나머지는 멀쩡합니다.</strong> 폰은 <code>GH_TOKEN</code> 을 모르고,
-일꾼은 화면을 못 건드리고, 문지기는 메일을 못 읽습니다.
-각자 자기 일에 필요한 것만 들고 있습니다.</p>
+<p><strong>하나가 새도 나머지는 멀쩡합니다.</strong> 폰은 <span class="mono">GH_TOKEN</span> 을
+모르고, 일꾼은 화면을 못 건드리고, 문지기는 메일을 못 읽습니다.
+이것을 <b>최소 권한 원칙</b>(least privilege, <em>각자에게 꼭 필요한 권한만 준다</em>)이라 합니다.</p>
 </div>
 
 <h2><span class="n">11</span>자주 헷갈리는 것</h2>
 
 <dl>
-  <dt>코드를 고쳐서 올리면 명세서도 갱신되나?</dt>
-  <dd><strong>아니요.</strong> <code>git push</code> 는 화면과 문지기 규칙만 바꿉니다.
-  명세서는 버튼을 누르거나 노트북에서 올려야 들어옵니다.</dd>
+  <dt>코드를 고쳐 올리면 명세서도 갱신되나?</dt>
+  <dd><strong>아니요.</strong> <span class="mono">git push</span> 는 ② 자판기의 화면과
+  ④ 문지기의 규칙만 바꿉니다. 명세서는 버튼을 누르거나 노트북에서 올려야 들어옵니다.</dd>
 
   <dt>버튼을 누르면 화면 기능도 바뀌나?</dt>
-  <dd><strong>아니요.</strong> 버튼은 금고 안의 데이터만 갱신합니다.
-  화면을 바꾸려면 코드를 고쳐서 올려야 합니다.</dd>
+  <dd><strong>아니요.</strong> 버튼은 ⑤ 금고 안의 데이터만 갱신합니다.</dd>
 
-  <dt>GitHub 저장소가 공개인데 급여가 새어나가지 않나?</dt>
-  <dd><strong>새어나가지 않습니다.</strong> 창고에는 급여 숫자가 한 개도 없습니다.
-  전부 금고에 있고, 금고는 암구호가 있어야 열립니다.</dd>
+  <dt>저장소가 공개인데 급여가 새어나가지 않나?</dt>
+  <dd><strong>새어나가지 않습니다.</strong> ① 창고에는 급여 숫자가 한 개도 없습니다.
+  전부 ⑤ 금고에 있고, 암구호가 있어야 열립니다.</dd>
 
   <dt>Pages 주소를 남이 알면 내 급여를 보나?</dt>
-  <dd><strong>못 봅니다.</strong> 열어도 "저장소 연결" 화면만 뜹니다.
-  암구호를 넣어야 숫자가 채워집니다.</dd>
+  <dd><strong>못 봅니다.</strong> "저장소 연결" 화면만 뜹니다.</dd>
 
-  <dt>Cloudflare가 멈추면 사이트가 죽나?</dt>
-  <dd>화면은 뜨지만 숫자가 안 채워집니다. 반대로 Pages가 멈추면 화면이 안 뜨지만
+  <dt>Cloudflare 가 멈추면 사이트가 죽나?</dt>
+  <dd>화면은 뜨지만 숫자가 안 채워집니다. 반대로 Pages 가 멈추면 화면이 안 뜨지만
   금고의 데이터는 그대로입니다. <strong>둘은 따로 움직입니다.</strong></dd>
+
+  <dt>Node.js 를 왜 안 깔았나?</dt>
+  <dd><b>Node.js</b> 는 <em>JavaScript 를 브라우저 밖에서 실행하는 프로그램</em>입니다.
+  Cloudflare 배포 도구(wrangler)가 이걸로 만들어져 있지만,
+  그 도구는 <strong>Cloudflare 쪽 컴퓨터에서 돌아가므로</strong> 내 노트북에는 필요 없습니다.</dd>
 </dl>
 
 <h2><span class="n">12</span>안 될 때 어디를 보나</h2>
@@ -403,18 +682,50 @@ dd{margin:2px 0 0;color:var(--ink2);font-size:14.5px}
 <div class="tw">
 <table>
   <tr><th>증상</th><th>의심할 곳</th></tr>
-  <tr><td>화면이 아예 안 뜸</td><td>② 자판기 — GitHub 저장소 Settings → Pages</td></tr>
-  <tr><td>"저장소 연결" 화면만 계속 뜸</td><td>주소나 암구호 오타, 또는 ④ 문지기</td></tr>
+  <tr><td>화면이 아예 안 뜸</td><td>② 자판기 — 저장소 Settings → Pages</td></tr>
+  <tr><td>"저장소 연결" 만 계속 뜸</td><td>주소·암구호 오타, 또는 ④ 문지기</td></tr>
   <tr><td>숫자가 안 채워짐</td><td>④ 문지기 — Cloudflare Workers 화면</td></tr>
-  <tr><td>달력을 눌러도 저장이 안 됨</td><td>④ 문지기 또는 ⑤ 금고 바인딩</td></tr>
-  <tr><td>불러오기 버튼이 실패</td><td>③ 일꾼 — GitHub 저장소 Actions 탭의 로그</td></tr>
-  <tr><td>고쳤는데 화면이 그대로</td><td>1~2분 기다린 뒤 새로고침. 그래도면 ② 자판기</td></tr>
+  <tr><td>401 이 보임</td><td>암구호 불일치</td></tr>
+  <tr><td>브라우저 콘솔에 CORS 오류</td><td><span class="mono">ALLOW_ORIGIN</span> 값</td></tr>
+  <tr><td>달력을 눌러도 저장 안 됨</td><td>④ 문지기 또는 ⑤ 금고 바인딩</td></tr>
+  <tr><td>불러오기 버튼 실패</td><td>③ 일꾼 — 저장소 Actions 탭 로그</td></tr>
+  <tr><td>고쳤는데 화면 그대로</td><td>1~2분 기다린 뒤 새로고침</td></tr>
 </table>
 </div>
 
-<div class="card q">
-<p><strong>어느 쪽이 문제인지 가르는 가장 빠른 방법</strong> — 사이트를 열었을 때
-화면이 뜨는지 보세요. 뜨면 자판기는 멀쩡하고, 숫자가 안 채워지면 문지기나 금고 쪽입니다.</p>
-</div>
+<h2><span class="n">13</span>용어 사전</h2>
+
+<dl>
+  <dt>클라이언트 / 서버</dt><dd>요청을 보내는 쪽 / 받아서 답하는 쪽</dd>
+  <dt>프로토콜</dt><dd>주고받는 형식에 대한 약속. HTTP, IMAP, SMTP 등</dd>
+  <dt>HTTP / HTTPS</dt><dd>웹의 대화 규칙 / 그것을 암호화한 것</dd>
+  <dt>메서드</dt><dd>요청의 의도를 나타내는 한 단어. GET, PUT, POST, OPTIONS</dd>
+  <dt>상태 코드</dt><dd>결과를 알리는 세 자리 숫자. 200 성공, 401 인증 실패, 404 없음</dd>
+  <dt>헤더</dt><dd>요청·응답에 덧붙이는 부가 정보 칸. 암구호를 여기 싣는다</dd>
+  <dt>도메인 / DNS</dt><dd>서버의 사람이 읽는 이름 / 그것을 IP 주소로 바꿔 주는 체계</dd>
+  <dt>정적 호스팅</dt><dd>미리 만든 파일을 그대로 돌려주기만 하는 서비스</dd>
+  <dt>Git / 리포지터리 / 커밋</dt><dd>변경 이력 기록 도구 / 그 저장 공간 / 기록 한 덩어리</dd>
+  <dt>CI/CD</dt><dd>코드 변경을 자동으로 검사·배포하는 방식. 실체는 대신 실행해 주는 컴퓨터</dd>
+  <dt>러너</dt><dd>실제로 명령을 실행하는 일회용 가상 컴퓨터. 매번 빈 상태로 시작</dd>
+  <dt>워크플로 / 트리거</dt><dd>단계별 작업 정의 / 그것을 언제 실행할지의 조건</dd>
+  <dt>YAML</dt><dd>들여쓰기로 구조를 나타내는 설정 파일 형식</dd>
+  <dt>서버리스</dt><dd>서버를 직접 관리하지 않고, 요청이 올 때만 코드가 실행되는 방식</dd>
+  <dt>엣지</dt><dd>요청자와 가까운 곳에 흩어진 서버들</dd>
+  <dt>키-값 저장소</dt><dd>이름표로 값을 넣고 꺼내는 가장 단순한 데이터베이스</dd>
+  <dt>JSON</dt><dd>중괄호와 따옴표로 자료를 표현하는 글자 형식</dd>
+  <dt>API</dt><dd>프로그램끼리 정해진 형식으로 주고받는 창구</dd>
+  <dt>IMAP / SMTP</dt><dd>메일을 읽는 프로토콜 / 보내는 프로토콜</dd>
+  <dt>앱 비밀번호</dt><dd>프로그램 하나만을 위해 따로 발급하는 비밀번호</dd>
+  <dt>OAuth</dt><dd>비밀번호를 주지 않고 특정 권한만 위임하는 방식</dd>
+  <dt>헤드리스 브라우저</dt><dd>화면 없이 동작하는 진짜 브라우저</dd>
+  <dt>세션</dt><dd>"이 사람이 맞다"는 상태를 잠시 기억해 두는 것</dd>
+  <dt>토큰</dt><dd>프로그램이 쓰는 비밀번호. 권한을 좁히고 따로 폐기할 수 있다</dd>
+  <dt>공유 비밀</dt><dd>양쪽이 같은 값을 알고 있고 일치하면 통과시키는 방식</dd>
+  <dt>동일 출처 정책 / CORS</dt><dd>다른 주소로의 요청을 막는 브라우저 규칙 / 서버가 허용을 밝혀 푸는 방법</dd>
+  <dt>프리플라이트</dt><dd>본 요청 전에 브라우저가 보내는 사전 확인 요청</dd>
+  <dt>시크릿 / 환경 변수</dt><dd>암호화해 보관하고 실행 때만 꺼내는 값 / 프로그램에 값을 전달하는 이름표</dd>
+  <dt>최소 권한 원칙</dt><dd>각자에게 꼭 필요한 권한만 주어 피해 범위를 좁히는 설계</dd>
+  <dt>Node.js</dt><dd>JavaScript 를 브라우저 밖에서 실행하는 프로그램</dd>
+</dl>
 
 </div>
