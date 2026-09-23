@@ -13,46 +13,20 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+from page import embed, wrap
+
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-
-HEAD = """<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#fdf7f8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#14050a" media="(prefers-color-scheme: dark)">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="apple-mobile-web-app-title" content="급여 기록부">
-<meta name="mobile-web-app-capable" content="yes">
-<style>
-:root{color-scheme:light dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-body{margin:0}
-img{max-width:100%}
-[hidden]{display:none!important}
-</style>
-"""
-
-
-def wrap(src):
-    """조각 HTML 을 온전한 문서로 감싼다. 페이지 자신의 <style> 뒤에서 자른다."""
-    head, sep, rest = src.partition("</style>")
-    return HEAD + head + sep + "\n</head>\n<body>\n" + rest + "\n</body>\n</html>\n"
-
 
 subprocess.run([sys.executable, "src/export_web.py"], check=True)
 
 tpl = Path("web/template.html").read_text(encoding="utf-8")
-data = Path("web/data.json").read_text(encoding="utf-8").replace("</", "<" + chr(92) + "/")
+data = Path("web/data.json").read_text(encoding="utf-8")
 
 Path("docs").mkdir(exist_ok=True)
 
 embedded = Path("web/index.html")
-embedded.write_text(tpl.replace("__BUNDLE__", data), encoding="utf-8")
+embedded.write_text(embed(tpl, data), encoding="utf-8")
 
 remote = Path("docs/index.html")                 # __BUNDLE__ 자리표시자를 그대로 둔다
 remote.write_text(wrap(tpl), encoding="utf-8")
