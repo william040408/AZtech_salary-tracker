@@ -1629,9 +1629,15 @@ function start(){
 }
 
 (async function boot(){
-  if (EMBEDDED){                      // 아티팩트: 데이터는 페이지 안, 저장은 아티팩트 DB
+  if (EMBEDDED){                      // 아티팩트·개발서버: 데이터는 페이지 안에 박혀 온다
     B = EMBEDDED;
+    // 달력 기록은 금고에 따로 있다. 박혀 온 것이 있으면 그것부터 반영한다.
+    if (B.leave) overrides = new Map(Object.entries(B.leave).filter(([, v]) => kindName(v)));
     start();
+    if (B.dev){                       // python src/dev.py 로 띄운 개발용 서버
+      $("dbWarn").textContent = "개발용 서버입니다. 여기서 바꾼 기록은 저장되지 않습니다.";
+      $("dbWarn").hidden = false; return;
+    }
     const db = await (window.claude?.use?.("db") ?? Promise.resolve(null));
     if (!db){ $("dbWarn").hidden = false; return; }
     dbRef = db;

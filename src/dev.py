@@ -10,14 +10,17 @@ web/template.html 을 고치고 저장만 하면 열려 있는 화면이 바로 
 
 폰에서도 보려면 같은 와이파이에 물린 뒤 아래에 찍히는 주소를 치면 된다.
 
-데이터는 web/data.json 을 페이지에 박아서 쓴다. 숫자는 진짜지만 달력에
-찍은 것이 금고에 저장되지는 않는다 — 디자인을 볼 때 쓰는 서버라 그렇다.
+데이터는 web/data.json 에 금고의 달력 기록을 얹어서 페이지에 박는다.
+그래야 배포된 화면과 같은 숫자가 나온다. 다만 여기서 달력을 고쳐도
+금고에 저장되지는 않는다 — 디자인을 볼 때 쓰는 서버라 그렇다.
 """
 import http.server
 import io
+import json
 import socket
 import socketserver
 import sys
+import urllib.request
 import webbrowser
 from pathlib import Path
 
@@ -50,10 +53,44 @@ RELOAD = """
 """
 
 
+def env():
+    out = {}
+    f = ROOT / ".env"
+    if f.exists():
+        for line in f.read_text(encoding="utf-8").splitlines():
+            if "=" in line and not line.strip().startswith("#"):
+                k, v = line.split("=", 1)
+                out[k.strip()] = v.strip()
+    return out
+
+
+def fetch_leave():
+    """달력에 찍은 기록은 web/data.json 이 아니라 금고에만 있다.
+    배포된 화면과 숫자를 맞추려면 여기서 한 번 가져와야 한다."""
+    e = env()
+    if not e.get("WORKER_URL") or not e.get("WORKER_PASS"):
+        return None, "WORKER_URL·WORKER_PASS 가 없어 달력 기록 없이 띄웁니다"
+    req = urllib.request.Request(
+        e["WORKER_URL"].rstrip("/") + "/leave",
+        headers={"x-pass": e["WORKER_PASS"],
+                 # 클라우드플레어가 파이썬 기본 요청을 봇으로 보고 막는다
+                 "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                               "AppleWebKit/537.36 Chrome/131.0 Safari/537.36"})
+    try:
+        return json.loads(urllib.request.urlopen(req, timeout=15).read()), None
+    except Exception as ex:
+        return None, f"금고에서 달력 기록을 못 읽었습니다 ({ex.__class__.__name__})"
+
+
+LEAVE = {}
+
+
 def build():
     tpl = TPL.read_text(encoding="utf-8")
-    data = DATA.read_text(encoding="utf-8") if DATA.exists() else "{}"
-    return wrap(embed(tpl, data), RELOAD).encode("utf-8")
+    data = json.loads(DATA.read_text(encoding="utf-8")) if DATA.exists() else {}
+    data["leave"] = LEAVE                      # 배포 화면과 같은 숫자가 나오게
+    data["dev"] = True
+    return wrap(embed(tpl, json.dumps(data, ensure_ascii=False)), RELOAD).encode("utf-8")
 
 
 def lan_ip():
@@ -103,7 +140,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 class Server(socketserver.ThreadingTCPServer):
-    allow_reuse_address = True
+    # 윈도우에서 allow_reuse_address 를 켜면 이미 듣고 있는 포트에 하나 더
+    # 붙을 수 있다. 그러면 옛 서버가 요청을 가로채 고친 것이 안 보인다.
+    allow_reuse_address = False
     daemon_threads = True
 
 
@@ -113,13 +152,25 @@ if __name__ == "__main__":
     if not DATA.exists():
         print("  [i] web/data.json 이 없습니다 — python src/export_web.py 를 먼저 돌리세요")
 
+    LEAVE, why = fetch_leave()
+    if LEAVE is None:
+        LEAVE = {}
+        print(f"  [i] {why}")
+    else:
+        print(f"  금고에서 달력 기록 {len(LEAVE)}건을 가져왔습니다")
+
     here, lan = f"http://localhost:{PORT}", f"http://{lan_ip()}:{PORT}"
     print(f"\n  이 컴퓨터   {here}")
     print(f"  폰·태블릿   {lan}   (같은 와이파이)")
     print(f"\n  {TPL.relative_to(ROOT)} 을 고치고 저장하면 화면이 바로 바뀝니다.")
     print("  멈추려면 Ctrl+C\n")
+    try:
+        srv = Server(("0.0.0.0", PORT), Handler)
+    except OSError:
+        sys.exit(f"  {PORT} 번 포트를 이미 쓰고 있습니다. 먼저 띄운 서버를 Ctrl+C 로 끄거나,\n"
+                 f'  남아 있으면  taskkill /F /FI "WINDOWTITLE eq *dev.py*"  로 정리하세요.')
     webbrowser.open(here)
     try:
-        Server(("0.0.0.0", PORT), Handler).serve_forever()
+        srv.serve_forever()
     except KeyboardInterrupt:
         print("  멈췄습니다.")
