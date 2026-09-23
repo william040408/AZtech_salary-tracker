@@ -813,7 +813,9 @@ function drawLeave(){
   for (const mo of months){
     const acc = accByMonth[mo]||0, use = useByMonth[mo]||0, cash = cashByMonth[mo]||0;
     const slipH = dedByMonth[mo]||0, mineH = mineHByMonth[mo]||0;
-    bal += acc - use - cash; tAcc += acc;   // 수당으로 받은 날은 이미 쓴 것이다 tUse += use; tCash += cash; tMineH += mineH; tSlipH += slipH;
+    // 수당으로 정산받은 날은 이미 없어진 것이므로 잔여에서 뺀다
+    bal += acc - use - cash;
+    tAcc += acc; tUse += use; tCash += cash; tMineH += mineH; tSlipH += slipH;
 
     const hasSlip = havePayslip.has(mo);
     if (hasSlip && slipH !== mineH) mismatch.push({ mo, slipH, mineH });
