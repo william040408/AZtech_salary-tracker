@@ -115,6 +115,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .cell .d{font-weight:500;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
 .cell .t{font-size:9px;font-weight:600;line-height:1;white-space:nowrap;max-width:100%;overflow:hidden}
 .cell.k-work{background:var(--surface2)}
+.cell.k-work .t{color:var(--muted);font-weight:500;opacity:.8}
 .cell.k-short{background:var(--surface2);border-color:var(--half)}
 .cell.k-half{background:var(--half-soft);border-color:var(--half);color:var(--half)}
 .cell.k-personal{background:var(--paid-soft);border-color:var(--paid);color:var(--paid)}
@@ -277,7 +278,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   <section class="sec" id="setup" hidden>
     <div class="sec-hd"><h2>저장소 연결</h2></div>
     <div class="sec-body">
-      <p class="smsg" id="setupMsg">급여 데이터와 연차 기록을 두는 곳의 주소와 암구호를 넣어 주세요. 이 기기에만 저장되고 어디로도 전송되지 않습니다.</p>
+      <p class="smsg" id="setupMsg">데이터가 저장된 곳의 주소와 암구호를 입력하세요. 입력한 값은 이 기기에만 보관됩니다.</p>
       <div class="field"><label for="apiUrl">Worker 주소</label>
         <input id="apiUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://이름.계정.workers.dev"></div>
       <div class="field"><label for="apiPass">암구호</label>
@@ -315,7 +316,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   <div class="tiles">
     <div class="tile"><span>누적 실수령</span><b class="num" id="tNet"></b><small id="tNetSub"></small></div>
     <div class="tile"><span>만근 기준 실수령</span><b class="num" id="tRef"></b><small id="tRefSub"></small></div>
-    <div class="tile"><span>출근 안 한 근무일</span><b class="num" id="tOff"></b><small id="tOffSub"></small></div>
+    <div class="tile"><span>쉰 날 합계</span><b class="num" id="tOff"></b><small id="tOffSub"></small></div>
   </div>
 
   <section class="sec">
@@ -328,7 +329,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
       </div>
     </div>
     <div class="sec-body">
-      <div id="dbWarn" hidden class="offline">저장 기능에 연결하지 못했어요. 분류를 바꿔도 이 기기에만 남고 저장되지 않습니다.</div>
+      <div id="dbWarn" hidden class="offline">저장소에 연결하지 못했습니다. 변경한 내용이 저장되지 않습니다.</div>
       <div class="dow"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
       <div class="grid" id="grid"></div>
       <div class="legend">
@@ -340,7 +341,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
         <span><i style="background:var(--hol-soft);border-color:var(--hol)"></i>공휴일</span>
       </div>
     </div>
-    <div class="note">색은 <b>그 날이 어떻게 처리됐는지</b>를 나타냅니다. 초록은 연차가 깎인 날, 주황은 급여가 깎인 날, 남색은 둘 다 아닌 날입니다. 회사가 전체를 쉬게 한 날도 셋 중 어느 쪽이든 될 수 있어 <b>전사·연차 / 전사·무급 / 전사·유급</b>으로 나눠 두었습니다. 엑셀에서 읽어온 값은 잠정치이고, 오른쪽 위 점이 찍힌 날은 직접 고친 날입니다.</div>
+    <div class="note">날짜를 눌러 그날의 성격을 기록합니다. 직접 기록한 날은 오른쪽 위에 점으로 표시됩니다.</div>
   </section>
 
   <section class="sec">
@@ -365,7 +366,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
     <div id="months"></div>
   </section>
 
-  <button class="linkbtn" id="openSetup" hidden>저장소 연결 설정 바꾸기</button>
+  <button class="linkbtn" id="openSetup" hidden>연결 설정 변경</button>
   </div>
 </div>
 
@@ -393,22 +394,37 @@ const WON = n => (n<0?"−":"") + Math.abs(Math.round(n)).toLocaleString("ko-KR"
 // 쉰 날은 '왜 쉬었나'와 '어떻게 처리됐나'가 따로 논다. 회사가 전체를 쉬게 한
 // 날이어도 연차를 까기도, 무급이기도, 회사가 부담하기도 한다. 색은 처리 방식을
 // 따르고(연차=초록, 무급=주황, 회사부담=남색) 이름이 사유를 적는다.
+// label 은 선택창에 쓰는 이름, tag 는 달력 칸에 들어가는 짧은 이름이다.
+// 칸이 좁아 세 글자를 넘으면 잘리므로 따로 둔다.
 const KINDS = {
-  work:      {label:"근무",     cls:"k-work",     desc:"정상 출근",              off:0},
-  short:     {label:"지각",     cls:"k-short",    desc:"8시간 미만 근무",         off:0},
-  holiday:   {label:"공휴일",   cls:"k-holiday",  desc:"법정 공휴일",             off:0},
-  weekend:   {label:"주말",     cls:"k-weekend",  desc:"",                       off:0},
+  work:      {label:"근무",     tag:"근무", cls:"k-work",     desc:"정상 출근",              off:0},
+  short:     {label:"지각",     tag:"지각", cls:"k-short",    desc:"8시간 미만 근무",         off:0},
+  holiday:   {label:"공휴일",   tag:null,   cls:"k-holiday",  desc:"법정 공휴일",             off:0},
+  weekend:   {label:"주말",     tag:null,   cls:"k-weekend",  desc:"",                       off:0},
 
-  personal:  {label:"연차",      cls:"k-personal", desc:"유급 · 연차 1일 소모",     off:1},
-  half:      {label:"반차",      cls:"k-half",     desc:"유급 · 연차 0.5일 소모",   off:0.5},
-  unpaid:    {label:"무급휴가",  cls:"k-unpaid",   desc:"연차가 없어 급여 차감",    off:1},
+  personal:  {label:"연차",      tag:"연차", cls:"k-personal", desc:"유급 · 연차 1일 소모",     off:1},
+  half:      {label:"반차",      tag:"반차", cls:"k-half",     desc:"유급 · 연차 0.5일 소모",   off:0.5},
+  unpaid:    {label:"무급휴가",  tag:"무급", cls:"k-unpaid",   desc:"연차가 없어 급여 차감",    off:1},
 
-  coAnnual:  {label:"연차 소모", cls:"k-personal", desc:"유급 · 연차 1일 소모",     off:1},
-  coUnpaid:  {label:"무급",      cls:"k-unpaid",   desc:"급여에서 차감",            off:1},
-  company:   {label:"그냥 쉼",   cls:"k-company",  desc:"연차도 급여도 안 깎임",    off:1},
-  substitute:{label:"대체휴무",  cls:"k-company",  desc:"휴일근로 보상 · 차감 없음", off:1},
-  official:  {label:"공가",      cls:"k-company",  desc:"병무청 교육 등 · 차감 없음", off:1},
+  coAnnual:  {label:"연차 소모", tag:"연차", cls:"k-personal", desc:"유급 · 연차 1일 소모",     off:1},
+  coUnpaid:  {label:"무급",      tag:"무급", cls:"k-unpaid",   desc:"급여에서 차감",            off:1},
+  company:   {label:"그냥 쉼",   tag:"휴무", cls:"k-company",  desc:"연차도 급여도 안 깎임",    off:1},
+  substitute:{label:"대체휴무",  tag:"대체", cls:"k-company",  desc:"휴일근로 보상 · 차감 없음", off:1},
+  official:  {label:"공가",      tag:"공가", cls:"k-company",  desc:"병무청 교육 등 · 차감 없음", off:1},
 };
+
+// 공휴일 이름도 칸에 맞게 줄인다
+function holidayTag(name){
+  if (!name) return "공휴일";
+  if (name.includes("대체")) return "대체";
+  for (const k of ["설날","추석","어린이","현충","광복","개천","한글","제헌","삼일","선거"])
+    if (name.includes(k)) return k.slice(0, 2);
+  if (name.includes("석가") || name.includes("부처")) return "석가";
+  if (name.includes("크리스마스") || name.includes("성탄")) return "성탄";
+  if (name.includes("노동") || name.includes("근로")) return "노동";
+  if (name.includes("3·1")) return "3·1";
+  return name.slice(0, 3);
+}
 
 /* 시트에 묶어서 보여 줄 순서. 회사가 실제로 쓰는 갈래를 그대로 따른다. */
 const GROUPS = [
@@ -476,7 +492,7 @@ function tiles(){
     if (KINDS[k]) { d += KINDS[k].off; if (k in DEDUCTS) h += 1; }
   }
   $("tOff").textContent = (Math.round(d*10)/10) + "일";
-  $("tOffSub").textContent = h ? ("무급 " + h + "일 · 나머지 유급") : "전부 유급 (회사 휴무 포함)";
+  $("tOffSub").textContent = h ? ("무급 " + h + "일 포함") : "전부 유급";
 }
 function refNet(){
   const p = B.payslips.find(p => !p.deductedHours && !p.leaveCashed);
@@ -503,11 +519,11 @@ function drawCal(){
     if (overrides.has(ds)) b.classList.add("edited");
     const dd = document.createElement("span"); dd.className = "d"; dd.textContent = day;
     b.appendChild(dd);
-    if (K && k!=="work" && k!=="weekend"){
+    if (K && k !== "weekend"){
       const t = document.createElement("span"); t.className = "t";
-      t.textContent = k==="holiday"
-        ? String(ATT.get(ds)?.holiday || (B.holidays && B.holidays[ds]) || "공휴일").slice(0,4)
-        : K.label;
+      t.textContent = k === "holiday"
+        ? holidayTag(ATT.get(ds)?.holiday || (B.holidays && B.holidays[ds]))
+        : K.tag;
       b.appendChild(t);
     }
     const a = ATT.get(ds);
@@ -574,8 +590,8 @@ function drawMonths(){
         const c = document.createElement("div");
         c.className = "chk " + (ok ? "ok" : "bad");
         c.textContent = ok
-          ? "✓ 내 기록의 무급 " + (mine/B.dailyHours) + "일과 명세서 차감이 일치"
-          : "⚠ 내 기록의 무급은 " + mine + "시간인데 명세서 차감은 " + p.deductedHours + "시간 — 달력에서 분류해 주세요";
+          ? "✓ 무급 " + (mine/B.dailyHours) + "일, 명세서 차감과 일치"
+          : "⚠ 기록상 무급 " + mine + "시간, 명세서 차감 " + p.deductedHours + "시간 — 달력에서 기록해 주세요";
         row.appendChild(c);
       }
     }
@@ -713,27 +729,26 @@ function drawLeave(){
     d.append(b, document.createTextNode(body)); al.appendChild(d);
   };
   if (mismatch.length)
-    add("bad", "명세서와 내 기록이 " + mismatch.length + "개 달에서 어긋납니다",
-        mismatch.map(x => x.mo.replace("-",".") + " 명세서 " + x.slipH + "시간 / 내 기록 " + x.mineH + "시간").join(", ")
-        + " — 달력에서 그 달을 열어 무급인 날을 찍어 주세요.");
+    add("bad", "명세서와 기록이 " + mismatch.length + "개 달에서 다릅니다",
+        mismatch.map(x => x.mo.replace("-",".") + " 명세서 " + x.slipH + "시간 · 기록 " + x.mineH + "시간").join(", ")
+        + " — 달력에서 그 달의 무급일을 기록해 주세요.");
   if (todo.length)
-    add("todo", "아직 분류하지 않은 휴무일이 " + todo.reduce((a,x)=>a+x.n,0) + "일 있습니다",
+    add("todo", "아직 기록하지 않은 휴무일이 " + todo.reduce((a,x)=>a+x.n,0) + "일 있습니다",
         todo.map(x => x.mo.replace("-",".") + " " + x.n + "일").join(", ")
-        + " — 엑셀에서 읽은 잠정값이라 연차가 깎였는지 아닌지 모릅니다.");
+        + " — 달력에서 눌러 성격을 정해 주세요.");
   if (rest < 0)
     add("bad", "법정 발생보다 " + fmt(-rest) + "일 더 썼습니다",
-        "법정 기준으로는 " + tAcc + "일이 생겼는데 달력에는 " + fmt(tUse) + "일을 쓴 것으로 찍혀 있습니다. "
+        "법정 기준으로는 " + tAcc + "일이 생겼는데 달력에는 " + fmt(tUse) + "일을 쓴 것으로 남아 있습니다. "
         + "회사가 법정보다 연차를 더 준 경우이거나, 연차로 찍은 날 중 일부가 실제로는 "
         + "대체휴무나 회사 부담 휴무일 수 있습니다.");
   if (!mismatch.length && !todo.length && rest >= 0 && B.payslips.length)
-    add("fine", "명세서와 내 기록이 전부 맞습니다",
-        "받은 명세서 " + B.payslips.length + "장의 기본급 차감이 달력 기록과 일치합니다.");
+    add("fine", "명세서와 기록이 모두 일치합니다",
+        "명세서 " + B.payslips.length + "장의 기본급 차감이 달력 기록과 맞습니다.");
 
   $("lvNote").textContent =
-    "세 열은 서로 다른 자료입니다. 법정은 근로기준법대로 계산한 값, 명세서는 회사가 실제로 "
-    + "지급·차감한 금액에서 읽은 값, 내 기록은 달력에서 직접 찍은 값입니다. 명세서에는 며칠 "
-    + "쉬었는지가 적혀 있지 않아 맞춰볼 수 있는 항목은 무급 처리 하나뿐입니다. "
-    + "잔여 " + rest + "일은 회사가 확인해 준 값이 아니므로, 정확한 숫자는 회사에 물어봐야 합니다.";
+    "법정은 근로기준법대로 계산한 값, 명세서는 실제 지급·차감액에서 읽은 값, 내 기록은 "
+    + "달력에 남긴 값입니다. 명세서에 근태가 적혀 있지 않아 맞춰볼 수 있는 항목은 "
+    + "무급 처리 하나뿐입니다.";
 }
 
 /* ── 편집 시트 ── */
@@ -742,9 +757,10 @@ function openSheet(ds){
   const a = ATT.get(ds), k = kindOf(ds);
   const dt = new Date(ds+"T00:00:00");
   $("shTitle").textContent = ds.replace(/-/g,".") + " (" + "일월화수목금토"[dt.getDay()] + ")";
+  const hol = a?.holiday || (B.holidays && B.holidays[ds]);
   $("shSub").textContent = a && a.start
-    ? "엑셀 기록 " + a.start + "~" + a.end + " · " + a.hours + "시간"
-    : (a && a.holiday ? a.holiday : "출근 기록 없음");
+    ? a.start + " ~ " + a.end + " · " + a.hours + "시간 근무"
+    : (hol || "출근 기록 없음");
   const box = $("shOpts"); box.textContent = "";
   for (const g of GROUPS){
     const h = document.createElement("div"); h.className = "opt-h"; h.textContent = g.title;
