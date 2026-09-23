@@ -22,7 +22,7 @@ H = holidays(2026)
 
 # 달력은 복무 기간 전체를 그린다. 앞으로의 근태는 엑셀이 아니라 웹에서 직접 찍는다.
 HOLIDAYS_ALL = {}
-for y in range(FIRST.year, SERVICE_END.year + 1):
+for y in range(date.fromisoformat(CFG.get("firstWorkDay", CFG["hireDate"])).year, SERVICE_END.year + 1):
     for k, v in holidays(y).items():
         HOLIDAYS_ALL[str(k)] = v
 
@@ -38,7 +38,25 @@ else:
         days = None
         print(f"  [i] 근무현황 파일을 못 읽어 근태는 비워 둡니다 ({type(e).__name__})")
 
+# 명세서가 만료돼 받을 수 없는 달은 실수령액에서 역산해 기록해 둔다.
+MANUAL = Path("data/manual.json")
+manual = json.loads(MANUAL.read_text(encoding="utf-8")) if MANUAL.exists() else {}
+
 pay = []
+for period, mm in sorted(manual.items()):
+    if not isinstance(mm, dict) or not mm.get("derived"):
+        continue
+    y, mo = map(int, period.split("-"))
+    pay.append({
+        "period": period,
+        "payDate": str(actual_pay_date(y, mo)),
+        "earnings": {}, "deductions": mm.get("deductions", {}),
+        "gross": mm.get("gross", 0), "net": mm.get("net", 0),
+        "deductedHours": 0, "leaveCashed": 0,
+        "derived": True, "workedDays": mm.get("workedDays"),
+        "note": mm.get("note", ""),
+    })
+
 for p in sorted(slips, key=lambda x: x["period"]):
     pay.append({
         "period": p["period"],
@@ -103,7 +121,8 @@ bundle = {
     "payslips": pay,
     "attendance": att,
     "attendanceFrom": "workbook" if days else ("snapshot" if att else None),
-    "calendarFrom": CFG["hireDate"][:7],
+    "firstWorkDay": CFG.get("firstWorkDay", CFG["hireDate"]),
+    "calendarFrom": CFG.get("firstWorkDay", CFG["hireDate"])[:7],
     "calendarTo": SERVICE_END.strftime("%Y-%m"),
     "holidays": HOLIDAYS_ALL,
 }

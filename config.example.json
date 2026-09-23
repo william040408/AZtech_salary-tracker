@@ -12,5 +12,6 @@
     "수당이름": 0
   },
   "employmentInsuranceRate": 0.009,
-  "workbook": null
+  "workbook": null,
+  "firstWorkDay": "YYYY-MM-DD"
 }

@@ -30,21 +30,63 @@ def _payslip_text(page):
     return None
 
 
-def fetch_all(headless=True):
+def period_of(mail_date):
+    """메일 받은 달의 전월이 그 명세서의 급여월이다 (9/10 도착 -> 2026-08)."""
+    from email.utils import parsedate_to_datetime
+    try:
+        d = parsedate_to_datetime(mail_date)
+    except Exception:
+        return None
+    y, m = (d.year - 1, 12) if d.month == 1 else (d.year, d.month - 1)
+    return f"{y}-{m:02d}"
+
+
+def already_have():
+    """금고에 들어 있는 급여월. 링크를 여는 것은 느리므로 새 것만 연다."""
+    env = {}
+    f = Path(".env")
+    if not f.exists():
+        return set()
+    for line in f.read_text(encoding="utf-8").splitlines():
+        if "=" in line and not line.strip().startswith("#"):
+            k, v = line.split("=", 1)
+            env[k.strip()] = v.strip()
+    if not env.get("WORKER_URL") or not env.get("WORKER_PASS"):
+        return set()
+    try:
+        import requests
+        r = requests.get(env["WORKER_URL"].rstrip("/") + "/bundle",
+                         headers={"x-pass": env["WORKER_PASS"]}, timeout=20)
+        d = r.json()
+        if isinstance(d, str):
+            d = json.loads(d)
+        return {p["period"] for p in (d.get("payslips") or []) if not p.get("derived")}
+    except Exception:
+        return set()
+
+
+def fetch_all(headless=True, only_new=True):
     links = json.loads((RAW / "links.json").read_text(encoding="utf-8"))
+    have = already_have() if only_new else set()
+    if have:
+        print(f"  이미 가진 달 {len(have)}개는 건너뜁니다: {', '.join(sorted(have))}")
     saved, failed = [], []
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=headless)
         ctx = browser.new_context(locale="ko-KR", viewport={"width": 1400, "height": 1200})
         for entry in links:
+            per = period_of(entry.get("date", ""))
+            if per and per in have:
+                print(f"  [-] {per}  이미 있음 — 건너뜀")
+                continue
             for url in entry["links"]:
                 code = url.rsplit("/", 1)[-1]
                 page = ctx.new_page()
                 text = None
                 try:
                     page.goto(url, wait_until="networkidle", timeout=45000)
-                    page.wait_for_timeout(1500)
+                    page.wait_for_timeout(900)
                     text = _payslip_text(page)
                 except PWTimeout:
                     pass
@@ -73,4 +115,4 @@ def fetch_all(headless=True):
 
 
 if __name__ == "__main__":
-    fetch_all(headless="--show" not in sys.argv)
+    fetch_all(headless="--show" not in sys.argv, only_new="--all" not in sys.argv)

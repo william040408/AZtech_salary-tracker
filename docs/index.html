@@ -123,6 +123,10 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .cell.k-company{background:var(--company-soft);border-color:var(--company);color:var(--company)}
 .cell.k-holiday{background:var(--hol-soft);color:var(--hol)}
 .cell.k-weekend{background:transparent;border-color:transparent;color:var(--muted)}
+.cell.k-future{background:transparent;border-color:var(--line2);color:var(--ink2)}
+.cell.k-blank{background:transparent;border-color:transparent;color:var(--muted);opacity:.3}
+.cell.today{border-color:var(--accent);border-width:2px;box-shadow:0 0 0 2px var(--accent-soft)}
+.cell.today .d{color:var(--accent);font-weight:700}
 .cell.edited::after{content:"";position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
 .cell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .legend{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:13px;font-size:11px;color:var(--muted)}
@@ -428,7 +432,7 @@ function holidayTag(name){
 
 /* 시트에 묶어서 보여 줄 순서. 회사가 실제로 쓰는 갈래를 그대로 따른다. */
 const GROUPS = [
-  { title: "출근",             kinds: ["work"] },
+  { title: "출근",             kinds: ["work", "short"] },
   { title: "내가 신청한 휴가",  kinds: ["personal", "half", "unpaid"] },
   { title: "회사가 지정한 휴가", kinds: ["coAnnual", "coUnpaid", "company"] },
   { title: "그 외",            kinds: ["substitute", "official"] },
@@ -449,12 +453,18 @@ const monthOf = d => d.slice(0,7);
 
 /* 엑셀은 초기 1회 수입으로 끝났다. 그 뒤의 날에는 기록이 없으므로
    달력만 보고 기본값을 정하고, 실제 성격은 직접 찍어 채운다. */
+const TODAY = (() => { const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+})();
+
 function defaultKind(ds){
+  if (ds < B.firstWorkDay) return null;                 // 일하기 전
   const a = ATT.get(ds);
   if (a) return baseKind(a);
-  const w = new Date(ds + "T00:00:00").getDay();
   if (B.holidays && B.holidays[ds]) return "holiday";   // 주말과 겹쳐도 이름을 보여준다
+  const w = new Date(ds + "T00:00:00").getDay();
   if (w === 0 || w === 6) return "weekend";
+  if (ds > TODAY) return "future";                      // 아직 오지 않은 날은 비워 둔다
   return "work";
 }
 const kindOf = d => overrides.get(d) || defaultKind(d);
@@ -513,9 +523,10 @@ function drawCal(){
     const k = kindOf(ds), K = KINDS[k];
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "cell " + (K ? K.cls : "k-weekend");
+    b.className = "cell " + (K ? K.cls : "k-blank");
     b.dataset.date = ds;
-    if (ds < B.hireDate) b.disabled = true;
+    if (ds < B.firstWorkDay) b.disabled = true;
+    if (ds === TODAY) b.classList.add("today");
     if (overrides.has(ds)) b.classList.add("edited");
     const dd = document.createElement("span"); dd.className = "d"; dd.textContent = day;
     b.appendChild(dd);
@@ -538,7 +549,7 @@ function drawCal(){
 function drawMonths(){
   const box = $("months"); box.textContent = "";
   const months = [...new Set([].concat(
-    B.payslips.map(pp => pp.period), trackedDates().map(monthOf)))].sort();
+    B.payslips.map(pp => pp.period), trackedDates().map(monthOf)))].sort().reverse();
   const ref = refNet();
   for (const mo of months){
     const p = PAY.get(mo);
@@ -551,8 +562,13 @@ function drawMonths(){
       right.style.cssText = "display:flex;align-items:baseline;gap:9px";
       const d = p.net - ref;
       const badge = document.createElement("span");
-      badge.className = "delta " + (d>0?"up":d<0?"dn":"eq");
-      badge.textContent = d===0 ? "기준" : (d>0?"+":"−") + WON(Math.abs(d));
+      if (p.derived){
+        badge.className = "delta eq";
+        badge.textContent = p.workedDays ? p.workedDays + "일 근무" : "역산";
+      } else {
+        badge.className = "delta " + (d>0?"up":d<0?"dn":"eq");
+        badge.textContent = d===0 ? "기준" : (d>0?"+":"−") + WON(Math.abs(d));
+      }
       const net = document.createElement("span"); net.className = "net num";
       net.textContent = WON(p.net)+"원";
       right.append(badge, net); top.appendChild(right);
@@ -575,6 +591,7 @@ function drawMonths(){
     }
     const why = document.createElement("div"); why.className = "mrow-why";
     const bits = [];
+    if (p && p.derived) bits.push(p.note || "명세서가 만료돼 실수령액에서 역산");
     if (p && p.leaveCashed) bits.push("연차수당 +" + WON(p.leaveCashed*B.dayPay) + " (" + p.leaveCashed + "일분)");
     if (p && p.deductedHours) bits.push("기본급 −" + WON(p.deductedHours*B.hourly) + " (" + p.deductedHours + "시간)");
     if (off) bits.push("쉰 날 " + (Math.round(off*10)/10) + "일" + (half?" (반차 "+half+")":""));
@@ -582,7 +599,7 @@ function drawMonths(){
     for (const t of bits){ const s = document.createElement("span"); s.textContent = t; why.appendChild(s); }
     row.appendChild(why);
 
-    if (p){
+    if (p && !p.derived){
       // 내 기록상 무급 일수 vs 명세서 차감 시간
       const mine = unpaidDays * B.dailyHours + (0);
       const ok = mine === p.deductedHours;
@@ -633,7 +650,7 @@ function drawLeave(){
     if (pp.leaveCashed)   cashByMonth[pp.period] = pp.leaveCashed;
     if (pp.deductedHours) dedByMonth[pp.period]  = pp.deductedHours;
   }
-  const havePayslip = new Set(B.payslips.map(pp => pp.period));
+  const havePayslip = new Set(B.payslips.filter(pp => !pp.derived).map(pp => pp.period));
 
   /* 출처 3 — 내가 달력에 찍은 것. */
   const useByMonth = {}, mineHByMonth = {}, detail = {}, untouched = {};

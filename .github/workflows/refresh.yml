@@ -22,10 +22,24 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: 의존성 설치
-        run: |
-          pip install -r requirements.txt
-          python -m playwright install --with-deps chromium
+      - name: 파이썬 패키지 설치
+        run: pip install -r requirements.txt
+
+      # 크롬 엔진은 150MB 라 매번 받으면 1분 넘게 걸린다. 캐시해 둔다.
+      - name: 크롬 엔진 캐시
+        id: browser-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - name: 크롬 엔진 내려받기
+        if: steps.browser-cache.outputs.cache-hit != 'true'
+        run: python -m playwright install --with-deps chromium
+
+      - name: 크롬 엔진 준비 (캐시 적중)
+        if: steps.browser-cache.outputs.cache-hit == 'true'
+        run: python -m playwright install-deps chromium
 
       - name: 자격 증명 준비
         env:
