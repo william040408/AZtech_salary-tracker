@@ -13,39 +13,42 @@ img{max-width:100%}
 [hidden]{display:none!important}
 </style>
 <title>급여·연차 기록부</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap">
 <style>
 :root{
-  --ground:#faf9f8; --surface:#ffffff; --surface2:#f6f5f3;
-  --ink:#1c1917; --ink2:#44403c; --muted:#79716b; --line:#e7e5e4; --line2:#f2f1ef;
-  --accent:#2f8f42; --accent-soft:#e9f5e7;
-  --paid:#2f8f42; --paid-soft:#e9f5e7;
-  --half:#6b8f2f; --half-soft:#f0f5e2;
-  --unpaid:#b4485c; --unpaid-soft:#fbecee;
-  --company:#78716c; --company-soft:#f2f1ef;
-  --hol:#b4485c; --hol-soft:#fbecee;
-  --shadow:0 1px 2px rgba(28,25,23,.04);
+  --ground:#fdfbfb; --surface:#ffffff; --surface2:#f8f5f5;
+  --ink:#1a1414; --ink2:#463c3c; --muted:#8a7d7d; --line:#eae3e3; --line2:#f3eeee;
+  --accent:#3f9e37; --accent-soft:#eaf7e6; --accent-bright:#6bc95f;
+  --paid:#3f9e37; --paid-soft:#eaf7e6;
+  --half:#6d9440; --half-soft:#f2f8e6;
+  --unpaid:#bf4d5c; --unpaid-soft:#fbecee;
+  --company:#8a7d7d; --company-soft:#f3eeee;
+  --warn:#9a6b24; --warn-soft:#fbf1e2;
+  --hol:#bf4d5c; --hol-soft:#fbecee;
+  --shadow:0 1px 2px rgba(26,20,20,.04);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --ground:#191716; --surface:#221f1e; --surface2:#2a2725;
-  --ink:#f5f4f2; --ink2:#d6d3d1; --muted:#a8a29e; --line:#38332f; --line2:#2b2725;
-  --accent:#6fcf72; --accent-soft:#1b2e1d;
-  --paid:#6fcf72; --paid-soft:#1b2e1d;
-  --half:#a8c96a; --half-soft:#252d18;
-  --unpaid:#e08a9a; --unpaid-soft:#33191e;
-  --company:#a8a29e; --company-soft:#2a2725;
-  --hol:#e08a9a; --hol-soft:#33191e;
+  --ground:#171313; --surface:#211c1c; --surface2:#2a2323;
+  --ink:#f7f3f3; --ink2:#ded5d5; --muted:#a89d9d; --line:#3a3030; --line2:#2b2424;
+  --accent:#7fd474; --accent-soft:#1b2e19; --accent-bright:#6bc95f;
+  --paid:#7fd474; --paid-soft:#1b2e19;
+  --half:#b3d97e; --half-soft:#242d16;
+  --unpaid:#e2808f; --unpaid-soft:#331a1e;
+  --company:#a89d9d; --company-soft:#2a2323;
+  --warn:#d8a860; --warn-soft:#2f2617;
+  --hol:#e2808f; --hol-soft:#331a1e;
   --shadow:0 1px 2px rgba(0,0,0,.3);
 }}
 :root[data-theme="dark"]{
-  --ground:#191716; --surface:#221f1e; --surface2:#2a2725;
-  --ink:#f5f4f2; --ink2:#d6d3d1; --muted:#a8a29e; --line:#38332f; --line2:#2b2725;
-  --accent:#6fcf72; --accent-soft:#1b2e1d;
-  --paid:#6fcf72; --paid-soft:#1b2e1d;
-  --half:#a8c96a; --half-soft:#252d18;
-  --unpaid:#e08a9a; --unpaid-soft:#33191e;
-  --company:#a8a29e; --company-soft:#2a2725;
-  --hol:#e08a9a; --hol-soft:#33191e;
+  --ground:#171313; --surface:#211c1c; --surface2:#2a2323;
+  --ink:#f7f3f3; --ink2:#ded5d5; --muted:#a89d9d; --line:#3a3030; --line2:#2b2424;
+  --accent:#7fd474; --accent-soft:#1b2e19; --accent-bright:#6bc95f;
+  --paid:#7fd474; --paid-soft:#1b2e19;
+  --half:#b3d97e; --half-soft:#242d16;
+  --unpaid:#e2808f; --unpaid-soft:#331a1e;
+  --company:#a89d9d; --company-soft:#2a2323;
+  --warn:#d8a860; --warn-soft:#2f2617;
+  --hol:#e2808f; --hol-soft:#331a1e;
   --shadow:0 1px 2px rgba(0,0,0,.3);
 }
 *{box-sizing:border-box}
@@ -55,7 +58,8 @@ body{
   font-family:"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
   font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%;
 }
-.num{font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;font-variant-numeric:tabular-nums}
+.num{font-family:Inter,"Noto Sans KR",-apple-system,sans-serif;
+  font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;letter-spacing:-.01em}
 .wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:24px 96px;display:flex;flex-direction:column;gap:22px}
 
 /* ── header ── */
@@ -94,18 +98,20 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .sec{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
 .sec-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:14px 16px;border-bottom:1px solid var(--line2);flex-wrap:nowrap}
-.sec-hd h2{margin:0;font-size:14px;font-weight:600;letter-spacing:-.01em}
+.sec-hd h2{margin:0;font-size:14px;font-weight:600;letter-spacing:-.01em;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sec-body{padding:16px}
 
 /* ── calendar ── */
-.nav{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
-.nav button{appearance:none;background:none;border:1px solid var(--line);color:var(--ink2);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center}
-.nav button:hover:not(:disabled){background:var(--surface2);color:var(--accent)}
-.nav button:disabled{opacity:.3;cursor:default}
+.nav{display:flex;align-items:center;gap:3px;flex-wrap:nowrap;flex:none}
+.nav>button{appearance:none;background:none;border:1px solid var(--line);color:var(--ink2);
+  width:28px;height:28px;flex:none;border-radius:8px;cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center}
+.nav>button:hover:not(:disabled){background:var(--surface2);color:var(--accent)}
+.nav>button:disabled{opacity:.3;cursor:default}
 .mlabel{display:inline-flex;gap:2px;justify-content:center;white-space:nowrap;flex:0 0 auto}
-.mpart{appearance:none;background:none;border:1px solid transparent;border-radius:7px;
-  font-size:13.5px;font-weight:600;color:var(--ink);font-family:"IBM Plex Mono",monospace;
-  cursor:pointer;padding:5px 7px}
+.mpart{appearance:none;width:auto;height:auto;background:none;border:1px solid transparent;border-radius:9px;
+  font-size:13.5px;font-weight:600;color:var(--ink);font-family:Inter,sans-serif;
+  cursor:pointer;padding:5px 6px;flex:none}
 .mpart:hover{border-color:var(--line);background:var(--surface2);color:var(--accent)}
 .mpart:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .picker{padding:4px 0 10px}
@@ -113,13 +119,13 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .pk-head button{appearance:none;background:none;border:1px solid var(--line);color:var(--ink2);
   border-radius:8px;cursor:pointer;font-family:inherit;padding:6px 10px;font-size:13px}
 #pkTitle{min-width:112px;text-align:center;font-weight:700;font-size:14.5px;
-  color:var(--ink);font-family:"IBM Plex Mono",monospace}
+  color:var(--ink);font-family:Inter,sans-serif}
 .pk-head button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .pk-head button:disabled{opacity:.3;cursor:default}
 .pk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .pk-grid button{appearance:none;background:var(--surface2);border:1px solid var(--line2);
   color:var(--ink);border-radius:12px;padding:13px 6px;cursor:pointer;
-  font-family:"IBM Plex Mono",monospace;font-size:13.5px;font-weight:600}
+  font-family:Inter,sans-serif;font-size:13.5px;font-weight:600}
 .pk-grid button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .pk-grid button:disabled{opacity:.28;cursor:default}
 .pk-grid button.has{border-color:var(--paid);color:var(--paid);background:var(--paid-soft)}
@@ -134,7 +140,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   cursor:pointer;padding:2px;font-size:13px;position:relative;min-width:0}
 .cell.pad{visibility:hidden;cursor:default}
 .cell:disabled{cursor:default;opacity:.45}
-.cell .d{font-weight:500;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.cell .d{font-weight:600;font-family:Inter,sans-serif;font-variant-numeric:tabular-nums}
 .cell .t{font-size:8px;font-weight:600;line-height:1.1;white-space:nowrap;max-width:100%;letter-spacing:-.03em}
 .cell.k-work{background:var(--surface2)}
 .cell.k-work .t{color:var(--muted);font-weight:500;opacity:.8}
@@ -170,7 +176,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 /* ── forecast ── */
 .slip{width:100%;border-collapse:collapse;font-size:13.5px}
 .slip td{padding:7px 0;border-bottom:1px solid var(--line2)}
-.slip td:last-child{text-align:right;font-family:"IBM Plex Mono",monospace;
+.slip td:last-child{text-align:right;font-family:Inter,sans-serif;
   font-variant-numeric:tabular-nums;white-space:nowrap}
 .slip tr.sum td{border-top:1px solid var(--line);border-bottom:0;font-weight:600;padding-top:9px}
 .slip tr.net td{border-top:2px solid var(--accent);border-bottom:0;font-weight:700;
@@ -195,7 +201,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   border-bottom:1px solid var(--line);letter-spacing:.03em;white-space:nowrap}
 .cmp th:first-child{text-align:left}
 .cmp td{padding:9px 0;border-bottom:1px solid var(--line2);text-align:right;
-  font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+  font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
 .cmp td:first-child{text-align:left;font-family:inherit;font-weight:500;padding-right:8px;white-space:normal}
 .cmp tr:last-child td{border-bottom:0}
 .cmp .dash{color:var(--muted);opacity:.45}
@@ -297,21 +303,18 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .opt:hover{border-color:var(--accent)}
 .opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
 .opt:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.times{display:flex;align-items:center;gap:8px;margin-top:12px;padding:11px 13px;
-  background:var(--surface2);border:1px solid var(--line2);border-radius:13px;flex-wrap:wrap}
-.times label{font-size:12px;font-weight:600;color:var(--ink2)}
-.times label.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.times input{font-family:"IBM Plex Mono",monospace;font-size:14px;padding:7px 9px;
+.times{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:8px 9px;
+  background:var(--surface2);border:1px solid var(--line2);border-radius:13px}
+.times input{font-family:Inter,sans-serif;font-size:13px;padding:6px 7px;
   border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink)}
 .times input:focus{outline:2px solid var(--accent);outline-offset:-1px}
-.tilde{color:var(--muted)}
-.thrs{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--accent)}
+.thrs{font-size:11px;font-weight:600;color:var(--accent);text-align:center}
 .sheet-foot{display:flex;gap:8px;margin-top:12px}
 .btn{flex:1;appearance:none;border-radius:13px;padding:11px;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--ink2)}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .note{font-size:12px;color:var(--muted);padding:10px 16px;border-top:1px solid var(--line2);background:var(--surface2)}
-.offline{background:var(--half-soft);color:var(--half);border:1px solid var(--half);border-radius:10px;padding:10px 12px;font-size:12.5px}
+.offline{background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);border-radius:10px;padding:10px 12px;font-size:12.5px}
 /* 폰: Galaxy S26 Ultra 등 412~480px 폭, 세로로 매우 긴 화면 */
 @media (max-width:520px){
   .wrap{padding-inline:14px;padding-block:18px 40px;gap:18px}
@@ -328,8 +331,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .cell{aspect-ratio:auto;min-height:52px}     /* 손가락으로 누를 최소 크기 */
   .cell .d{font-size:14px}
   .cell .t{font-size:7.5px}
-  .nav b{min-width:82px}
-  .nav button{width:34px;height:34px}          /* 터치 타겟 */
+  .nav>button{width:34px;height:34px}          /* 터치 타겟 */
   .opt-row{gap:5px}
   .opt{padding:13px 12px}
   .btn{padding:14px}
@@ -473,11 +475,8 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   <div class="sub" id="shSub">—</div>
   <div class="opts" id="shOpts"></div>
   <div class="times" id="shTimes" hidden>
-    <label for="shStart">출근</label>
-    <input id="shStart" type="time" step="60">
-    <span class="tilde">~</span>
-    <label for="shEnd" class="sr">퇴근</label>
-    <input id="shEnd" type="time" step="60">
+    <input id="shStart" type="time" step="60" aria-label="출근 시각">
+    <input id="shEnd" type="time" step="60" aria-label="퇴근 시각">
     <span class="thrs" id="shHours"></span>
   </div>
   <div class="sheet-foot">
@@ -516,8 +515,6 @@ const KINDS = {
   company:   {label:"그냥 쉼",   tag:"전사휴무", cls:"k-company",  desc:"연차도 급여도 안 깎임",    off:1},
   substitute:{label:"대체휴무",  tag:"대체휴무", cls:"k-company",  desc:"휴일근로 보상 · 차감 없음", off:1},
   official:  {label:"공가",      tag:"공가", cls:"k-company",  desc:"병무청 교육 등 · 차감 없음", off:1},
-  sick:      {label:"병가",      tag:"병가", cls:"k-unpaid",   desc:"질병 · 30일 넘으면 복무 연장", off:1},
-  absent:    {label:"무단결근",  tag:"무단결근", cls:"k-unpaid",   desc:"8일 넘으면 편입취소",       off:1},
 };
 
 // 공휴일 이름도 칸에 맞게 줄인다
@@ -539,7 +536,6 @@ const GROUPS = [
   { title: "내가 신청한 휴가",  kinds: ["personal", "half", "unpaid"] },
   { title: "회사가 지정한 휴가", kinds: ["coAnnual", "coUnpaid", "company"] },
   { title: "그 외",            kinds: ["substitute", "official"] },
-  { title: "복무에 영향",       kinds: ["sick", "absent"] },
 ];
 
 // 엑셀이 준 기본 분류를 사용자 분류 체계로 옮긴다
@@ -747,13 +743,9 @@ function drawMonths(){
    근로기준법 제60조 2항: 계속근로 1년 미만은 1개월 개근 시 1일, 최대 11일.
    무엇이 연차를 소모하는지는 달력에서 직접 분류한 값을 따른다. */
 const CONSUMES = { personal:1, half:0.5, coAnnual:1,
-                   unpaid:0, coUnpaid:0, company:0, substitute:0, official:0,
-                   sick:0, absent:0 };
+                   unpaid:0, coUnpaid:0, company:0, substitute:0, official:0 };
 // 급여에서 차감되는 분류 (명세서의 기본급 차감과 대조한다)
-const DEDUCTS = { unpaid:1, coUnpaid:1, sick:1, absent:1 };   // 급여에서 깎이는 것
-// 산업기능요원 복무에 영향을 주는 것 — 병무청 기준
-const SERVICE_LIMIT = { sick:{ cap:30, what:"병가", why:"통틀어 30일을 넘는 질병 휴가·휴직·결근은 복무기간에 산입되지 않습니다" },
-                        absent:{ cap:8, what:"무단결근", why:"통산 8일 이상 무단결근은 편입취소 사유입니다" } };
+const DEDUCTS = { unpaid:1, coUnpaid:1 };   // 급여에서 깎이는 것
 
 function accrualDates(){
   const [hy,hm,hd] = B.hireDate.split("-").map(Number);
@@ -807,7 +799,7 @@ function drawLeave(){
     Object.keys(dedByMonth), Object.keys(mineHByMonth)))].sort();
 
   /* ── 월별 원장 ── */
-  const KO = {personal:"연차", half:"반차", coAnnual:"전사연차", substitute:"대체휴무", company:"전사휴무", official:"공가", sick:"병가", absent:"무단결근"};
+  const KO = {personal:"연차", half:"반차", coAnnual:"전사연차", substitute:"대체휴무", company:"전사휴무", official:"공가"};
   const box = $("ledger"); box.textContent = "";
   let bal = 0, tAcc = 0, tUse = 0, tCash = 0, tMineH = 0, tSlipH = 0;
   const mismatch = [], todo = [];
@@ -833,8 +825,6 @@ function drawLeave(){
                      KO[k] + " " + d[k] + (k === "half" ? "회" : "일"));
     if (d.unpaid)   tag("un", "무급 " + d.unpaid + "일");
     if (d.coUnpaid) tag("un", "전사무급 " + d.coUnpaid + "일");
-    if (d.sick)     tag("un", "병가 " + d.sick + "일");
-    if (d.absent)   tag("un", "무단결근 " + d.absent + "일");
     if (hasSlip && slipH !== mineH) tag("un", "명세서 차감 " + slipH + "시간 ≠ 내 기록 " + mineH + "시간");
     if (!ev.childElementCount){ const e = document.createElement("span"); e.className = "m"; e.textContent = "—"; ev.appendChild(e); }
     const b = document.createElement("span"); b.className = "lgbal num"; b.textContent = fmt(bal) + "일";
@@ -887,20 +877,6 @@ function drawLeave(){
     add("todo", "아직 기록하지 않은 휴무일이 " + todo.reduce((a,x)=>a+x.n,0) + "일 있습니다",
         todo.map(x => x.mo.replace("-",".") + " " + x.n + "일").join(", ")
         + " — 달력에서 눌러 성격을 정해 주세요.");
-  // 산업기능요원 복무에 영향을 주는 누계
-  const svc = {};
-  for (const ds of trackedDates()){
-    const k = kindOf(ds);
-    if (k in SERVICE_LIMIT) svc[k] = (svc[k] || 0) + 1;
-  }
-  for (const [k, v] of Object.entries(svc)){
-    const L = SERVICE_LIMIT[k];
-    if (v >= L.cap)
-      add("bad", L.what + " 누계 " + v + "일 — 기준 " + L.cap + "일을 넘었습니다", L.why);
-    else if (v >= L.cap * 0.6)
-      add("todo", L.what + " 누계 " + v + "일 (기준 " + L.cap + "일)", L.why);
-  }
-
   if (rest < 0)
     add("bad", "법정 발생보다 " + fmt(-rest) + "일 더 썼습니다",
         "법정 기준으로는 " + tAcc + "일이 생겼는데 달력에는 " + fmt(tUse) + "일을 쓴 것으로 남아 있습니다. "
@@ -999,7 +975,6 @@ function openSheet(ds){
   $("shSub").textContent = tm
     ? tm.s + " ~ " + tm.e + " · " + hoursBetween(tm.s, tm.e) + "시간" + (tm.mine ? " (직접 적음)" : "")
     : (hol || "출근 기록 없음");
-  syncTimes(ds, k);
   const box = $("shOpts"); box.textContent = "";
   for (const g of GROUPS){
     const h = document.createElement("div"); h.className = "opt-h"; h.textContent = g.title;
@@ -1014,8 +989,10 @@ function openSheet(ds){
       const sm = document.createElement("small"); sm.textContent = K.desc;
       b.append(t, sm); row.appendChild(b);
     }
+    if (g.kinds.includes("work")) row.appendChild($("shTimes"));  // 출근 줄 오른쪽 칸
     box.appendChild(row);
   }
+  syncTimes(ds, k);
   $("scrim").classList.add("on"); $("sheet").classList.add("on");
 }
 function syncTimes(ds, k){
