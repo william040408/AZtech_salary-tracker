@@ -7,6 +7,13 @@ from model import verify, DAY_PAY, HOURLY, DAILY_HOURS
 from anomaly import report
 
 slips = [verify(p) for p in load_dir("data/raw")]
+
+# 수집 작업은 금고에 없는 달만 받아온다. 새 명세서가 없으면 여기는 빈 상태가
+# 되는데, 그건 실패가 아니라 "받을 게 없었다"는 뜻이다.
+if not slips:
+    print("이번에 새로 받은 명세서가 없습니다. 검산할 것이 없어 넘어갑니다.")
+    raise SystemExit(0)
+
 ref, rows = report(slips)
 
 print(f"■ 기준: 만근·연차수당 없는 달의 실수령 = {ref:,}원\n")

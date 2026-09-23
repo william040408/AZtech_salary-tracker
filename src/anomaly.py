@@ -16,8 +16,10 @@ STABLE_DEDUCT = ["소득세", "주민세", "국민연금", "건강보험", "장�
 
 
 def baseline(slips, key, bucket):
-    """가장 자주 나온 값을 평소값으로 본다."""
+    """가장 자주 나온 값을 평소값으로 본다. 명세서가 없으면 0."""
     vals = [p[bucket].get(key, 0) for p in slips]
+    if not vals:
+        return 0
     return Counter(vals).most_common(1)[0][0]
 
 
