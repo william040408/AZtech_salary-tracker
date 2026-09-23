@@ -368,7 +368,25 @@ let picked = null;
 
 const $ = id => document.getElementById(id);
 const monthOf = d => d.slice(0,7);
-const kindOf = d => overrides.get(d) || (ATT.has(d) ? baseKind(ATT.get(d)) : null);
+
+/* 엑셀은 초기 1회 수입으로 끝났다. 그 뒤의 날에는 기록이 없으므로
+   달력만 보고 기본값을 정하고, 실제 성격은 직접 찍어 채운다. */
+function defaultKind(ds){
+  const a = ATT.get(ds);
+  if (a) return baseKind(a);
+  const w = new Date(ds + "T00:00:00").getDay();
+  if (w === 0 || w === 6) return "weekend";
+  if (B.holidays && B.holidays[ds]) return "holiday";
+  return "work";
+}
+const kindOf = d => overrides.get(d) || defaultKind(d);
+
+/* 집계 대상 — 엑셀에서 들어온 날과 내가 직접 찍은 날 */
+function trackedDates(){
+  const set = new Set(overrides.keys());
+  for (const a of B.attendance) set.add(a.date);
+  return [...set].sort();
+}
 
 /* ── 복무 진행 ── */
 function service(){
@@ -391,9 +409,9 @@ function tiles(){
   $("tNetSub").textContent = B.payslips.length + "개월분 (" + B.payslips[0].period + "~" + B.payslips.at(-1).period + ")";
   $("tRef").textContent = WON(refNet())+"원";
   let d=0, h=0;
-  for (const a of B.attendance){
-    const k = kindOf(a.date);
-    if (KINDS[k]) { d += KINDS[k].off; if(k==="unpaid") h += 1; }
+  for (const ds of trackedDates()){
+    const k = kindOf(ds);
+    if (KINDS[k]) { d += KINDS[k].off; if (k in DEDUCTS) h += 1; }
   }
   $("tOff").textContent = (Math.round(d*10)/10) + "일";
   $("tOffSub").textContent = h ? ("무급 " + h + "일 · 나머지 유급") : "전부 유급 (회사 휴무 포함)";
@@ -419,28 +437,30 @@ function drawCal(){
     b.type = "button";
     b.className = "cell " + (K ? K.cls : "k-weekend");
     b.dataset.date = ds;
-    if (!ATT.has(ds)) b.disabled = true;
+    if (ds < B.hireDate) b.disabled = true;
     if (overrides.has(ds)) b.classList.add("edited");
     const dd = document.createElement("span"); dd.className = "d"; dd.textContent = day;
     b.appendChild(dd);
     if (K && k!=="work" && k!=="weekend"){
       const t = document.createElement("span"); t.className = "t";
-      t.textContent = k==="holiday" ? (ATT.get(ds)?.holiday || "공휴일").slice(0,4) : K.label;
+      t.textContent = k==="holiday"
+        ? String(ATT.get(ds)?.holiday || (B.holidays && B.holidays[ds]) || "공휴일").slice(0,4)
+        : K.label;
       b.appendChild(t);
     }
     const a = ATT.get(ds);
     b.setAttribute("aria-label", ds + " " + (K?K.label:"기록 없음") + (a&&a.start ? " "+a.start+"~"+a.end : ""));
     g.appendChild(b);
   }
-  const ms = B.attendance.map(a=>monthOf(a.date));
-  $("prev").disabled = view <= ms[0];
-  $("next").disabled = view >= ms[ms.length-1];
+  $("prev").disabled = view <= B.calendarFrom;
+  $("next").disabled = view >= B.calendarTo;
 }
 
 /* ── 월별 대조 ── */
 function drawMonths(){
   const box = $("months"); box.textContent = "";
-  const months = [...new Set(B.attendance.map(a=>monthOf(a.date)))].sort();
+  const months = [...new Set([].concat(
+    B.payslips.map(pp => pp.period), trackedDates().map(monthOf)))].sort();
   const ref = refNet();
   for (const mo of months){
     const p = PAY.get(mo);
@@ -467,9 +487,9 @@ function drawMonths(){
 
     // 근태 집계
     let off = 0, unpaidDays = 0, half = 0;
-    for (const a of B.attendance){
-      if (monthOf(a.date) !== mo) continue;
-      const k = kindOf(a.date);
+    for (const ds of trackedDates()){
+      if (monthOf(ds) !== mo) continue;
+      const k = kindOf(ds);
       if (!KINDS[k]) continue;
       off += KINDS[k].off;
       if (k in DEDUCTS) unpaidDays += 1;
@@ -539,11 +559,11 @@ function drawLeave(){
 
   /* 출처 3 — 내가 달력에 찍은 것. */
   const useByMonth = {}, mineHByMonth = {}, detail = {}, untouched = {};
-  for (const a of B.attendance){
-    const mo = monthOf(a.date), base = baseKind(a);
-    if ((base === "company" || base === "personal") && !overrides.has(a.date))
+  for (const ds of trackedDates()){
+    const mo = monthOf(ds), a = ATT.get(ds), base = a ? baseKind(a) : null;
+    if ((base === "company" || base === "personal") && !overrides.has(ds))
       untouched[mo] = (untouched[mo] || 0) + 1;          // 엑셀 기본값 그대로인 휴무일
-    const k = kindOf(a.date);
+    const k = kindOf(ds);
     if (!(k in CONSUMES)) continue;
     detail[mo] = detail[mo] || {};
     detail[mo][k] = (detail[mo][k] || 0) + 1;
@@ -840,8 +860,9 @@ async function loadRemote(){
 function start(){
   ATT = new Map(B.attendance.map(a => [a.date, a]));
   PAY = new Map(B.payslips.map(p => [p.period, p]));
-  const ms = B.attendance.map(a => monthOf(a.date));
-  view = ms[ms.length - 1];
+  const now = new Date();
+  const cur = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+  view = cur < B.calendarFrom ? B.calendarFrom : (cur > B.calendarTo ? B.calendarTo : cur);
   service();
   redraw();
   $("app").hidden = false;

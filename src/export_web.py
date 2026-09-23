@@ -15,16 +15,28 @@ from config import PERSON as ME, CFG
 FIRST = date.fromisoformat(CFG["hireDate"])
 LAST = date.today()   # 미래 날짜는 엑셀이 비어 있을 뿐이므로 제외
 
+SERVICE_END = date.fromisoformat(CFG["serviceEnd"])
+
 slips = [verify(p) for p in load_dir("data/raw")]
 H = holidays(2026)
 
+# 달력은 복무 기간 전체를 그린다. 앞으로의 근태는 엑셀이 아니라 웹에서 직접 찍는다.
+HOLIDAYS_ALL = {}
+for y in range(FIRST.year, SERVICE_END.year + 1):
+    for k, v in holidays(y).items():
+        HOLIDAYS_ALL[str(k)] = v
+
 # 근무현황 엑셀은 회사 파일이라 이 저장소에도, GitHub 의 실행 환경에도 없다.
 # 없으면 근태를 비워 두고, push_data.py 가 이미 올라가 있던 근태를 그대로 살린다.
-try:
-    days = read_all(WORKBOOK)
-except (FileNotFoundError, OSError) as e:
+if not WORKBOOK:
     days = None
-    print(f"  [i] 근무현황 파일을 못 읽어 근태는 비워 둡니다 ({type(e).__name__})")
+    print("  [i] 근무현황 파일을 쓰지 않습니다 — 근태는 금고에 있는 것을 그대로 둡니다")
+else:
+    try:
+        days = read_all(WORKBOOK)
+    except (FileNotFoundError, OSError) as e:
+        days = None
+        print(f"  [i] 근무현황 파일을 못 읽어 근태는 비워 둡니다 ({type(e).__name__})")
 
 pay = []
 for p in sorted(slips, key=lambda x: x["period"]):
@@ -38,6 +50,8 @@ for p in sorted(slips, key=lambda x: x["period"]):
         "deductedHours": p.get("deducted_hours") or 0,
         "leaveCashed": p.get("leave_cashed") or 0,
     })
+
+SNAPSHOT = Path("data/attendance.json")   # 엑셀에서 한 번 수입한 기록
 
 att = []
 for d in sorted(days or {}):
@@ -69,6 +83,12 @@ for d in sorted(days or {}):
         "holiday": hol,
     })
 
+if days:
+    SNAPSHOT.write_text(json.dumps(att, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+elif SNAPSHOT.exists():
+    att = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
+    print(f"  근태 {len(att)}일은 저장해 둔 기록을 씁니다")
+
 bundle = {
     "person": ME,
     "hourly": HOURLY,
@@ -82,8 +102,10 @@ bundle = {
     "firstDay": str(FIRST),
     "payslips": pay,
     "attendance": att,
-    "attendanceFrom": "workbook" if days else None,
-    "holidays": {str(k): v for k, v in sorted(H.items()) if date(2026,3,1) <= k <= date(2026,12,31)},
+    "attendanceFrom": "workbook" if days else ("snapshot" if att else None),
+    "calendarFrom": CFG["hireDate"][:7],
+    "calendarTo": SERVICE_END.strftime("%Y-%m"),
+    "holidays": HOLIDAYS_ALL,
 }
 out = Path("web/data.json")
 out.parent.mkdir(exist_ok=True)

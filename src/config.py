@@ -16,4 +16,4 @@ FULL_BASE = HOURLY * MONTHLY_HOURS
 DAY_PAY = HOURLY * DAILY_HOURS
 FIXED_ALLOWANCES = CFG["fixedAllowances"]
 EI_RATE = CFG["employmentInsuranceRate"]
-WORKBOOK = CFG["workbook"]
+WORKBOOK = CFG.get("workbook")   # None 이면 엑셀을 읽지 않는다

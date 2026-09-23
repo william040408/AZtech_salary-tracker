@@ -8,7 +8,9 @@
   "hourly": 0,
   "monthlyHours": 209,
   "dailyHours": 8,
-  "fixedAllowances": {"수당이름": 0},
+  "fixedAllowances": {
+    "수당이름": 0
+  },
   "employmentInsuranceRate": 0.009,
-  "workbook": "C:/path/to/workbook.xlsx"
+  "workbook": null
 }
