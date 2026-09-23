@@ -390,6 +390,7 @@ const KINDS = {
   coUnpaid:  {label:"무급",      cls:"k-unpaid",   desc:"급여에서 차감",            off:1},
   company:   {label:"그냥 쉼",   cls:"k-company",  desc:"연차도 급여도 안 깎임",    off:1},
   substitute:{label:"대체휴무",  cls:"k-company",  desc:"휴일근로 보상 · 차감 없음", off:1},
+  official:  {label:"공가",      cls:"k-company",  desc:"병무청 교육 등 · 차감 없음", off:1},
 };
 
 /* 시트에 묶어서 보여 줄 순서. 회사가 실제로 쓰는 갈래를 그대로 따른다. */
@@ -397,7 +398,7 @@ const GROUPS = [
   { title: "출근",             kinds: ["work"] },
   { title: "내가 신청한 휴가",  kinds: ["personal", "half", "unpaid"] },
   { title: "회사가 지정한 휴가", kinds: ["coAnnual", "coUnpaid", "company"] },
-  { title: "그 외",            kinds: ["substitute"] },
+  { title: "그 외",            kinds: ["substitute", "official"] },
 ];
 
 // 엑셀이 준 기본 분류를 사용자 분류 체계로 옮긴다
@@ -419,8 +420,8 @@ function defaultKind(ds){
   const a = ATT.get(ds);
   if (a) return baseKind(a);
   const w = new Date(ds + "T00:00:00").getDay();
+  if (B.holidays && B.holidays[ds]) return "holiday";   // 주말과 겹쳐도 이름을 보여준다
   if (w === 0 || w === 6) return "weekend";
-  if (B.holidays && B.holidays[ds]) return "holiday";
   return "work";
 }
 const kindOf = d => overrides.get(d) || defaultKind(d);
@@ -569,7 +570,7 @@ function drawMonths(){
    근로기준법 제60조 2항: 계속근로 1년 미만은 1개월 개근 시 1일, 최대 11일.
    무엇이 연차를 소모하는지는 달력에서 직접 분류한 값을 따른다. */
 const CONSUMES = { personal:1, half:0.5, coAnnual:1,
-                   unpaid:0, coUnpaid:0, company:0, substitute:0 };
+                   unpaid:0, coUnpaid:0, company:0, substitute:0, official:0 };
 // 급여에서 차감되는 분류 (명세서의 기본급 차감과 대조한다)
 const DEDUCTS = { unpaid:1, coUnpaid:1 };
 
@@ -624,7 +625,7 @@ function drawLeave(){
     Object.keys(dedByMonth), Object.keys(mineHByMonth)))].sort();
 
   /* ── 월별 원장 ── */
-  const KO = {personal:"연차", half:"반차", coAnnual:"전사연차", substitute:"대체휴무", company:"전사휴무"};
+  const KO = {personal:"연차", half:"반차", coAnnual:"전사연차", substitute:"대체휴무", company:"전사휴무", official:"공가"};
   const box = $("ledger"); box.textContent = "";
   let bal = 0, tAcc = 0, tUse = 0, tCash = 0, tMineH = 0, tSlipH = 0;
   const mismatch = [], todo = [];
@@ -645,8 +646,9 @@ function drawLeave(){
     if (acc)  tag("acc",  "발생 +" + acc);
     if (cash) tag("cash", "수당 " + cash + "일분");
     const d = detail[mo] || {};
-    for (const k of ["personal","half","coAnnual","substitute","company"])
-      if (d[k]) tag("use", KO[k] + " " + d[k] + (k === "half" ? "회" : "일"));
+    for (const k of ["personal","half","coAnnual","substitute","official","company"])
+      if (d[k]) tag(k === "coAnnual" || k === "personal" || k === "half" ? "use" : "acc",
+                     KO[k] + " " + d[k] + (k === "half" ? "회" : "일"));
     if (d.unpaid)   tag("un", "무급 " + d.unpaid + "일");
     if (d.coUnpaid) tag("un", "전사무급 " + d.coUnpaid + "일");
     if (hasSlip && slipH !== mineH) tag("un", "명세서 차감 " + slipH + "시간 ≠ 내 기록 " + mineH + "시간");
