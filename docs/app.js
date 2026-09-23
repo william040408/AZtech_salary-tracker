@@ -105,6 +105,12 @@ function trackedDates(){
 
 /* ── 복무 진행 ── */
 function service(){
+  // 이름은 소스에 적지 않는다. 저장소가 공개라 파일에 박으면 그대로 올라간다.
+  if (B.person){
+    const t = B.person + " 급여·연차 기록부";
+    $("title").textContent = t;
+    document.title = t;
+  }
   $("org").textContent = "산업기능요원 · " + B.company + " " + B.team;
   $("svcRange").textContent = "복무 " + B.serviceStart.replace(/-/g,".") + " → " + B.serviceEnd.replace(/-/g,".");
   $("tRefSub").textContent = "월 " + (B.fullBase/B.hourly) + "시간 · 시급 " + WON(B.hourly) + "원";
