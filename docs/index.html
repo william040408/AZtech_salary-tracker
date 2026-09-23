@@ -168,6 +168,16 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .tag.cash{background:var(--half-soft);color:var(--half)}
 .tag.un{background:var(--unpaid-soft);color:var(--unpaid)}
 
+.rbtn{appearance:none;border:1px solid var(--accent);background:var(--accent);color:#fff;
+  font-family:inherit;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.rbtn:hover:not(:disabled){filter:brightness(1.08)}
+.rbtn:disabled{opacity:.5;cursor:default}
+.rbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rmsg{padding:10px 16px;font-size:12.5px;line-height:1.55;border-bottom:1px solid var(--line2)}
+.rmsg.info{background:var(--surface2);color:var(--muted)}
+.rmsg.ok{background:var(--paid-soft);color:var(--paid)}
+.rmsg.bad{background:var(--unpaid-soft);color:var(--unpaid)}
+
 /* ── month rows ── */
 .mrow{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line2)}
 .mrow:last-child{border-bottom:0}
@@ -311,7 +321,9 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   </section>
 
   <section class="sec">
-    <div class="sec-hd"><h2>월별 명세서 대조</h2></div>
+    <div class="sec-hd"><h2>월별 명세서 대조</h2>
+      <button class="rbtn" id="refreshBtn" hidden>명세서 불러오기</button></div>
+    <div class="rmsg" id="refreshMsg" hidden></div>
     <div id="months"></div>
   </section>
 
@@ -739,6 +751,69 @@ function pushLeave(){                      // 연속 입력을 한 번으로 묶
   }, 600);
 }
 
+/* ── 명세서 불러오기 ──
+   브라우저는 메일을 읽을 수 없으므로, 버튼은 Worker 를 거쳐 GitHub 의
+   수집 작업을 깨우기만 한다. 끝났는지는 금고의 갱신 시각으로 확인한다. */
+let refreshTimer = null;
+
+function setMsg(cls, text){
+  const m = $("refreshMsg");
+  m.className = "rmsg " + cls;
+  m.textContent = text;
+  m.hidden = false;
+}
+
+async function metaAt(){
+  const m = await apiCall("meta", "GET");
+  return (typeof m === "string" ? JSON.parse(m) : m).updatedAt || null;
+}
+
+async function doRefresh(){
+  const btn = $("refreshBtn");
+  clearTimeout(refreshTimer);
+  btn.disabled = true;
+
+  let before = null;
+  try { before = await metaAt(); } catch {}
+
+  setMsg("info", "수집 작업을 깨우는 중…");
+  try {
+    await apiCall("refresh", "POST");
+  } catch (e) {
+    setMsg("bad", "시작하지 못했습니다 — " + e.message);
+    btn.disabled = false;
+    return;
+  }
+
+  const t0 = Date.now(), deadline = t0 + 8 * 60 * 1000;
+  const tick = async () => {
+    const sec = Math.round((Date.now() - t0) / 1000);
+    if (Date.now() > deadline){
+      setMsg("bad", "8분이 지나도 끝나지 않았습니다. GitHub 저장소의 Actions 탭에서 무엇이 막혔는지 볼 수 있습니다.");
+      btn.disabled = false;
+      return;
+    }
+    let now = null;
+    try { now = await metaAt(); } catch {}
+    if (now && now !== before){
+      setMsg("info", "새 자료를 받았습니다. 화면을 갱신합니다…");
+      try {
+        await loadRemote();
+        start();
+        setMsg("ok", "완료 — 명세서 " + B.payslips.length + "장 (" + sec + "초 걸림)");
+      } catch (e) {
+        setMsg("bad", "받아온 자료를 읽지 못했습니다 — " + e.message);
+      }
+      btn.disabled = false;
+      return;
+    }
+    setMsg("info", "메일을 확인하고 명세서를 읽는 중… " + sec + "초 경과 (보통 2~3분)");
+    refreshTimer = setTimeout(tick, 15000);
+  };
+  refreshTimer = setTimeout(tick, 20000);
+  setMsg("info", "메일을 확인하고 명세서를 읽는 중… (보통 2~3분)");
+}
+
 /* ── 설정 화면 ── */
 function showSetup(msg){
   const cur = loadApi();
@@ -767,6 +842,7 @@ $("apiSave").addEventListener("click", async () => {
   }
 });
 $("openSetup").addEventListener("click", () => showSetup());
+$("refreshBtn").addEventListener("click", doRefresh);
 
 async function loadRemote(){
   const bundle = await apiCall("bundle", "GET");
@@ -787,6 +863,7 @@ function start(){
   redraw();
   $("app").hidden = false;
   $("openSetup").hidden = !api;
+  $("refreshBtn").hidden = !api;
 }
 
 (async function boot(){

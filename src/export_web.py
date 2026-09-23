@@ -16,8 +16,15 @@ FIRST = date.fromisoformat(CFG["hireDate"])
 LAST = date.today()   # 미래 날짜는 엑셀이 비어 있을 뿐이므로 제외
 
 slips = [verify(p) for p in load_dir("data/raw")]
-days = read_all(WORKBOOK)
 H = holidays(2026)
+
+# 근무현황 엑셀은 회사 파일이라 이 저장소에도, GitHub 의 실행 환경에도 없다.
+# 없으면 근태를 비워 두고, push_data.py 가 이미 올라가 있던 근태를 그대로 살린다.
+try:
+    days = read_all(WORKBOOK)
+except (FileNotFoundError, OSError) as e:
+    days = None
+    print(f"  [i] 근무현황 파일을 못 읽어 근태는 비워 둡니다 ({type(e).__name__})")
 
 pay = []
 for p in sorted(slips, key=lambda x: x["period"]):
@@ -33,7 +40,7 @@ for p in sorted(slips, key=lambda x: x["period"]):
     })
 
 att = []
-for d in sorted(days):
+for d in sorted(days or {}):
     if d < FIRST or d > LAST:
         continue
     roster = days[d]
@@ -75,6 +82,7 @@ bundle = {
     "firstDay": str(FIRST),
     "payslips": pay,
     "attendance": att,
+    "attendanceFrom": "workbook" if days else None,
     "holidays": {str(k): v for k, v in sorted(H.items()) if date(2026,3,1) <= k <= date(2026,12,31)},
 }
 out = Path("web/data.json")

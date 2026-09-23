@@ -26,7 +26,23 @@ if not url or not pw:
     sys.exit("[!] .env 에 WORKER_URL 과 WORKER_PASS 를 넣어 주세요.")
 
 subprocess.run([sys.executable, "src/export_web.py"], check=True)
-body = Path("web/data.json").read_text(encoding="utf-8")
+
+import json
+bundle = json.loads(Path("web/data.json").read_text(encoding="utf-8"))
+
+# 근무현황 엑셀이 없는 환경(GitHub Actions)에서는 근태가 비어 나온다.
+# 그대로 올리면 이미 쌓아 둔 근태가 지워지므로, 금고에 있던 것을 되살린다.
+if not bundle.get("attendance"):
+    old = requests.get(url.rstrip("/") + "/bundle", headers={"x-pass": pw}, timeout=30)
+    prev = old.json() if old.status_code == 200 else {}
+    if isinstance(prev, str):
+        prev = json.loads(prev)
+    kept = prev.get("attendance") or []
+    bundle["attendance"] = kept
+    bundle["attendanceFrom"] = prev.get("attendanceFrom")
+    print(f"  근태 {len(kept)}일은 금고에 있던 것을 그대로 둡니다 (엑셀 없음)")
+
+body = json.dumps(bundle, ensure_ascii=False, separators=(",", ":"))
 
 r = requests.put(url.rstrip("/") + "/bundle", data=body.encode("utf-8"),
                  headers={"x-pass": pw, "content-type": "application/json"}, timeout=30)

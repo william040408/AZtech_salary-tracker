@@ -1,0 +1,70 @@
+name: 명세서 불러오기
+
+# 웹 버튼이 Worker 를 거쳐 이 작업을 깨운다. 손으로도 돌릴 수 있게
+# Actions 탭의 Run workflow 버튼을 남겨 둔다.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 의존성 설치
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: 설정 파일 만들기
+        env:
+          CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
+        run: |
+          if [ -n "$CONFIG_JSON" ]; then
+            printf '%s' "$CONFIG_JSON" > config.json
+          else
+            echo "[!] CONFIG_JSON 시크릿이 없습니다." >&2
+            exit 1
+          fi
+
+      - name: 자격 증명 준비
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          WORKER_PASS: ${{ secrets.WORKER_PASS }}
+        run: |
+          umask 077
+          {
+            echo "GMAIL_USER=$GMAIL_USER"
+            echo "GMAIL_APP_PASSWORD=$GMAIL_APP_PASSWORD"
+            echo "WORKER_URL=$WORKER_URL"
+            echo "WORKER_PASS=$WORKER_PASS"
+          } > .env
+
+      - name: 메일에서 명세서 링크 찾기
+        run: python src/fetch.py links
+
+      - name: 명세서 받아오기
+        run: python src/fetch_doc.py
+
+      - name: 검산
+        run: python src/report.py
+
+      - name: 금고에 올리기
+        run: python src/push_data.py
+
+      - name: 뒷정리
+        if: always()
+        run: rm -f .env config.json

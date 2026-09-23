@@ -15,7 +15,9 @@
   // 비밀이 아닌 값. 암구호(PASSPHRASE)는 대시보드 Secret 으로만 두고
   // 여기에는 절대 적지 않는다.
   "vars": {
-    "ALLOW_ORIGIN": "https://william040408.github.io"
+    "ALLOW_ORIGIN": "https://william040408.github.io",
+    "GH_REPO": "william040408/AZtech_salary-tracker",
+    "GH_WORKFLOW": "refresh.yml"
   },
 
   "observability": { "enabled": true }
