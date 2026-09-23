@@ -101,25 +101,27 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .nav button{appearance:none;background:none;border:1px solid var(--line);color:var(--ink2);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center}
 .nav button:hover:not(:disabled){background:var(--surface2);color:var(--accent)}
 .nav button:disabled{opacity:.3;cursor:default}
-.mlabel{appearance:none;background:none;border:1px solid transparent;border-radius:8px;
-  min-width:96px;text-align:center;font-size:13.5px;font-weight:600;color:var(--ink);
-  font-family:"IBM Plex Mono",monospace;cursor:pointer;padding:5px 6px}
-.mlabel:hover{border-color:var(--line);background:var(--surface2)}
-.mlabel:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.mlabel{display:inline-flex;gap:2px;min-width:100px;justify-content:center}
+.mpart{appearance:none;background:none;border:1px solid transparent;border-radius:7px;
+  font-size:13.5px;font-weight:600;color:var(--ink);font-family:"IBM Plex Mono",monospace;
+  cursor:pointer;padding:5px 7px}
+.mpart:hover{border-color:var(--line);background:var(--surface2);color:var(--accent)}
+.mpart:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .picker{padding:4px 0 10px}
 .pk-head{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:12px}
 .pk-head button{appearance:none;background:none;border:1px solid var(--line);color:var(--ink2);
   border-radius:8px;cursor:pointer;font-family:inherit;padding:6px 10px;font-size:13px}
-.pk-head #pkTitle{min-width:86px;font-weight:700;font-size:15px;color:var(--ink);
-  font-family:"IBM Plex Mono",monospace}
+#pkTitle{min-width:112px;text-align:center;font-weight:700;font-size:14.5px;
+  color:var(--ink);font-family:"IBM Plex Mono",monospace}
 .pk-head button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .pk-head button:disabled{opacity:.3;cursor:default}
-.pk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.pk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .pk-grid button{appearance:none;background:var(--surface2);border:1px solid var(--line2);
   color:var(--ink);border-radius:9px;padding:13px 6px;cursor:pointer;
   font-family:"IBM Plex Mono",monospace;font-size:13.5px;font-weight:600}
 .pk-grid button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .pk-grid button:disabled{opacity:.28;cursor:default}
+.pk-grid button.has{border-color:var(--paid);color:var(--paid);background:var(--paid-soft)}
 .pk-grid button[aria-current="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
 .dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:5px}
 .dow span{text-align:center;font-size:10.5px;font-weight:600;color:var(--muted);padding-bottom:2px}
@@ -390,7 +392,10 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
       <h2>근태 달력</h2>
       <div class="nav">
         <button id="prev" aria-label="이전 달">‹</button>
-        <button id="mlabel" class="num mlabel" aria-haspopup="true"></button>
+        <span class="mlabel">
+          <button id="mYear" class="mpart num" aria-haspopup="true"></button>
+          <button id="mMonth" class="mpart num" aria-haspopup="true"></button>
+        </span>
         <button id="next" aria-label="다음 달">›</button>
       </div>
     </div>
@@ -399,7 +404,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
       <div class="picker" id="picker" hidden>
         <div class="pk-head">
           <button id="pkPrev" aria-label="이전">‹</button>
-          <button id="pkTitle" class="num"></button>
+          <span class="num" id="pkTitle"></span>
           <button id="pkNext" aria-label="다음">›</button>
         </div>
         <div class="pk-grid" id="pkGrid"></div>
@@ -591,7 +596,8 @@ function refNet(){
 /* ── 달력 ── */
 function drawCal(){
   const [y,m] = view.split("-").map(Number);
-  $("mlabel").textContent = y + "." + String(m).padStart(2,"0");
+  $("mYear").textContent = y + "년";
+  $("mMonth").textContent = m + "월";
   const first = new Date(y, m-1, 1), last = new Date(y, m, 0);
   const g = $("grid"); g.textContent = "";
   for (let i=0;i<first.getDay();i++){
@@ -871,29 +877,39 @@ function drawLeave(){
 
 /* ── 월 선택기 ──
    년월을 누르면 달을 고르는 판이 열리고, 연도를 누르면 연도 목록으로 바뀐다. */
-let pkYear = 0, pkMode = "month";
+let pkYear = 0, pkBase = 0, pkMode = null;   // null=닫힘 · "month" · "year"
+const YEARS_PER_PAGE = 12;
 
-function openPicker(){
+function openPicker(mode){
   pkYear = Number(view.slice(0, 4));
-  pkMode = "month";
+  const fy = Number(B.calendarFrom.slice(0, 4)), ty = Number(B.calendarTo.slice(0, 4));
+  // 쓸 수 있는 연도가 한 페이지에 다 들어가면 거기서부터 보여 준다
+  pkBase = (ty - fy < YEARS_PER_PAGE) ? fy
+         : pkYear - ((pkYear % YEARS_PER_PAGE) + YEARS_PER_PAGE) % YEARS_PER_PAGE;
+  pkMode = mode;
   drawPicker();
   $("picker").hidden = false;
   $("calBody").hidden = true;
 }
 function closePicker(){
+  pkMode = null;
   $("picker").hidden = true;
   $("calBody").hidden = false;
 }
 function drawPicker(){
   const fromY = Number(B.calendarFrom.slice(0, 4)), toY = Number(B.calendarTo.slice(0, 4));
+  const paid = new Set(B.payslips.map(p => p.period));   // 명세서가 있는 달을 짚어 준다
   const g = $("pkGrid"); g.textContent = "";
 
   if (pkMode === "year"){
-    $("pkTitle").textContent = fromY + " ~ " + toY;
-    $("pkPrev").disabled = $("pkNext").disabled = true;
-    for (let y = fromY; y <= toY; y++){
+    $("pkTitle").textContent = pkBase + " ~ " + (pkBase + YEARS_PER_PAGE - 1);
+    $("pkPrev").disabled = pkBase + YEARS_PER_PAGE - 1 <= fromY;
+    $("pkNext").disabled = pkBase >= toY;
+    for (let i = 0; i < YEARS_PER_PAGE; i++){
+      const y = pkBase + i;
       const b = document.createElement("button");
       b.type = "button"; b.textContent = y; b.dataset.year = y;
+      b.disabled = y < fromY || y > toY;
       b.setAttribute("aria-current", String(y === pkYear));
       g.appendChild(b);
     }
@@ -908,17 +924,23 @@ function drawPicker(){
     const b = document.createElement("button");
     b.type = "button"; b.textContent = m + "월"; b.dataset.month = key;
     b.disabled = key < B.calendarFrom || key > B.calendarTo;
+    if (paid.has(key)) b.classList.add("has");
     b.setAttribute("aria-current", String(key === view));
     g.appendChild(b);
   }
 }
 
-$("mlabel").addEventListener("click", () => {
-  if ($("picker").hidden) openPicker(); else closePicker();
+const togglePicker = mode => { if (pkMode === mode) closePicker(); else openPicker(mode); };
+$("mYear").addEventListener("click", () => togglePicker("year"));
+$("mMonth").addEventListener("click", () => togglePicker("month"));
+$("pkPrev").addEventListener("click", () => {
+  if (pkMode === "year") pkBase -= YEARS_PER_PAGE; else pkYear--;
+  drawPicker();
 });
-$("pkTitle").addEventListener("click", () => { pkMode = pkMode === "year" ? "month" : "year"; drawPicker(); });
-$("pkPrev").addEventListener("click", () => { pkYear--; drawPicker(); });
-$("pkNext").addEventListener("click", () => { pkYear++; drawPicker(); });
+$("pkNext").addEventListener("click", () => {
+  if (pkMode === "year") pkBase += YEARS_PER_PAGE; else pkYear++;
+  drawPicker();
+});
 $("pkGrid").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
   if (b.dataset.year){ pkYear = Number(b.dataset.year); pkMode = "month"; drawPicker(); return; }
