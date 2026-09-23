@@ -66,7 +66,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .hero-main b{font-size:34px;font-weight:700;color:var(--accent);letter-spacing:-.02em;line-height:1}
 .hero.neg .hero-main span{color:var(--unpaid)}
 .hero.neg .hero-main b{color:var(--unpaid)}
-.hero-grid{display:grid;grid-template-columns:repeat(4,1fr)}
+.hero-grid{display:grid;grid-template-columns:repeat(3,1fr)}
 .hero-grid>*{padding:11px 10px;display:flex;flex-direction:column;gap:2px;align-items:center;
   border:0;border-left:1px solid var(--line2);text-align:center}
 .hero-grid>*:first-child{border-left:0}
@@ -104,6 +104,17 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .sec-hd h2{margin:0;font-size:14px;font-weight:600;letter-spacing:-.01em;
   min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sec-body{padding:16px}
+.fold{appearance:none;background:none;border:0;padding:0;margin:0;font-family:inherit;color:inherit;
+  display:flex;align-items:center;gap:7px;cursor:pointer;min-width:0;flex:1;text-align:left}
+.fold .chev{width:14px;height:14px;flex:none;position:relative;transition:transform .18s ease}
+.fold .chev::before{content:"";position:absolute;left:3px;top:4px;width:6px;height:6px;
+  border-right:1.8px solid var(--muted);border-bottom:1.8px solid var(--muted);
+  transform:rotate(45deg);transform-origin:center}
+.fold[aria-expanded="false"] .chev{transform:rotate(-90deg)}
+.fold:hover h2{color:var(--accent)}
+.fold:hover .chev::before{border-color:var(--accent)}
+.sec.folded .sec-body,.sec.folded .note{display:none}
+.sec.folded .sec-hd{border-bottom:0}
 
 /* ── calendar ── */
 .nav{display:flex;align-items:center;gap:3px;flex-wrap:nowrap;flex:none}
@@ -152,7 +163,8 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .cell.k-work{background:var(--surface2)}
 .cell.k-work .t{color:var(--muted);font-weight:500;opacity:.8}
 .cell.k-short{background:var(--surface2);border-color:var(--half)}
-.cell.k-half{background:var(--half-soft);border-color:var(--half);color:var(--half)}
+.cell.k-half{border-color:var(--paid);color:var(--paid);
+  background:linear-gradient(135deg,var(--paid-soft) 0 50%,var(--surface2) 50% 100%)}
 .cell.k-personal{background:var(--paid-soft);border-color:var(--paid);color:var(--paid)}
 .cell.k-unpaid{background:var(--unpaid-soft);border-color:var(--unpaid);color:var(--unpaid)}
 .cell.k-company{background:var(--company-soft);border-color:var(--company);color:var(--company)}
@@ -327,9 +339,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .wrap{padding-inline:14px;padding-block:18px 40px;gap:18px}
   .tiles{grid-template-columns:1fr 1fr;gap:8px}
   .hero-main b{font-size:30px}
-  .hero-grid{grid-template-columns:1fr 1fr}
-  .hero-grid>*:nth-child(3){border-left:0}
-  .hero-grid>*:nth-child(n+3){border-top:1px solid var(--line2)}
+  .hero-grid span{font-size:10px;letter-spacing:-.02em}
   .tile:first-child{grid-column:1/-1}
   .tile b{font-size:18px}
   h1{font-size:22px}
@@ -388,7 +398,6 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
       <button type="button" data-detail="acc"  aria-expanded="false"><span>생긴 연차</span><b class="num" id="heroAcc">—</b></button>
       <button type="button" data-detail="mine" aria-expanded="false"><span>내가 쓴 것</span><b class="num" id="heroMine">—</b></button>
       <button type="button" data-detail="co"   aria-expanded="false"><span>회사가 쓰게 함</span><b class="num" id="heroCo">—</b></button>
-      <button type="button" data-detail="cash" aria-expanded="false"><span>수당으로 받음</span><b class="num" id="heroCash">—</b></button>
     </div>
     <div class="hlist" id="heroList" hidden></div>
   </section>
@@ -436,7 +445,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
       <div class="legend">
         <span><i style="background:var(--surface2);border-color:var(--line)"></i>근무</span>
         <span><i style="background:var(--paid-soft);border-color:var(--paid)"></i>연차 차감</span>
-        <span><i style="background:var(--half-soft);border-color:var(--half)"></i>반차</span>
+        <span><i style="background:linear-gradient(135deg,var(--paid-soft) 0 50%,var(--surface2) 50% 100%);border-color:var(--paid)"></i>반차</span>
         <span><i style="background:var(--unpaid-soft);border-color:var(--unpaid)"></i>급여 차감</span>
         <span><i style="background:var(--company-soft);border-color:var(--company)"></i>차감 없음</span>
         <span><i style="background:var(--hol-soft);border-color:var(--hol)"></i>공휴일</span>
@@ -600,9 +609,24 @@ function service(){
   const total = (e-s)/864e5, done = Math.max(0, Math.min(total, (n-s)/864e5));
   const pct = done/total*100;
   $("svcBar").style.width = pct.toFixed(1)+"%";
-  $("svcPct").textContent = pct.toFixed(1)+"%";
   $("svcDone").textContent = "복무 " + Math.floor(done) + "일차";
   $("svcLeft").textContent = "남은 " + Math.ceil(total-done).toLocaleString("ko-KR") + "일";
+  tickPct();
+}
+
+/* 복무율을 소수점 일곱 자리까지. 그 자리는 60밀리초마다 한 칸씩 올라간다. */
+let pctTimer = null;
+function tickPct(){
+  const s = new Date(B.serviceStart+"T00:00:00").getTime(),
+        e = new Date(B.serviceEnd+"T00:00:00").getTime();
+  clearInterval(pctTimer);
+  const paint = () => {
+    const now = Date.now();
+    const pct = Math.max(0, Math.min(100, (now - s) / (e - s) * 100));
+    $("svcPct").textContent = pct.toFixed(7) + "%";
+  };
+  paint();
+  pctTimer = setInterval(paint, 50);
 }
 
 /* ── 요약 타일 ── */
@@ -805,7 +829,7 @@ function drawLeave(){
   /* 출처 3 — 내가 달력에 찍은 것. */
   const useByMonth = {}, mineHByMonth = {}, detail = {}, untouched = {};
   let byMe = 0, byCompany = 0;      // 내가 신청한 것 / 회사가 쓰게 한 것
-  detailRows = { acc: [], mine: [], co: [], cash: [] };
+  detailRows = { acc: [], mine: [], co: [] };
   for (const d of accrualDates()) detailRows.acc.push({ ds: d, k: "연차 +1일" });
   for (const ds of trackedDates()){
     const mo = monthOf(ds), a = ATT.get(ds), base = a ? baseKind(a) : null;
@@ -852,13 +876,13 @@ function drawLeave(){
     const ev = document.createElement("span"); ev.className = "ev";
     const tag = (cls, txt) => { const e = document.createElement("span"); e.className = "tag " + cls; e.textContent = txt; ev.appendChild(e); };
     if (acc)  tag("acc",  "발생 +" + acc);
-    if (cash){ tag("cash", "수당 " + cash + "일분"); detailRows.cash.push({ ds: mo, k: cash + "일분" }); }
+    if (cash) tag("cash", "수당 " + cash + "일분");
     const d = detail[mo] || {};
     for (const k of ["personal","half","coAnnual","substitute","official","company"])
       if (d[k]) tag(k === "coAnnual" || k === "personal" || k === "half" ? "use" : "acc",
                      KO[k] + " " + d[k] + (k === "half" ? "회" : "일"));
     const stock = stockUseOf(mo);
-    if (stock) tag("un", "재고 " + fmt(stock) + "일 → 급여 차감");
+    if (stock) tag("un", "모아둔 연차 " + fmt(stock) + "일 사용 → 급여 차감");
     if (d.unpaid)   tag("un", "무급 " + d.unpaid + "일");
     if (d.coUnpaid) tag("un", "전사무급 " + d.coUnpaid + "일");
     if (hasSlip && slipH !== mineH) tag("un", "명세서 차감 " + slipH + "시간 ≠ 내 기록 " + mineH + "시간");
@@ -871,7 +895,7 @@ function drawLeave(){
      명세서에는 며칠 쉬었는지가 없고 금액만 있다. 그래서 양쪽이 모두
      말해 주는 것은 '급여에서 깎인 시간' 하나뿐이다. */
   const tb = $("cmpBody"); tb.textContent = "";
-  const ok = tSlipH === tMineH;
+  const ok = mismatch.length === 0;
   const chk = document.createElement("div");
   chk.className = "check " + (ok ? "ok" : "bad");
   const h = document.createElement("b");
@@ -882,8 +906,9 @@ function drawLeave(){
   l2.innerHTML = "<span>달력에 무급으로 적은 시간</span><b class='num'>" + tMineH + "시간</b>";
   const foot = document.createElement("div"); foot.className = "check-foot";
   foot.textContent = ok
-    ? "명세서가 깎은 만큼 달력에도 적혀 있습니다."
-    : "둘이 맞을 때까지 달력에서 무급인 날을 찾아 기록해 주세요.";
+    ? "명세서 " + B.payslips.length + "장이 달력 기록과 맞습니다."
+    : mismatch.map(x => x.mo.replace("-",".") + " 명세서 " + x.slipH + "시간 · 기록 " + x.mineH + "시간").join(", ")
+      + " — 달력에서 그 달을 확인해 주세요.";
   chk.append(h, l1, l2, foot);
   tb.appendChild(chk);
 
@@ -892,7 +917,6 @@ function drawLeave(){
   $("heroAcc").textContent = tAcc + "일";
   $("heroMine").textContent = fmt(byMe) + "일";
   $("heroCo").textContent = fmt(byCompany) + "일";
-  $("heroCash").textContent = tCash + "일분";
   drawDetail();
   document.querySelector(".hero").classList.toggle("neg", rest < 0);
   $("lvBal").textContent = rest + "일";
@@ -906,10 +930,6 @@ function drawLeave(){
     const b = document.createElement("b"); b.textContent = title;
     d.append(b, document.createTextNode(body)); al.appendChild(d);
   };
-  if (mismatch.length)
-    add("bad", "명세서와 기록이 " + mismatch.length + "개 달에서 다릅니다",
-        mismatch.map(x => x.mo.replace("-",".") + " 명세서 " + x.slipH + "시간 · 기록 " + x.mineH + "시간").join(", ")
-        + " — 달력에서 그 달의 무급일을 기록해 주세요.");
   if (todo.length)
     add("todo", "아직 기록하지 않은 휴무일이 " + todo.reduce((a,x)=>a+x.n,0) + "일 있습니다",
         todo.map(x => x.mo.replace("-",".") + " " + x.n + "일").join(", ")
@@ -919,9 +939,6 @@ function drawLeave(){
         tAcc + "일이 생겼는데, 쉰 날로 " + fmt(tUse) + "일 · 수당으로 " + tCash + "일분이 나갔습니다. "
         + "회사가 법정보다 연차를 더 준 경우이거나, 연차로 찍은 날 중 일부가 실제로는 "
         + "대체휴무·회사 부담 휴무일 수 있습니다.");
-  if (!mismatch.length && !todo.length && rest >= 0 && B.payslips.length)
-    add("fine", "명세서와 기록이 모두 일치합니다",
-        "명세서 " + B.payslips.length + "장의 기본급 차감이 달력 기록과 맞습니다.");
 
   $("lvNote").textContent =
     "연차는 1개월 개근할 때마다 1일씩 생깁니다(근로기준법, 1년 미만 최대 11일). "
@@ -930,12 +947,46 @@ function drawLeave(){
     + "오른쪽 숫자가 그 시점에 남아 있는 연차입니다.";
 }
 
+/* ── 칸 접었다 펴기 ──
+   화면에 한꺼번에 너무 많이 나오므로, 제목을 눌러 내용을 감출 수 있게 한다. */
+const FOLDKEY = "salary.folds";
+const FOLD_SHUT = ["연차 대조", "월별 명세서 대조"];   // 처음에는 접어 둔다
+function readFolds(){ try { return JSON.parse(localStorage.getItem(FOLDKEY)) || {}; } catch { return {}; } }
+function writeFolds(f){ try { localStorage.setItem(FOLDKEY, JSON.stringify(f)); } catch {} }
+
+function setupFolds(){
+  const saved = readFolds();
+  for (const sec of document.querySelectorAll(".sec")){
+    if (sec.id === "setup") continue;
+    const hd = sec.querySelector(".sec-hd"), h2 = hd && hd.querySelector("h2");
+    if (!h2 || hd.querySelector(".fold")) continue;
+    const name = h2.textContent.trim();
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "fold";
+    hd.insertBefore(btn, hd.firstChild);
+    btn.appendChild(h2);
+    const chev = document.createElement("i"); chev.className = "chev";
+    btn.appendChild(chev);
+    const apply = open => {
+      sec.classList.toggle("folded", !open);
+      btn.setAttribute("aria-expanded", String(open));
+      btn.setAttribute("aria-label", name + (open ? " 접기" : " 펴기"));
+    };
+    apply(name in saved ? saved[name] : !FOLD_SHUT.includes(name));
+    btn.addEventListener("click", () => {
+      const open = sec.classList.contains("folded");
+      apply(open);
+      const f = readFolds(); f[name] = open; writeFolds(f);
+    });
+  }
+}
+
 /* ── 요약 칸을 눌러 펼치는 목록 ──
    무엇이 언제였는지 최근 것부터 보여 주고, 누르면 달력이 그 달로 간다. */
-let detailRows = { acc: [], mine: [], co: [], cash: [] }, detailOpen = null;
-const DETAIL_TITLE = { acc:"연차가 생긴 날", mine:"내가 쓴 날", co:"회사가 쓰게 한 날", cash:"수당으로 정산받은 달" };
+let detailRows = { acc: [], mine: [], co: [] }, detailOpen = null;
+const DETAIL_TITLE = { acc:"연차가 생긴 날", mine:"내가 쓴 날", co:"회사가 쓰게 한 날" };
 const DETAIL_EMPTY = { acc:"아직 생긴 연차가 없습니다.", mine:"아직 쓴 연차가 없습니다.",
-                       co:"회사가 쓰게 한 연차가 없습니다.", cash:"수당으로 정산받은 달이 없습니다." };
+                       co:"회사가 쓰게 한 연차가 없습니다." };
 
 function drawDetail(){
   const box = $("heroList");
@@ -1069,6 +1120,8 @@ function openSheet(ds){
   $("shSub").textContent = tm
     ? tm.s + " ~ " + tm.e + " · " + hoursBetween(tm.s, tm.e) + "시간" + (tm.mine ? " (직접 적음)" : "")
     : (hol || "출근 기록 없음");
+  const keep = $("shTimes");
+  if (keep) $("sheet").appendChild(keep);      // 지워지지 않게 잠시 밖으로
   const box = $("shOpts"); box.textContent = "";
   for (const g of GROUPS){
     const h = document.createElement("div"); h.className = "opt-h"; h.textContent = g.title;
@@ -1181,7 +1234,7 @@ function drawForecast(){
   const pay = B.payslips.find(p => p.period === target);
   const why = [];
   const stock = stockUseOf(target);
-  if (stock) why.push("그 달 발생분을 " + stock + "일 넘겨 써서 " + (stock * B.dailyHours) + "시간 차감");
+  if (stock) why.push("그 달에 생긴 1일을 " + stock + "일 넘겨 써서, 모아둔 연차에서 " + (stock * B.dailyHours) + "시간 차감");
   else if (deductH) why.push("무급 " + (deductH / B.dailyHours) + "일 차감 반영");
   if (cash) why.push("그 달 발생분을 안 써서 연차수당이 붙는 것으로 봄");
   else why.push("그 달 발생분을 써서 연차수당은 없는 것으로 봄");
@@ -1190,7 +1243,7 @@ function drawForecast(){
   $("forecast").hidden = false;
 }
 
-function redraw(){ drawCal(); drawMonths(); drawLeave(); drawForecast(); tiles(); }
+function redraw(){ drawCal(); drawMonths(); drawLeave(); drawForecast(); tiles(); setupFolds(); }
 
 /* ── 이벤트 ── */
 $("grid").addEventListener("click", e => {
