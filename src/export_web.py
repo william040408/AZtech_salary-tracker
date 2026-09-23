@@ -117,6 +117,7 @@ bundle = {
     "serviceStart": CFG["serviceStart"],
     "serviceEnd": CFG["serviceEnd"],
     "company": CFG["company"], "team": CFG["team"],
+    "repo": CFG.get("repo"),
     "firstDay": str(FIRST),
     "payslips": pay,
     "attendance": att,

@@ -13,5 +13,6 @@
   },
   "employmentInsuranceRate": 0.009,
   "workbook": null,
-  "firstWorkDay": "YYYY-MM-DD"
+  "firstWorkDay": "YYYY-MM-DD",
+  "repo": "사용자/저장소"
 }

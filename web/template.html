@@ -148,6 +148,18 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   text-decoration:underline;cursor:pointer;padding:4px;align-self:center}
 .linkbtn:hover{color:var(--accent)}
 
+/* ── forecast ── */
+.slip{width:100%;border-collapse:collapse;font-size:13.5px}
+.slip td{padding:7px 0;border-bottom:1px solid var(--line2)}
+.slip td:last-child{text-align:right;font-family:"IBM Plex Mono",monospace;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.slip tr.sum td{border-top:1px solid var(--line);border-bottom:0;font-weight:600;padding-top:9px}
+.slip tr.net td{border-top:2px solid var(--accent);border-bottom:0;font-weight:700;
+  color:var(--accent);font-size:16px;padding-top:10px}
+.slip tr.minus td:last-child{color:var(--unpaid)}
+.slip .guess{font-size:10.5px;color:var(--muted);font-weight:500;margin-left:5px}
+.fc-foot{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.6}
+
 /* ── leave check ── */
 .check{border-radius:11px;padding:13px 15px;margin-bottom:13px;border:1px solid}
 .check.ok{background:var(--paid-soft);border-color:var(--paid);color:var(--paid)}
@@ -208,10 +220,24 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .rbtn:hover:not(:disabled){filter:brightness(1.08)}
 .rbtn:disabled{opacity:.5;cursor:default}
 .rbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.rmsg{padding:10px 16px;font-size:12.5px;line-height:1.55;border-bottom:1px solid var(--line2)}
-.rmsg.info{background:var(--surface2);color:var(--muted)}
-.rmsg.ok{background:var(--paid-soft);color:var(--paid)}
-.rmsg.bad{background:var(--unpaid-soft);color:var(--unpaid)}
+.rwrap{display:flex;align-items:center;gap:9px}
+.rlast{font-size:11px;color:var(--muted);white-space:nowrap}
+.rmsg{padding:12px 16px;border-bottom:1px solid var(--line2)}
+.rmsg.info{background:var(--surface2)}
+.rmsg.ok{background:var(--paid-soft)}
+.rmsg.bad{background:var(--unpaid-soft)}
+.rbar{height:4px;border-radius:2px;background:var(--line);overflow:hidden;margin-bottom:9px}
+.rmsg.ok .rbar,.rmsg.bad .rbar{display:none}
+.rbar i{display:block;height:100%;background:var(--accent);border-radius:2px;
+  width:0;transition:width .6s linear}
+.rline{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:13px}
+.rline b{font-weight:600}
+.rmsg.info .rline b{color:var(--ink)}
+.rmsg.ok .rline b{color:var(--paid)}
+.rmsg.bad .rline b{color:var(--unpaid)}
+.rline span{font-size:12px;color:var(--muted)}
+.rhint{margin-top:5px;font-size:11.5px;color:var(--muted);line-height:1.55}
+.rhint a{color:var(--accent)}
 
 /* ── month rows ── */
 .mrow{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line2)}
@@ -328,6 +354,14 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
     </div>
   </section>
 
+  <section class="sec" id="forecast" hidden>
+    <div class="sec-hd"><h2>이번 달 예상</h2><span class="hint" id="fcMonth"></span></div>
+    <div class="sec-body">
+      <table class="slip" id="fcTable"></table>
+      <div class="fc-foot" id="fcFoot"></div>
+    </div>
+  </section>
+
   <div class="tiles">
     <div class="tile"><span>누적 실수령</span><b class="num" id="tNet"></b><small id="tNetSub"></small></div>
     <div class="tile"><span>만근 기준 실수령</span><b class="num" id="tRef"></b><small id="tRefSub"></small></div>
@@ -383,8 +417,15 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 
   <section class="sec">
     <div class="sec-hd"><h2>월별 명세서 대조</h2>
-      <button class="rbtn" id="refreshBtn" hidden>명세서 불러오기</button></div>
-    <div class="rmsg" id="refreshMsg" hidden></div>
+      <div class="rwrap">
+        <span class="rlast" id="rlast"></span>
+        <button class="rbtn" id="refreshBtn" hidden>명세서 불러오기</button>
+      </div></div>
+    <div class="rmsg" id="refreshMsg" hidden>
+      <div class="rbar"><i id="rbarFill"></i></div>
+      <div class="rline"><b id="rphase"></b><span class="num" id="relapsed"></span></div>
+      <div class="rhint" id="rhint"></div>
+    </div>
     <div id="months"></div>
   </section>
 
@@ -433,6 +474,8 @@ const KINDS = {
   company:   {label:"그냥 쉼",   tag:"휴무", cls:"k-company",  desc:"연차도 급여도 안 깎임",    off:1},
   substitute:{label:"대체휴무",  tag:"대체", cls:"k-company",  desc:"휴일근로 보상 · 차감 없음", off:1},
   official:  {label:"공가",      tag:"공가", cls:"k-company",  desc:"병무청 교육 등 · 차감 없음", off:1},
+  sick:      {label:"병가",      tag:"병가", cls:"k-unpaid",   desc:"질병 · 30일 넘으면 복무 연장", off:1},
+  absent:    {label:"무단결근",  tag:"결근", cls:"k-unpaid",   desc:"8일 넘으면 편입취소",       off:1},
 };
 
 // 공휴일 이름도 칸에 맞게 줄인다
@@ -454,6 +497,7 @@ const GROUPS = [
   { title: "내가 신청한 휴가",  kinds: ["personal", "half", "unpaid"] },
   { title: "회사가 지정한 휴가", kinds: ["coAnnual", "coUnpaid", "company"] },
   { title: "그 외",            kinds: ["substitute", "official"] },
+  { title: "복무에 영향",       kinds: ["sick", "absent"] },
 ];
 
 // 엑셀이 준 기본 분류를 사용자 분류 체계로 옮긴다
@@ -639,9 +683,13 @@ function drawMonths(){
    근로기준법 제60조 2항: 계속근로 1년 미만은 1개월 개근 시 1일, 최대 11일.
    무엇이 연차를 소모하는지는 달력에서 직접 분류한 값을 따른다. */
 const CONSUMES = { personal:1, half:0.5, coAnnual:1,
-                   unpaid:0, coUnpaid:0, company:0, substitute:0, official:0 };
+                   unpaid:0, coUnpaid:0, company:0, substitute:0, official:0,
+                   sick:0, absent:0 };
 // 급여에서 차감되는 분류 (명세서의 기본급 차감과 대조한다)
-const DEDUCTS = { unpaid:1, coUnpaid:1 };
+const DEDUCTS = { unpaid:1, coUnpaid:1, sick:1, absent:1 };   // 급여에서 깎이는 것
+// 산업기능요원 복무에 영향을 주는 것 — 병무청 기준
+const SERVICE_LIMIT = { sick:{ cap:30, what:"병가", why:"통틀어 30일을 넘는 질병 휴가·휴직·결근은 복무기간에 산입되지 않습니다" },
+                        absent:{ cap:8, what:"무단결근", why:"통산 8일 이상 무단결근은 편입취소 사유입니다" } };
 
 function accrualDates(){
   const [hy,hm,hd] = B.hireDate.split("-").map(Number);
@@ -695,7 +743,7 @@ function drawLeave(){
     Object.keys(dedByMonth), Object.keys(mineHByMonth)))].sort();
 
   /* ── 월별 원장 ── */
-  const KO = {personal:"연차", half:"반차", coAnnual:"전사연차", substitute:"대체휴무", company:"전사휴무", official:"공가"};
+  const KO = {personal:"연차", half:"반차", coAnnual:"전사연차", substitute:"대체휴무", company:"전사휴무", official:"공가", sick:"병가", absent:"무단결근"};
   const box = $("ledger"); box.textContent = "";
   let bal = 0, tAcc = 0, tUse = 0, tCash = 0, tMineH = 0, tSlipH = 0;
   const mismatch = [], todo = [];
@@ -721,6 +769,8 @@ function drawLeave(){
                      KO[k] + " " + d[k] + (k === "half" ? "회" : "일"));
     if (d.unpaid)   tag("un", "무급 " + d.unpaid + "일");
     if (d.coUnpaid) tag("un", "전사무급 " + d.coUnpaid + "일");
+    if (d.sick)     tag("un", "병가 " + d.sick + "일");
+    if (d.absent)   tag("un", "무단결근 " + d.absent + "일");
     if (hasSlip && slipH !== mineH) tag("un", "명세서 차감 " + slipH + "시간 ≠ 내 기록 " + mineH + "시간");
     if (!ev.childElementCount){ const e = document.createElement("span"); e.className = "m"; e.textContent = "—"; ev.appendChild(e); }
     const b = document.createElement("span"); b.className = "lgbal num"; b.textContent = fmt(bal) + "일";
@@ -773,6 +823,20 @@ function drawLeave(){
     add("todo", "아직 기록하지 않은 휴무일이 " + todo.reduce((a,x)=>a+x.n,0) + "일 있습니다",
         todo.map(x => x.mo.replace("-",".") + " " + x.n + "일").join(", ")
         + " — 달력에서 눌러 성격을 정해 주세요.");
+  // 산업기능요원 복무에 영향을 주는 누계
+  const svc = {};
+  for (const ds of trackedDates()){
+    const k = kindOf(ds);
+    if (k in SERVICE_LIMIT) svc[k] = (svc[k] || 0) + 1;
+  }
+  for (const [k, v] of Object.entries(svc)){
+    const L = SERVICE_LIMIT[k];
+    if (v >= L.cap)
+      add("bad", L.what + " 누계 " + v + "일 — 기준 " + L.cap + "일을 넘었습니다", L.why);
+    else if (v >= L.cap * 0.6)
+      add("todo", L.what + " 누계 " + v + "일 (기준 " + L.cap + "일)", L.why);
+  }
+
   if (rest < 0)
     add("bad", "법정 발생보다 " + fmt(-rest) + "일 더 썼습니다",
         "법정 기준으로는 " + tAcc + "일이 생겼는데 달력에는 " + fmt(tUse) + "일을 쓴 것으로 남아 있습니다. "
@@ -888,7 +952,69 @@ async function setKind(ds, kind){
   }
 }
 
-function redraw(){ drawCal(); drawMonths(); drawLeave(); tiles(); }
+/* ── 이번 달 예상 명세서 ──
+   명세서가 아직 안 온 달을, 지금까지의 규칙과 달력 기록으로 미리 계산한다.
+   공제는 매달 같은 값이 나오므로 가장 최근 명세서의 값을 그대로 쓴다. */
+function drawForecast(){
+  const real = new Set(B.payslips.filter(p => !p.derived).map(p => p.period));
+  const months = [...new Set(trackedDates().map(monthOf))].sort();
+  const target = months.filter(m => !real.has(m)).pop();
+  const last = B.payslips.filter(p => !p.derived).pop();
+  if (!target || !last){ $("forecast").hidden = true; return; }
+
+  // 그 달의 무급 시간과 연차 소모
+  let deductH = 0, used = 0;
+  for (const ds of trackedDates()){
+    if (monthOf(ds) !== target) continue;
+    const k = kindOf(ds);
+    if (k in DEDUCTS) deductH += B.dailyHours;
+    if (CONSUMES[k]) used += CONSUMES[k];
+  }
+
+  const base = B.fullBase - deductH * B.hourly;
+  const fixed = {};
+  for (const [k, v] of Object.entries(last.earnings))
+    if (k !== "기본급" && k !== "연차수당") fixed[k] = v;
+  // 그 달에 유급휴가를 쓰지 않으면 연차수당이 나온 전례를 따른다
+  const cash = used === 0 ? B.dayPay : 0;
+
+  const earn = [["기본급", base], ...Object.entries(fixed)];
+  if (cash) earn.push(["연차수당", cash, true]);
+  const gross = earn.reduce((a, e) => a + e[1], 0);
+
+  const ded = {};
+  for (const [k, v] of Object.entries(last.deductions)) ded[k] = v;
+  ded["고용보험"] = Math.floor(gross * 0.009 / 10) * 10;
+  const dedTotal = Object.values(ded).reduce((a, b) => a + b, 0);
+
+  const t = $("fcTable"); t.textContent = "";
+  const row = (label, val, cls, guess) => {
+    const tr = document.createElement("tr");
+    if (cls) tr.className = cls;
+    const a = document.createElement("td");
+    a.textContent = label;
+    if (guess){ const g = document.createElement("span"); g.className = "guess"; g.textContent = "추정"; a.appendChild(g); }
+    const b = document.createElement("td");
+    b.textContent = (cls === "minus" ? "−" : "") + WON(Math.abs(val)) + "원";
+    tr.append(a, b); t.appendChild(tr);
+  };
+  for (const [k, v, g] of earn) row(k, v, null, g);
+  row("지급총액", gross, "sum");
+  row("공제총액", dedTotal, "minus");
+  row("예상 실수령", gross - dedTotal, "net");
+
+  $("fcMonth").textContent = target.replace("-", ".") + " 급여";
+  const pay = B.payslips.find(p => p.period === target);
+  const why = [];
+  if (deductH) why.push("무급 " + (deductH / B.dailyHours) + "일 차감 반영");
+  if (cash) why.push("그 달에 유급휴가를 쓰지 않아 연차수당이 붙는 것으로 봄");
+  else why.push("그 달에 유급휴가를 써서 연차수당은 없는 것으로 봄");
+  why.push("공제는 최근 명세서와 같은 값으로 계산");
+  $("fcFoot").textContent = why.join(" · ") + ".";
+  $("forecast").hidden = false;
+}
+
+function redraw(){ drawCal(); drawMonths(); drawLeave(); drawForecast(); tiles(); }
 
 /* ── 이벤트 ── */
 $("grid").addEventListener("click", e => {
@@ -945,16 +1071,48 @@ function pushLeave(){                      // 연속 입력을 한 번으로 묶
    수집 작업을 깨우기만 한다. 끝났는지는 금고의 갱신 시각으로 확인한다. */
 let refreshTimer = null;
 
-function setMsg(cls, text){
+const PHASES = [            // 밖에서는 어느 단계인지 알 수 없어 경과 시간으로 어림한다
+  [0,  "작업을 깨우는 중"],
+  [25, "필요한 것을 준비하는 중"],
+  [55, "메일함을 여는 중"],
+  [95, "명세서를 읽는 중"],
+];
+const EXPECT = 120;         // 보통 걸리는 시간(초)
+
+function setMsg(cls, phase, hint, sec, pct){
   const m = $("refreshMsg");
   m.className = "rmsg " + cls;
-  m.textContent = text;
+  $("rphase").textContent = phase;
+  $("relapsed").textContent = sec == null ? "" : fmtSec(sec);
+  $("rhint").innerHTML = hint || "";
+  $("rbarFill").style.width = Math.round((pct ?? 0) * 100) + "%";
   m.hidden = false;
+}
+const fmtSec = s => s < 60 ? s + "초" : Math.floor(s/60) + "분 " + String(s%60).padStart(2,"0") + "초";
+const phaseOf = s => PHASES.reduce((acc, p) => s >= p[0] ? p[1] : acc, PHASES[0][1]);
+
+function actionsLink(){
+  return B.repo
+    ? ' <a href="https://github.com/' + B.repo + '/actions" target="_blank" rel="noopener">Actions 에서 보기</a>'
+    : "";
+}
+
+function showLast(iso){
+  if (!iso){ $("rlast").textContent = ""; return; }
+  const d = new Date(iso), now = new Date();
+  const mins = Math.round((now - d) / 60000);
+  const rel = mins < 1 ? "방금" : mins < 60 ? mins + "분 전"
+            : mins < 1440 ? Math.floor(mins/60) + "시간 전"
+            : Math.floor(mins/1440) + "일 전";
+  $("rlast").textContent = "갱신 " + rel;
+  $("rlast").title = d.toLocaleString("ko-KR");
 }
 
 async function metaAt(){
   const m = await apiCall("meta", "GET");
-  return (typeof m === "string" ? JSON.parse(m) : m).updatedAt || null;
+  const at = (typeof m === "string" ? JSON.parse(m) : m).updatedAt || null;
+  showLast(at);
+  return at;
 }
 
 async function doRefresh(){
@@ -965,42 +1123,52 @@ async function doRefresh(){
   let before = null;
   try { before = await metaAt(); } catch {}
 
-  setMsg("info", "수집 작업을 깨우는 중…");
+  setMsg("info", "작업을 깨우는 중", "", 0, 0.02);
   try {
     await apiCall("refresh", "POST");
   } catch (e) {
-    setMsg("bad", "시작하지 못했습니다 — " + e.message);
+    setMsg("bad", "시작하지 못했습니다", e.message + actionsLink());
     btn.disabled = false;
     return;
   }
 
   const t0 = Date.now(), deadline = t0 + 8 * 60 * 1000;
-  const tick = async () => {
+  const hint = "보통 1~2분 걸립니다. 이 화면을 닫아도 작업은 계속됩니다.";
+
+  const paint = () => {
     const sec = Math.round((Date.now() - t0) / 1000);
+    setMsg("info", phaseOf(sec), hint, sec, Math.min(sec / EXPECT, 0.95));
+  };
+  const ui = setInterval(paint, 1000);
+  paint();
+
+  const finish = (cls, phase, note) => {
+    clearInterval(ui); clearTimeout(refreshTimer);
+    setMsg(cls, phase, note, Math.round((Date.now() - t0) / 1000), 1);
+    btn.disabled = false;
+  };
+
+  const tick = async () => {
     if (Date.now() > deadline){
-      setMsg("bad", "8분이 지나도 끝나지 않았습니다. GitHub 저장소의 Actions 탭에서 무엇이 막혔는지 볼 수 있습니다.");
-      btn.disabled = false;
+      finish("bad", "시간이 너무 오래 걸립니다",
+             "8분이 지나도 끝나지 않았습니다." + actionsLink());
       return;
     }
     let now = null;
     try { now = await metaAt(); } catch {}
     if (now && now !== before){
-      setMsg("info", "새 자료를 받았습니다. 화면을 갱신합니다…");
       try {
         await loadRemote();
         start();
-        setMsg("ok", "완료 — 명세서 " + B.payslips.length + "장 (" + sec + "초 걸림)");
+        finish("ok", "완료 — 명세서 " + B.payslips.length + "장", "화면을 새 자료로 다시 그렸습니다.");
       } catch (e) {
-        setMsg("bad", "받아온 자료를 읽지 못했습니다 — " + e.message);
+        finish("bad", "받아온 자료를 읽지 못했습니다", e.message);
       }
-      btn.disabled = false;
       return;
     }
-    setMsg("info", "메일을 확인하고 명세서를 읽는 중… " + sec + "초 경과 (보통 2~3분)");
-    refreshTimer = setTimeout(tick, 15000);
+    refreshTimer = setTimeout(tick, 10000);
   };
-  refreshTimer = setTimeout(tick, 20000);
-  setMsg("info", "메일을 확인하고 명세서를 읽는 중… (보통 2~3분)");
+  refreshTimer = setTimeout(tick, 15000);
 }
 
 /* ── 설정 화면 ── */
@@ -1054,6 +1222,7 @@ function start(){
   $("app").hidden = false;
   $("openSetup").hidden = !api;
   $("refreshBtn").hidden = !api;
+  if (api) metaAt().catch(() => {});
 }
 
 (async function boot(){
