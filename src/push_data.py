@@ -38,17 +38,33 @@ subprocess.run([sys.executable, "src/export_web.py"], check=True)
 import json
 bundle = json.loads(Path("web/data.json").read_text(encoding="utf-8"))
 
-# 근무현황 엑셀이 없는 환경(GitHub Actions)에서는 근태가 비어 나온다.
-# 그대로 올리면 이미 쌓아 둔 근태가 지워지므로, 금고에 있던 것을 되살린다.
-if not bundle.get("attendance"):
+# 금고에 이미 있는 것과 합친다. 통째로 덮어쓰면 안 되는 이유가 둘 있다.
+#  - 명세서 링크는 3개월이면 만료된다. 새로 받은 것만 올리면 옛 명세서가 사라지고
+#    다시 받아올 방법이 없다.
+#  - 근무현황 엑셀이 없는 환경(GitHub Actions)에서는 근태가 비어 나온다.
+prev = {}
+try:
     old = requests.get(url.rstrip("/") + "/bundle", headers={"x-pass": pw}, timeout=30)
-    prev = old.json() if old.status_code == 200 else {}
-    if isinstance(prev, str):
-        prev = json.loads(prev)
+    if old.status_code == 200:
+        prev = old.json()
+        if isinstance(prev, str):
+            prev = json.loads(prev)
+except requests.RequestException as e:
+    sys.exit(f"[!] 금고를 읽지 못해 중단합니다 (덮어쓰면 자료가 사라집니다): {e}")
+
+merged = {p["period"]: p for p in (prev.get("payslips") or [])}
+added = [p["period"] for p in bundle["payslips"] if p["period"] not in merged]
+merged.update({p["period"]: p for p in bundle["payslips"]})
+bundle["payslips"] = [merged[k] for k in sorted(merged)]
+if added:
+    print(f"  새 명세서 {len(added)}장: {', '.join(added)}")
+print(f"  명세서 {len(bundle['payslips'])}장 (금고에 있던 것 포함)")
+
+if not bundle.get("attendance"):
     kept = prev.get("attendance") or []
     bundle["attendance"] = kept
     bundle["attendanceFrom"] = prev.get("attendanceFrom")
-    print(f"  근태 {len(kept)}일은 금고에 있던 것을 그대로 둡니다 (엑셀 없음)")
+    print(f"  근태 {len(kept)}일은 금고에 있던 것을 그대로 둡니다")
 
 body = json.dumps(bundle, ensure_ascii=False, separators=(",", ":"))
 
