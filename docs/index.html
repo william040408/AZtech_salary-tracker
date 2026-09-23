@@ -748,14 +748,14 @@ function drawMonths(){
 
     if (p && !p.derived){
       // 내 기록상 무급 일수 vs 명세서 차감 시간
-      const mine = unpaidDays * B.dailyHours + (0);
+      const mine = deductHoursOf(mo);
       const ok = mine === p.deductedHours;
       if (mine || p.deductedHours){
         const c = document.createElement("div");
         c.className = "chk " + (ok ? "ok" : "bad");
         c.textContent = ok
-          ? "✓ 무급 " + (mine/B.dailyHours) + "일, 명세서 차감과 일치"
-          : "⚠ 기록상 무급 " + mine + "시간, 명세서 차감 " + p.deductedHours + "시간 — 달력에서 기록해 주세요";
+          ? "✓ " + (mine/B.dailyHours) + "일치 차감, 명세서와 일치"
+          : "⚠ 기록상 " + mine + "시간, 명세서 차감 " + p.deductedHours + "시간 — 달력에서 그 달을 확인해 주세요";
         row.appendChild(c);
       }
     }
@@ -770,6 +770,33 @@ const CONSUMES = { personal:1, half:0.5, coAnnual:1,
                    unpaid:0, coUnpaid:0, company:0, substitute:0, official:0 };
 // 급여에서 차감되는 분류 (명세서의 기본급 차감과 대조한다)
 const DEDUCTS = { unpaid:1, coUnpaid:1 };   // 급여에서 깎이는 것
+
+/* 그 달에 생긴 연차 일수 */
+function accOf(mo){
+  let n = 0;
+  for (const d of accrualDates()) if (d.slice(0,7) === mo) n++;
+  return n;
+}
+/* 그 달에 연차를 쓴 일수 (반차는 0.5) */
+function useOf(mo){
+  let u = 0;
+  for (const ds of trackedDates())
+    if (monthOf(ds) === mo){ const k = kindOf(ds); if (CONSUMES[k]) u += CONSUMES[k]; }
+  return u;
+}
+/* 연차와 무관하게 무급으로 적어 둔 날 */
+function flatUnpaidOf(mo){
+  let n = 0;
+  for (const ds of trackedDates())
+    if (monthOf(ds) === mo && (kindOf(ds) in DEDUCTS)) n += 1;
+  return n;
+}
+/* 그 달 발생분을 넘겨 쓴 일수 — 이미 수당으로 받아 둔 재고를 쓰는 것이라 급여에서 빠진다 */
+function stockUseOf(mo){ return Math.max(0, useOf(mo) - accOf(mo)); }
+/* 그 달 기본급에서 빠지는 시간 */
+function deductHoursOf(mo){ return (flatUnpaidOf(mo) + stockUseOf(mo)) * B.dailyHours; }
+/* 그 달에 현금으로 받을 연차수당 일수 */
+function cashDaysOf(mo){ return Math.max(0, accOf(mo) - useOf(mo)); }
 
 function accrualDates(){
   const [hy,hm,hd] = B.hireDate.split("-").map(Number);
@@ -824,6 +851,7 @@ function drawLeave(){
   const months = [...new Set([].concat(
     Object.keys(accByMonth), Object.keys(useByMonth), Object.keys(cashByMonth),
     Object.keys(dedByMonth), Object.keys(mineHByMonth)))].sort();
+  for (const mo of months) mineHByMonth[mo] = deductHoursOf(mo);
 
   /* ── 월별 원장 ── */
   const KO = {personal:"연차", half:"반차", coAnnual:"전사연차", substitute:"대체휴무", company:"전사휴무", official:"공가"};
@@ -834,8 +862,8 @@ function drawLeave(){
   for (const mo of months){
     const acc = accByMonth[mo]||0, use = useByMonth[mo]||0, cash = cashByMonth[mo]||0;
     const slipH = dedByMonth[mo]||0, mineH = mineHByMonth[mo]||0;
-    // 수당으로 정산받은 날은 이미 없어진 것이므로 잔여에서 뺀다
-    bal += acc - use - cash;
+    // 수당은 돈일 뿐 '쉴 권리'는 남는다 (C안). 잔여를 줄이는 것은 실제 사용뿐이다.
+    bal += acc - use;
     tAcc += acc; tUse += use; tCash += cash; tMineH += mineH; tSlipH += slipH;
 
     const hasSlip = havePayslip.has(mo);
@@ -852,6 +880,8 @@ function drawLeave(){
     for (const k of ["personal","half","coAnnual","substitute","official","company"])
       if (d[k]) tag(k === "coAnnual" || k === "personal" || k === "half" ? "use" : "acc",
                      KO[k] + " " + d[k] + (k === "half" ? "회" : "일"));
+    const stock = stockUseOf(mo);
+    if (stock) tag("un", "재고 " + fmt(stock) + "일 → 급여 차감");
     if (d.unpaid)   tag("un", "무급 " + d.unpaid + "일");
     if (d.coUnpaid) tag("un", "전사무급 " + d.coUnpaid + "일");
     if (hasSlip && slipH !== mineH) tag("un", "명세서 차감 " + slipH + "시간 ≠ 내 기록 " + mineH + "시간");
@@ -880,7 +910,7 @@ function drawLeave(){
   chk.append(h, l1, l2, foot);
   tb.appendChild(chk);
 
-  const rest = fmt(tAcc - tUse - tCash);
+  const rest = fmt(tAcc - tUse);
   $("heroBal").textContent = rest + "일";
   $("heroAcc").textContent = tAcc + "일";
   $("heroMine").textContent = fmt(byMe) + "일";
@@ -918,9 +948,9 @@ function drawLeave(){
 
   $("lvNote").textContent =
     "연차는 1개월 개근할 때마다 1일씩 생깁니다(근로기준법, 1년 미만 최대 11일). "
-    + "그 달에 쓰지 않은 연차를 회사가 수당으로 정산해 주면 그만큼 잔여에서 빠집니다. "
-    + "아래 표는 달마다 연차가 얼마나 생기고 얼마나 줄었는지, 그래서 그 달 끝에 몇 일이 "
-    + "남았는지를 보여 줍니다. 오른쪽 숫자가 그 시점의 잔여입니다.";
+    + "그 달에 쓰지 않은 연차는 회사가 수당으로 미리 지급하지만, 쉴 권리는 그대로 남아 쌓입니다. "
+    + "나중에 그 재고를 쓰면 돈은 이미 받았으므로 기본급에서 하루치가 빠집니다. "
+    + "오른쪽 숫자가 그 시점에 남아 있는 연차입니다.";
 }
 
 /* ── 요약 칸을 눌러 펼치는 목록 ──
@@ -1136,21 +1166,14 @@ function drawForecast(){
   const last = B.payslips.filter(p => !p.derived).pop();
   if (!target || !last){ $("forecast").hidden = true; return; }
 
-  // 그 달의 무급 시간과 연차 소모
-  let deductH = 0, used = 0;
-  for (const ds of trackedDates()){
-    if (monthOf(ds) !== target) continue;
-    const k = kindOf(ds);
-    if (k in DEDUCTS) deductH += B.dailyHours;
-    if (CONSUMES[k]) used += CONSUMES[k];
-  }
+  const deductH = deductHoursOf(target), used = useOf(target);
 
   const base = B.fullBase - deductH * B.hourly;
   const fixed = {};
   for (const [k, v] of Object.entries(last.earnings))
     if (k !== "기본급" && k !== "연차수당") fixed[k] = v;
-  // 그 달에 유급휴가를 쓰지 않으면 연차수당이 나온 전례를 따른다
-  const cash = used === 0 ? B.dayPay : 0;
+  // 그 달 발생분을 안 쓰면 그만큼 연차수당으로 나온다
+  const cash = Math.round(cashDaysOf(target) * B.dayPay);
 
   const earn = [["기본급", base], ...Object.entries(fixed)];
   if (cash) earn.push(["연차수당", cash, true]);
@@ -1180,9 +1203,11 @@ function drawForecast(){
   $("fcMonth").textContent = target.replace("-", ".") + " 급여";
   const pay = B.payslips.find(p => p.period === target);
   const why = [];
-  if (deductH) why.push("무급 " + (deductH / B.dailyHours) + "일 차감 반영");
-  if (cash) why.push("그 달에 유급휴가를 쓰지 않아 연차수당이 붙는 것으로 봄");
-  else why.push("그 달에 유급휴가를 써서 연차수당은 없는 것으로 봄");
+  const stock = stockUseOf(target);
+  if (stock) why.push("그 달 발생분을 " + stock + "일 넘겨 써서 " + (stock * B.dailyHours) + "시간 차감");
+  else if (deductH) why.push("무급 " + (deductH / B.dailyHours) + "일 차감 반영");
+  if (cash) why.push("그 달 발생분을 안 써서 연차수당이 붙는 것으로 봄");
+  else why.push("그 달 발생분을 써서 연차수당은 없는 것으로 봄");
   why.push("공제는 최근 명세서와 같은 값으로 계산");
   $("fcFoot").textContent = why.join(" · ") + ".";
   $("forecast").hidden = false;
