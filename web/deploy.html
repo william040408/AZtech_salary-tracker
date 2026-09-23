@@ -698,6 +698,141 @@ GitHub 은 전혀 관여하지 않음</pre>
 </table>
 </div>
 
+
+<h2><span class="n">부록</span>내 설정 현황</h2>
+
+<div class="card q">
+<p><strong>다른 사람에게 물어볼 때 이 장만 보여 주면 됩니다.</strong>
+비밀 값은 적혀 있지 않고 <strong>이름과 위치만</strong> 있습니다.</p>
+</div>
+
+<h3>주소</h3>
+
+<div class="tw">
+<table>
+  <tr><th>무엇</th><th>주소</th></tr>
+  <tr><td>웹페이지</td><td class="mono">william040408.github.io/AZtech_salary-tracker/</td></tr>
+  <tr><td>코드 저장소</td><td class="mono">github.com/william040408/AZtech_salary-tracker</td></tr>
+  <tr><td>데이터 API</td><td class="mono">salary-api.william040408.workers.dev</td></tr>
+</table>
+</div>
+
+<h3>GitHub</h3>
+
+<div class="tw">
+<table>
+  <tr><th>항목</th><th>설정</th></tr>
+  <tr><td>공개 범위</td><td>Public (급여 데이터는 들어 있지 않음)</td></tr>
+  <tr><td>Pages</td><td><span class="mono">main</span> 브랜치의 <span class="mono">/docs</span> 폴더</td></tr>
+  <tr><td>Actions 워크플로</td><td><span class="mono">.github/workflows/refresh.yml</span></td></tr>
+  <tr><td>Actions 트리거</td><td><span class="mono">workflow_dispatch</span> 만 — push 로는 안 돎</td></tr>
+  <tr><td>Actions 러너</td><td><span class="mono">ubuntu-latest</span>, Python 3.12, Playwright Chromium</td></tr>
+  <tr><td>Secrets</td><td class="mono">GMAIL_USER · GMAIL_APP_PASSWORD · WORKER_URL · WORKER_PASS</td></tr>
+</table>
+</div>
+
+<h3>Cloudflare</h3>
+
+<div class="tw">
+<table>
+  <tr><th>항목</th><th>설정</th></tr>
+  <tr><td>Worker 이름</td><td class="mono">salary-api</td></tr>
+  <tr><td>배포 방식</td><td>저장소 연결 (Git push 하면 자동 배포)</td></tr>
+  <tr><td>설정 파일</td><td class="mono">wrangler.jsonc</td></tr>
+  <tr><td>KV 네임스페이스</td><td><span class="mono">salary</span>, 바인딩 이름 <span class="mono">KV</span></td></tr>
+  <tr><td>Secrets</td><td class="mono">PASSPHRASE · GH_TOKEN</td></tr>
+  <tr><td>Variables</td><td class="mono">ALLOW_ORIGIN · GH_REPO · GH_WORKFLOW</td></tr>
+</table>
+</div>
+
+<h3>Worker 의 경로</h3>
+
+<div class="tw">
+<table>
+  <tr><th>경로</th><th>메서드</th><th>하는 일</th></tr>
+  <tr><td class="mono">/bundle</td><td class="mono">GET · PUT</td><td>급여명세서 + 근태</td></tr>
+  <tr><td class="mono">/leave</td><td class="mono">GET · PUT</td><td>달력에 찍은 분류</td></tr>
+  <tr><td class="mono">/config</td><td class="mono">GET · PUT</td><td>시급·소정근로시간 등 계약 조건</td></tr>
+  <tr><td class="mono">/meta</td><td class="mono">GET</td><td>마지막 갱신 시각 (진행 확인용)</td></tr>
+  <tr><td class="mono">/refresh</td><td class="mono">POST</td><td>GitHub Actions 깨우기</td></tr>
+</table>
+</div>
+
+<p>모든 경로는 <span class="mono">x-pass</span> 헤더에 암구호를 요구합니다.
+틀리면 <span class="mono">401</span> 만 돌려줍니다.</p>
+
+<h3>Google</h3>
+
+<ul>
+  <li>Gmail <strong>앱 비밀번호</strong> 로 <span class="mono">imap.gmail.com</span> 접속 (2단계 인증 필요)</li>
+  <li>발신자 <span class="mono">ecount.com</span>, 제목에 "급여명세서" 가 든 메일을 찾음</li>
+  <li>본문의 <span class="mono">l.ecount.com/····</span> 링크를 헤드리스 크롬으로 열어 표를 읽음</li>
+  <li><strong>링크는 3개월이면 만료</strong> — 매달 한 번은 받아 둬야 함</li>
+</ul>
+
+<h3>저장소 구조</h3>
+
+<pre>src/          파이썬 — 수집·검산·빌드
+  fetch.py          메일에서 명세서 링크 추출 (IMAP)
+  fetch_doc.py      링크를 헤드리스 브라우저로 열어 저장
+  parse.py          명세서 표 → 구조화
+  model.py          산술 검산, 차감 시간 역산
+  calendar_kr.py    한국 공휴일, 실입금일 계산
+  reconcile.py      근무기록 엑셀 대조 (지금은 안 씀)
+  export_web.py     웹에 심을 데이터 묶음 생성
+  build_web.py      페이지 빌드 (아티팩트용 / Pages용)
+  push_data.py      금고에 올리기 (병합 방식)
+  make_pdf.py       설명 문서를 PDF 로
+
+web/
+  template.html     페이지 원본 (데이터 자리는 비어 있음)
+  guide.html        설명 문서
+  deploy.html       이 문서
+
+worker/worker.js    Cloudflare Worker — 문지기
+wrangler.jsonc      Worker 배포 설정
+.github/workflows/refresh.yml   수집 작업 정의
+docs/index.html     빌드 결과 — GitHub Pages 가 내보내는 것
+
+커밋 안 되는 것
+  .env              Gmail 앱 비밀번호, Worker 주소·암구호
+  config.json       시급, 소정근로시간, 입사일, 이름
+  data/             명세서 원본, 근태 스냅샷
+  web/index.html    데이터가 박힌 빌드 결과</pre>
+
+<h3>명령어</h3>
+
+<pre>.venv\Scriptsctivate        가상환경 켜기
+
+python src/fetch.py links     메일에서 링크 추출
+python src/fetch_doc.py       명세서 받아오기
+python src/report.py          평소와 달라진 것만 보고
+python src/build_web.py       페이지 빌드
+python src/push_data.py       금고에 올리기 (설정도 함께)
+python src/make_pdf.py deploy 이 문서를 PDF 로</pre>
+
+<h3>데이터가 오가는 경로</h3>
+
+<div class="tw">
+<table>
+  <tr><th>무엇을</th><th>어떻게</th><th>어디로</th></tr>
+  <tr><td>화면·기능 수정</td><td><span class="mono">git push</span></td><td>Pages(1분) + Worker(2분)</td></tr>
+  <tr><td>새 명세서</td><td>웹 버튼 또는 <span class="mono">push_data.py</span></td><td>KV (창고를 안 거침)</td></tr>
+  <tr><td>달력 분류</td><td>폰에서 탭</td><td>KV 즉시</td></tr>
+  <tr><td>계약 조건</td><td><span class="mono">push_data.py</span></td><td>KV — 일꾼이 매번 받아 감</td></tr>
+</table>
+</div>
+
+<h3>알려진 제약</h3>
+
+<ul>
+  <li>이카운트 링크 <strong>3개월 만료</strong> — 2~5월분은 이미 만료돼 텍스트로만 복구</li>
+  <li>Actions 러너는 매번 빈 상태 — 그래서 명세서를 <strong>덮어쓰지 않고 합친다</strong></li>
+  <li>회사 근무현황 엑셀은 <strong>초기 1회 수입</strong>용. 지금은 웹에서 직접 기록</li>
+  <li>명세서에 근태 정보가 없어 <strong>대조 가능한 항목은 무급 처리 하나뿐</strong></li>
+  <li>KV 는 최종 일관성 — 쓰고 바로 읽으면 옛 값이 나올 수 있음</li>
+</ul>
+
 <h2><span class="n">13</span>용어 사전</h2>
 
 <dl>
