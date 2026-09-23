@@ -60,7 +60,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 /* ── hero ── */
 .hero{background:var(--surface);border:1px solid var(--line);border-radius:16px;
   box-shadow:var(--shadow);overflow:hidden}
-.hero-main{background:var(--surface);padding:17px 18px 14px;display:flex;align-items:baseline;
+.hero-main{background:var(--surface);padding:17px 24px 14px 18px;display:flex;align-items:baseline;
   justify-content:space-between;gap:12px;border-bottom:1px solid var(--line2)}
 .hero-main span{font-size:13px;font-weight:600;color:var(--accent)}
 .hero-main b{font-size:34px;font-weight:700;color:var(--accent);letter-spacing:-.02em;line-height:1}
@@ -113,7 +113,33 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .fold[aria-expanded="false"] .chev{transform:rotate(-90deg)}
 .fold:hover h2{color:var(--accent)}
 .fold:hover .chev::before{border-color:var(--accent)}
-.sec.folded .sec-body,.sec.folded .note{display:none}
+.sec.folded>*:not(.sec-hd){display:none}
+.prow{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.pfield{display:flex;flex-direction:column;gap:4px;flex:1;min-width:118px}
+.pfield span{font-size:11.5px;font-weight:600;color:var(--muted)}
+.pfield input{font-family:Inter,"Noto Sans KR",sans-serif;font-size:14px;padding:9px 10px;
+  border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);width:100%}
+.pfield input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.prow .btn{flex:1 0 100%;padding:10px}
+.prow .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.psum{margin-top:14px;border:1px solid var(--line);border-radius:13px;overflow:hidden}
+.psum .ph+.pline{border-top:0}
+.psum .ph{padding:11px 14px;background:var(--surface2);border-bottom:1px solid var(--line2);
+  font-size:12.5px;font-weight:600;color:var(--ink2)}
+.pline{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  padding:10px 14px;font-size:13.5px;border-top:1px solid var(--line2)}
+.pline b{font-weight:600}
+.pline.sub{padding-left:26px;font-size:12.5px;color:var(--muted)}
+.pline.cut b{color:var(--unpaid)}
+.pline.keep b{color:var(--accent)}
+.pline.tot{background:var(--surface2);font-weight:600}
+.ptip{margin-top:10px;padding:11px 13px;border-radius:13px;font-size:12.5px;line-height:1.5;
+  background:var(--accent-soft);color:var(--accent)}
+.ptip.warn{background:var(--warn-soft);color:var(--warn)}
+.ptip b{display:block;margin-bottom:2px}
+.pempty{margin-top:12px;font-size:12.5px;color:var(--muted)}
+.cell.inrange{outline:2px solid var(--accent);outline-offset:-2px}
+.cell.rend{background:var(--accent-soft)}
 .sec.folded .sec-hd{border-bottom:0}
 
 /* ── calendar ── */
@@ -454,6 +480,19 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
     <div class="note">날짜를 눌러 그날의 성격을 기록합니다.</div>
   </section>
 
+  <section class="sec" id="plan">
+    <div class="sec-hd"><h2>연차 계획</h2><span class="hint" id="plHint"></span></div>
+    <div class="sec-body">
+      <div class="prow">
+        <label class="pfield"><span>시작</span><input type="date" id="plFrom"></label>
+        <label class="pfield"><span>끝</span><input type="date" id="plTo"></label>
+        <button class="btn" type="button" id="plPick">달력에서 고르기</button>
+      </div>
+      <div id="plOut"></div>
+    </div>
+    <div class="note">쉬려는 구간을 정하면 급여가 얼마나 깎이는지 미리 계산합니다.</div>
+  </section>
+
   <section class="sec">
     <div class="sec-hd"><h2>연차 대조</h2><span class="hint" id="lvAsOf"></span></div>
     <div class="sec-body">
@@ -673,6 +712,9 @@ function drawCal(){
     if (w0 === 0) b.classList.add("sun");
     const dd = document.createElement("span"); dd.className = "d"; dd.textContent = day;
     b.appendChild(dd);
+    const pf = $("plFrom").value, pt = $("plTo").value;
+    if (pf && (ds === pf || ds === pt)) b.classList.add("rend");
+    if (pf && pt && ds >= pf && ds <= pt) b.classList.add("inrange");
     const hn = holName(ds);
     if (K && k !== "weekend" && k !== "holiday"){
       const t = document.createElement("span"); t.className = "t"; t.textContent = K.tag;
@@ -810,6 +852,102 @@ function accrualDates(){
   return out;
 }
 
+/* 1년치 발생일 — 앞으로 생길 것까지 포함한다 */
+function accrualDatesAll(){
+  const [hy,hm,hd] = B.hireDate.split("-").map(Number), out = [];
+  for (let k=1; k<=11; k++){
+    const d = new Date(hy, hm-1+k, hd);
+    out.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"));
+  }
+  return out;
+}
+
+/* ── 연차 계획 ──
+   구간 안의 평일에서 공휴일을 뺀 것이 실제로 쉬게 되는 날이다.
+   달마다 그 달에 생기는 1일까지는 급여가 깎이지 않고, 그 위로는
+   모아둔 연차에서 나간다. 모아둔 것마저 없으면 그때가 순손실이다. */
+let planPick = 0;
+
+function planWorkdays(from, to){
+  const out = [], a = new Date(from+"T00:00:00"), b = new Date(to+"T00:00:00");
+  for (const d = new Date(a); d <= b; d.setDate(d.getDate()+1)){
+    const w = d.getDay(); if (w === 0 || w === 6) continue;
+    const ds = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    if (B.holidays && B.holidays[ds]) continue;
+    out.push(ds);
+  }
+  return out;
+}
+
+function drawPlan(){
+  const out = $("plOut"); out.textContent = "";
+  const from = $("plFrom").value, to = $("plTo").value;
+  $("plHint").textContent = "모아둔 연차 " + (Math.round(curBal*10)/10) + "일";
+  if (!from || !to || from > to){
+    const e = document.createElement("div"); e.className = "pempty";
+    e.textContent = planPick ? "달력에서 날짜를 눌러 주세요."
+                             : "쉬려는 구간의 시작과 끝을 정해 주세요.";
+    out.appendChild(e); return;
+  }
+
+  const days = planWorkdays(from, to);
+  const span = Math.round((new Date(to+"T00:00:00") - new Date(from+"T00:00:00")) / 864e5) + 1;
+  const byMonth = {};
+  for (const ds of days) byMonth[monthOf(ds)] = (byMonth[monthOf(ds)] || 0) + 1;
+
+  const accAll = accrualDatesAll();
+  let freeDays = 0, cutDays = 0;
+  for (const mo of Object.keys(byMonth)){
+    const cnt = byMonth[mo];
+    const a = accAll.filter(d => monthOf(d) === mo).length;   // 그 달에 생기는 연차
+    freeDays += Math.min(cnt, a);
+    cutDays  += Math.max(0, cnt - a);
+  }
+  // 계획이 시작되기 전까지 더 쌓이는 몫
+  const grow = accAll.filter(d => d > TODAY && d < from).length;
+  const stock = Math.max(0, curBal) + grow;
+  const covered = Math.min(cutDays, stock);      // 이미 수당으로 받아 둔 몫
+  const loss = Math.max(0, cutDays - covered);   // 받은 적 없이 깎이는 몫
+
+  const box = document.createElement("div"); box.className = "psum";
+  const hd = document.createElement("div"); hd.className = "ph";
+  hd.textContent = from.replace(/-/g,".") + " ~ " + to.replace(/-/g,".") + " · " + span + "일간";
+  box.appendChild(hd);
+  const line = (label, val, cls) => {
+    const d = document.createElement("div"); d.className = "pline" + (cls ? " " + cls : "");
+    const a = document.createElement("span"); a.textContent = label;
+    const b = document.createElement("b"); b.className = "num"; b.textContent = val;
+    d.append(a, b); box.appendChild(d);
+  };
+  const skipped = span - days.length;
+  line("실제로 쉬는 날", days.length + "일");
+  if (skipped) line("주말·공휴일이라 뺀 날", skipped + "일", "sub");
+  line("그 기간에 생기는 연차", "+" + freeDays + "일", "keep");
+  line("그때까지 모아둘 연차", (Math.round(stock*10)/10) + "일", "keep");
+  line("급여에서 빠지는 날", cutDays ? cutDays + "일  −" + WON(cutDays * B.dayPay) + "원" : "없음", cutDays ? "cut" : "keep");
+  if (covered) line("이미 수당으로 받아 둔 몫", (Math.round(covered*10)/10) + "일  실손실 아님", "sub");
+  line("실제 손해", loss ? "−" + WON(loss * B.dayPay) + "원" : "0원", loss ? "tot cut" : "tot keep");
+  out.appendChild(box);
+
+  const tip = document.createElement("div");
+  const t = document.createElement("b"), body = document.createElement("span");
+  if (!loss){
+    tip.className = "ptip";
+    t.textContent = "손해 없이 쉴 수 있습니다";
+    body.textContent = cutDays
+      ? "급여에서 " + WON(cutDays * B.dayPay) + "원이 빠지지만, 그만큼은 이미 연차수당으로 받아 둔 몫입니다."
+      : "그 달에 생기는 연차로 전부 덮입니다.";
+  } else {
+    tip.className = "ptip warn";
+    const d = new Date(from+"T00:00:00"); d.setMonth(d.getMonth() + Math.ceil(loss));
+    t.textContent = WON(loss * B.dayPay) + "원을 손해 봅니다";
+    body.textContent = "연차가 " + (Math.round(loss*10)/10) + "일 모자랍니다. 한 달에 1일씩 쌓이니 "
+      + (d.getFullYear() + "." + String(d.getMonth()+1).padStart(2,"0")) + " 이후로 미루면 손해가 없습니다. "
+      + "매달 하루씩 나눠 쉬면 급여가 한 번도 깎이지 않습니다.";
+  }
+  tip.append(t, body); out.appendChild(tip);
+}
+
 function drawLeave(){
   const fmt = n => Math.round(n * 10) / 10;
 
@@ -913,6 +1051,7 @@ function drawLeave(){
   tb.appendChild(chk);
 
   const rest = fmt(tAcc - tUse);
+  curBal = rest;
   $("heroBal").textContent = rest + "일";
   $("heroAcc").textContent = tAcc + "일";
   $("heroMine").textContent = fmt(byMe) + "일";
@@ -950,7 +1089,7 @@ function drawLeave(){
 /* ── 칸 접었다 펴기 ──
    화면에 한꺼번에 너무 많이 나오므로, 제목을 눌러 내용을 감출 수 있게 한다. */
 const FOLDKEY = "salary.folds";
-const FOLD_SHUT = ["연차 대조", "월별 명세서 대조"];   // 처음에는 접어 둔다
+const FOLD_SHUT = ["연차 계획", "연차 대조", "월별 명세서 대조"];   // 처음에는 접어 둔다
 function readFolds(){ try { return JSON.parse(localStorage.getItem(FOLDKEY)) || {}; } catch { return {}; } }
 function writeFolds(f){ try { localStorage.setItem(FOLDKEY, JSON.stringify(f)); } catch {} }
 
@@ -983,6 +1122,7 @@ function setupFolds(){
 
 /* ── 요약 칸을 눌러 펼치는 목록 ──
    무엇이 언제였는지 최근 것부터 보여 주고, 누르면 달력이 그 달로 간다. */
+let curBal = 0;
 let detailRows = { acc: [], mine: [], co: [] }, detailOpen = null;
 const DETAIL_TITLE = { acc:"연차가 생긴 날", mine:"내가 쓴 날", co:"회사가 쓰게 한 날" };
 const DETAIL_EMPTY = { acc:"아직 생긴 연차가 없습니다.", mine:"아직 쓴 연차가 없습니다.",
@@ -1243,13 +1383,37 @@ function drawForecast(){
   $("forecast").hidden = false;
 }
 
-function redraw(){ drawCal(); drawMonths(); drawLeave(); drawForecast(); tiles(); setupFolds(); }
+function redraw(){ drawCal(); drawMonths(); drawLeave(); drawForecast(); tiles(); drawPlan(); setupFolds(); }
 
 /* ── 이벤트 ── */
 $("grid").addEventListener("click", e => {
   const b = e.target.closest(".cell"); if (!b || b.disabled) return;
+  if (planPick){
+    const ds = b.dataset.date;
+    if (planPick === 1){ $("plFrom").value = ds; $("plTo").value = ""; planPick = 2; }
+    else {
+      if (ds < $("plFrom").value) $("plFrom").value = ds; else $("plTo").value = ds;
+      planPick = 0;
+    }
+    syncPick(); drawCal(); drawPlan(); return;
+  }
   openSheet(b.dataset.date);
 });
+
+function syncPick(){
+  const b = $("plPick");
+  b.classList.toggle("on", !!planPick);
+  b.textContent = planPick === 1 ? "시작할 날을 누르세요 (취소)"
+                : planPick === 2 ? "끝날 날을 누르세요 (취소)"
+                : "달력에서 고르기";
+}
+$("plPick").addEventListener("click", () => {
+  planPick = planPick ? 0 : 1;
+  if (planPick){ $("plFrom").value = ""; $("plTo").value = ""; }
+  syncPick(); drawCal(); drawPlan();
+  if (planPick) $("calSec").scrollIntoView({ behavior:"smooth", block:"start" });
+});
+for (const id of ["plFrom","plTo"]) $(id).addEventListener("change", () => { drawCal(); drawPlan(); });
 $("shOpts").addEventListener("click", e => {
   const b = e.target.closest(".opt"); if (!b || !picked) return;
   const k = b.dataset.kind;
