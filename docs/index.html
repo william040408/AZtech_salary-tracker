@@ -204,7 +204,12 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .sheet.on{transform:translateY(0)}
 .sheet h3{margin:0 0 3px;font-size:16px;font-weight:600}
 .sheet .sub{font-size:12.5px;color:var(--muted);margin-bottom:14px}
-.opts{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.opts{display:flex;flex-direction:column;gap:3px}
+.opt-h{font-size:10.5px;font-weight:700;color:var(--muted);letter-spacing:.07em;
+  text-transform:uppercase;margin:9px 0 3px}
+.opt-h:first-child{margin-top:0}
+.opt-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.opt-row:has(.opt:only-child){grid-template-columns:1fr}
 .opt{appearance:none;text-align:left;border:1px solid var(--line);background:var(--surface2);color:var(--ink);
   border-radius:10px;padding:10px 11px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:500;
   display:flex;flex-direction:column;gap:1px}
@@ -232,7 +237,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .cell .t{font-size:8.5px}
   .nav b{min-width:82px}
   .nav button{width:34px;height:34px}          /* 터치 타겟 */
-  .opts{grid-template-columns:1fr 1fr;gap:7px}
+  .opt-row{gap:5px}
   .opt{padding:13px 12px}
   .btn{padding:14px}
   .mrow{padding:13px 14px}
@@ -337,7 +342,6 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   <div class="sub" id="shSub">—</div>
   <div class="opts" id="shOpts"></div>
   <div class="sheet-foot">
-    <button class="btn" id="shReset">엑셀 기록으로 되돌리기</button>
     <button class="btn pri" id="shClose">닫기</button>
   </div>
 </div>
@@ -362,16 +366,23 @@ const KINDS = {
   holiday:   {label:"공휴일",   cls:"k-holiday",  desc:"법정 공휴일",             off:0},
   weekend:   {label:"주말",     cls:"k-weekend",  desc:"",                       off:0},
 
-  personal:  {label:"연차",     cls:"k-personal", desc:"내가 신청 · 연차 차감",    off:1},
-  half:      {label:"반차",     cls:"k-half",     desc:"내가 신청 · 연차 0.5일",   off:0.5},
-  unpaid:    {label:"무급휴가", cls:"k-unpaid",   desc:"내가 신청 · 급여 차감",    off:1},
+  personal:  {label:"연차",      cls:"k-personal", desc:"유급 · 연차 1일 소모",     off:1},
+  half:      {label:"반차",      cls:"k-half",     desc:"유급 · 연차 0.5일 소모",   off:0.5},
+  unpaid:    {label:"무급휴가",  cls:"k-unpaid",   desc:"연차가 없어 급여 차감",    off:1},
 
-  coAnnual:  {label:"전사·연차", cls:"k-personal", desc:"회사 휴무 · 연차 차감",   off:1},
-  coUnpaid:  {label:"전사·무급", cls:"k-unpaid",   desc:"회사 휴무 · 급여 차감",   off:1},
-  company:   {label:"전사·유급", cls:"k-company",  desc:"회사 휴무 · 차감 없음",   off:1},
-  substitute:{label:"대체휴무", cls:"k-company",  desc:"휴일근로 보상 · 차감 없음", off:1},
+  coAnnual:  {label:"연차 소모", cls:"k-personal", desc:"유급 · 연차 1일 소모",     off:1},
+  coUnpaid:  {label:"무급",      cls:"k-unpaid",   desc:"급여에서 차감",            off:1},
+  company:   {label:"그냥 쉼",   cls:"k-company",  desc:"연차도 급여도 안 깎임",    off:1},
+  substitute:{label:"대체휴무",  cls:"k-company",  desc:"휴일근로 보상 · 차감 없음", off:1},
 };
-const CHOOSABLE = ["work","personal","half","unpaid","coAnnual","coUnpaid","company","substitute"];
+
+/* 시트에 묶어서 보여 줄 순서. 회사가 실제로 쓰는 갈래를 그대로 따른다. */
+const GROUPS = [
+  { title: "출근",             kinds: ["work"] },
+  { title: "내가 신청한 휴가",  kinds: ["personal", "half", "unpaid"] },
+  { title: "회사가 지정한 휴가", kinds: ["coAnnual", "coUnpaid", "company"] },
+  { title: "그 외",            kinds: ["substitute"] },
+];
 
 // 엑셀이 준 기본 분류를 사용자 분류 체계로 옮긴다
 const baseKind = a => a.kind === "personal_off" ? "personal"
@@ -691,14 +702,20 @@ function openSheet(ds){
     ? "엑셀 기록 " + a.start + "~" + a.end + " · " + a.hours + "시간"
     : (a && a.holiday ? a.holiday : "출근 기록 없음");
   const box = $("shOpts"); box.textContent = "";
-  for (const key of CHOOSABLE){
-    const K = KINDS[key];
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "opt"; b.dataset.kind = key;
-    b.setAttribute("aria-pressed", String(k === key));
-    const t = document.createElement("span"); t.textContent = K.label;
-    const s = document.createElement("small"); s.textContent = K.desc;
-    b.append(t, s); box.appendChild(b);
+  for (const g of GROUPS){
+    const h = document.createElement("div"); h.className = "opt-h"; h.textContent = g.title;
+    box.appendChild(h);
+    const row = document.createElement("div"); row.className = "opt-row";
+    for (const key of g.kinds){
+      const K = KINDS[key];
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "opt"; b.dataset.kind = key;
+      b.setAttribute("aria-pressed", String(k === key));
+      const t = document.createElement("span"); t.textContent = K.label;
+      const sm = document.createElement("small"); sm.textContent = K.desc;
+      b.append(t, sm); row.appendChild(b);
+    }
+    box.appendChild(row);
   }
   $("scrim").classList.add("on"); $("sheet").classList.add("on");
 }
@@ -729,7 +746,6 @@ $("shOpts").addEventListener("click", e => {
   const b = e.target.closest(".opt"); if (!b || !picked) return;
   setKind(picked, b.dataset.kind); closeSheet();
 });
-$("shReset").addEventListener("click", () => { if (picked) setKind(picked, null); closeSheet(); });
 $("shClose").addEventListener("click", closeSheet);
 $("scrim").addEventListener("click", closeSheet);
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
