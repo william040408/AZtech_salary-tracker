@@ -724,6 +724,9 @@ let gcLoaded = new Set();               // 이미 받아 온 달
 
 const gcTitles = () => { try { return localStorage.getItem(GC_TITLES) !== "0"; } catch { return true; } };
 const gcPick = () => { try { return JSON.parse(localStorage.getItem(GC_PICK)) || null; } catch { return null; } };
+/* 고른 것이 없으면 전부 본다. 빈 목록이 저장되면 아무것도 안 보이면서
+   체크도 전부 풀려 빠져나올 수가 없기 때문이다. */
+const gcUses = id => { const p = gcPick(); return !p || !p.length || p.includes(id); };
 const gcSavePick = v => { try { localStorage.setItem(GC_PICK, JSON.stringify(v)); } catch {} };
 
 function gcMsg(text, bad){
@@ -762,8 +765,7 @@ function gcSpread(ev, cal){
 
 async function gcLoadMonth(mo){
   if (!gcToken || gcLoaded.has(mo)) return;
-  const picked = gcPick();
-  const use = gcCals.filter(c => !picked || picked.includes(c.id));
+  const use = gcCals.filter(c => gcUses(c.id));
   if (!use.length) return;
   const [y, m] = mo.split("-").map(Number);
   const from = new Date(y, m - 1, 1), to = new Date(y, m, 1);
@@ -790,22 +792,15 @@ async function gcLoadMonth(mo){
 
 function gcDrawCals(){
   const box = $("gcCals"); box.textContent = ""; box.hidden = !gcCals.length;
-  const picked = gcPick();
   for (const c of gcCals){
     const l = document.createElement("label"); l.className = "gc-cal";
     const i = document.createElement("input");
     i.type = "checkbox"; i.value = c.id;
-    i.checked = !picked || picked.includes(c.id);
+    i.checked = gcUses(c.id);
     const dot = document.createElement("i"); dot.style.background = c.color || "var(--muted)";
     const t = document.createElement("span"); t.textContent = c.name;
     l.append(i, dot, t); box.appendChild(l);
   }
-  box.addEventListener("change", () => {
-    gcSavePick([...box.querySelectorAll("input:checked")].map(i => i.value));
-    gcEvents = new Map(); gcLoaded = new Set();
-    gcLoadMonth(view);
-    drawCal();
-  }, { once: true });
 }
 
 async function gcAfterToken(){
@@ -846,6 +841,16 @@ function gcInit(){
   };
   if (ready()) start();
   else { let k = 0; const t = setInterval(() => { if (ready() || ++k > 40){ clearInterval(t); if (ready()) start(); } }, 150); }
+
+  // 체크박스는 다시 그려도 상자 자체는 그대로이므로 여기서 한 번만 단다
+  $("gcCals").addEventListener("change", () => {
+    const on = [...$("gcCals").querySelectorAll("input:checked")].map(i => i.value);
+    gcSavePick(on);
+    gcEvents = new Map(); gcLoaded = new Set();
+    gcDrawCals();                      // 빈 목록이면 전부 켜진 모습으로 되돌아간다
+    gcLoadMonth(view);
+    drawCal();
+  });
 
   $("gcConnect").addEventListener("click", () => {
     if (!gcClient){ gcMsg("구글 로그인 스크립트를 아직 불러오는 중입니다.", true); return; }
