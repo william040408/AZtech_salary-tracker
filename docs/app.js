@@ -718,7 +718,7 @@ const GC_PICK = "salary.gcal.pick";     // 어떤 캘린더를 볼지 (이 기�
 const GC_ON   = "salary.gcal.on";       // 전에 연결한 적이 있는지
 const GC_TITLES = "salary.gcal.titles"; // 칸에 제목까지 적을지
 
-let gcToken = null, gcClient = null, gcCals = [];
+let gcToken = null, gcClient = null, gcCals = [], gcQuiet = null;
 let gcEvents = new Map();               // "2026-10-05" -> [{t, title, allDay}]
 let gcLoaded = new Set();               // 이미 받아 온 달
 
@@ -736,11 +736,27 @@ function gcMsg(text, bad){
   m.hidden = !text;
 }
 
-async function gcApi(path, params){
+/* 토큰은 한 시간짜리다. 만료되면 동의 창 없이 한 번 다시 받아 보고,
+   그래도 안 되면 그때만 버튼을 누르라고 한다. */
+function gcQuietToken(){
+  return new Promise(resolve => {
+    if (!gcClient) return resolve(false);
+    gcQuiet = resolve;
+    try { gcClient.requestAccessToken({ prompt: "" }); }
+    catch { gcQuiet = null; resolve(false); }
+    setTimeout(() => { if (gcQuiet){ gcQuiet = null; resolve(false); } }, 8000);
+  });
+}
+
+async function gcApi(path, params, retried){
   const u = new URL("https://www.googleapis.com/calendar/v3/" + path);
   for (const k in (params || {})) u.searchParams.set(k, params[k]);
   const r = await fetch(u, { headers: { authorization: "Bearer " + gcToken } });
-  if (r.status === 401 || r.status === 403){ gcToken = null; throw new Error("로그인이 만료되었습니다. 다시 연결해 주세요."); }
+  if (r.status === 401 || r.status === 403){
+    gcToken = null;
+    if (!retried && await gcQuietToken()) return gcApi(path, params, true);
+    throw new Error("로그인이 만료되었습니다. 다시 연결해 주세요.");
+  }
   if (!r.ok) throw new Error("구글 캘린더 오류 " + r.status);
   return r.json();
 }
@@ -831,8 +847,13 @@ function gcInit(){
     gcClient = google.accounts.oauth2.initTokenClient({
       client_id: B.gcalClientId, scope: GC_SCOPE,
       callback: res => {
-        if (res.error){ gcMsg("연결하지 못했습니다: " + res.error, true); return; }
+        const quiet = gcQuiet; gcQuiet = null;
+        if (res.error){
+          if (quiet) return quiet(false);        // 조용히 받아 보려던 것이면 말없이 넘어간다
+          gcMsg("연결하지 못했습니다: " + res.error, true); return;
+        }
         gcToken = res.access_token;
+        if (quiet){ gcMsg(""); return quiet(true); }
         gcAfterToken();
       } });
     // 전에 연결한 적이 있으면 동의 창 없이 조용히 받아 본다
