@@ -195,8 +195,6 @@ function drawCal(){
     const pf = $("plFrom").value, pt = $("plTo").value;
     if (pf && (ds === pf || ds === pt)) b.classList.add("rend");
     if (pf && pt && ds >= pf && ds <= pt) b.classList.add("inrange");
-    const gev = gcEvents.get(ds);
-    if (gev && gev.length) b.classList.add("hasev");
     const hn = holName(ds);
     if (K && k !== "weekend" && k !== "holiday"){
       const t = document.createElement("span"); t.className = "t"; t.textContent = K.tag;
@@ -205,6 +203,25 @@ function drawCal(){
     if (hn){                       // 출근한 날이어도 무슨 날이었는지 남긴다
       const h = document.createElement("span"); h.className = "h"; h.textContent = hn;
       b.appendChild(h);
+    }
+    const gev = gcEvents.get(ds);
+    if (gev && gev.length){
+      if (gcTitles()){
+        const SHOW = 2;                        // 칸이 좁으니 두 개까지만 적는다
+        for (const e of gev.slice(0, SHOW)){
+          const v = document.createElement("span"); v.className = "ev";
+          const i = document.createElement("i"); i.style.background = e.color || "var(--muted)";
+          const s = document.createElement("span"); s.textContent = e.title;
+          v.append(i, s); b.appendChild(v);
+        }
+        if (gev.length > SHOW){
+          const more = document.createElement("span"); more.className = "ev more";
+          more.textContent = "+" + (gev.length - SHOW);
+          b.appendChild(more);
+        }
+      } else {
+        b.classList.add("hasev");              // 제목을 끄면 점만 찍는다
+      }
     }
     const a = ATT.get(ds);
     b.setAttribute("aria-label", ds + " " + (K?K.label:"기록 없음")
@@ -699,11 +716,13 @@ $("heroList").addEventListener("click", e => {
 const GC_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
 const GC_PICK = "salary.gcal.pick";     // 어떤 캘린더를 볼지 (이 기기에만 저장)
 const GC_ON   = "salary.gcal.on";       // 전에 연결한 적이 있는지
+const GC_TITLES = "salary.gcal.titles"; // 칸에 제목까지 적을지
 
 let gcToken = null, gcClient = null, gcCals = [];
 let gcEvents = new Map();               // "2026-10-05" -> [{t, title, allDay}]
 let gcLoaded = new Set();               // 이미 받아 온 달
 
+const gcTitles = () => { try { return localStorage.getItem(GC_TITLES) !== "0"; } catch { return true; } };
 const gcPick = () => { try { return JSON.parse(localStorage.getItem(GC_PICK)) || null; } catch { return null; } };
 const gcSavePick = v => { try { localStorage.setItem(GC_PICK, JSON.stringify(v)); } catch {} };
 
@@ -794,6 +813,13 @@ async function gcAfterToken(){
     const r = await gcApi("users/me/calendarList", { minAccessRole: "reader" });
     gcCals = (r.items || []).map(c => ({ id: c.id, name: c.summary, color: c.backgroundColor }));
     gcDrawCals();
+    const sw = $("gcShowTitles");
+    sw.checked = gcTitles();
+    $("gcTitleOpt").hidden = false;
+    sw.onchange = () => {
+      try { localStorage.setItem(GC_TITLES, sw.checked ? "1" : "0"); } catch {}
+      drawCal();
+    };
     $("gcConnect").textContent = "다시 연결";
     $("gcHint").textContent = "연결됨";
     gcMsg("");

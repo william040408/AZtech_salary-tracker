@@ -143,6 +143,13 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   margin-top:2px;letter-spacing:-.01em;font-family:Inter,"Noto Sans KR",sans-serif}
 .cell.hasev::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   width:4px;height:4px;border-radius:50%;background:var(--company)}
+.cell .ev{display:flex;align-items:center;gap:2px;max-width:100%;margin-top:1px;
+  font-size:7px;font-weight:600;line-height:1.15;color:var(--ink2);letter-spacing:-.04em}
+.cell .ev i{width:3px;height:7px;border-radius:1px;flex:none}
+.cell .ev span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.cell .ev.more{color:var(--muted);font-weight:500;justify-content:center}
+.gc-opt{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:13.5px;cursor:pointer}
+.gc-opt input{width:17px;height:17px;accent-color:var(--accent);flex:none}
 .gc-list{margin-top:12px;display:flex;flex-direction:column;gap:2px}
 .gc-cal{display:flex;align-items:center;gap:9px;padding:9px 4px;font-size:13.5px;cursor:pointer}
 .gc-cal input{width:17px;height:17px;accent-color:var(--accent);flex:none}
@@ -202,7 +209,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .dow span:first-child{color:var(--unpaid)}
 .dow span:last-child{color:var(--company)}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.cell{aspect-ratio:1/1.18;min-height:54px;border:1px solid var(--line2);border-radius:11px;background:var(--surface2);
+.cell{min-height:56px;border:1px solid var(--line2);border-radius:11px;background:var(--surface2);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   cursor:pointer;padding:2px;font-size:13px;position:relative;min-width:0}
 .cell.pad{visibility:hidden;cursor:default}
@@ -398,7 +405,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   h1{font-size:22px}
   .sec-body{padding:13px}
   .grid,.dow{gap:3px}
-  .cell{aspect-ratio:auto;min-height:62px}     /* 손가락으로 누를 최소 크기 */
+  .cell{min-height:64px}                       /* 손가락으로 누를 최소 크기 */
   .cell .d{font-size:14px}
   .cell .t{font-size:7.5px}
   .cell .h{font-size:7.5px}

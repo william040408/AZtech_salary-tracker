@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=306e62e0">
+<link rel="stylesheet" href="style.css?v=ee1be8cb">
 <!-- 구글 로그인. 연결하지 않으면 아무 일도 하지 않는다. -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -118,6 +118,10 @@
     <div class="sec-hd"><h2>구글 캘린더</h2><span class="hint" id="gcHint"></span></div>
     <div class="sec-body">
       <button class="btn pri" type="button" id="gcConnect">구글 캘린더 연결</button>
+      <label class="gc-opt" id="gcTitleOpt" hidden>
+        <input type="checkbox" id="gcShowTitles" checked>
+        <span>달력 칸에 일정 제목 적기</span>
+      </label>
       <div class="gc-list" id="gcCals" hidden></div>
       <div class="gc-msg" id="gcMsg" hidden></div>
     </div>
@@ -189,6 +193,6 @@
 <!-- 데이터 자리. 배포본에는 자리표시자 그대로 나가고, 페이지가 열린 뒤
      금고에서 받아온다. 개발 서버는 여기에 값을 박아서 내려 준다. -->
 <script id="bundle" type="application/json">__BUNDLE__</script>
-<script src="app.js?v=da56adee"></script>
+<script src="app.js?v=6022a991"></script>
 </body>
 </html>
