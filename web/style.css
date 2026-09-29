@@ -143,11 +143,16 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   margin-top:2px;letter-spacing:-.01em;font-family:Inter,"Noto Sans KR",sans-serif}
 .cell.hasev::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   width:4px;height:4px;border-radius:50%;background:var(--company)}
-.cell .ev{display:flex;align-items:center;gap:3px;max-width:100%;margin-top:2px;
-  font-size:8px;font-weight:600;line-height:1.15;color:var(--ink2);letter-spacing:-.04em}
-.cell .ev i{width:3px;height:9px;border-radius:1px;flex:none}
-.cell .ev span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.cell .ev.more{color:var(--muted);font-weight:500;justify-content:center}
+.evs{display:flex;flex-direction:column;gap:2px;margin-top:auto;padding-top:3px}
+.ev{height:13px;line-height:13px;font-size:8px;font-weight:600;letter-spacing:-.04em;
+  border-radius:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  padding:0 3px;text-align:left}
+.ev.blank{background:none}
+/* 같은 일정이 옆 칸으로 이어질 때는 칸 사이를 넘어가 하나로 보이게 한다 */
+.ev.bar:not(.s){margin-left:calc(-1 * var(--bleed));border-top-left-radius:0;border-bottom-left-radius:0}
+.ev.bar:not(.e){margin-right:calc(-1 * var(--bleed));border-top-right-radius:0;border-bottom-right-radius:0}
+.ev.more{height:11px;line-height:11px;font-size:8px;font-weight:600;color:var(--muted);
+  text-align:center;padding:0}
 .gc-opt{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:13.5px;cursor:pointer}
 .gc-opt input{width:17px;height:17px;accent-color:var(--accent);flex:none}
 .gc-list{margin-top:12px;display:flex;flex-direction:column;gap:2px}
@@ -174,6 +179,8 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .shbal.warn{color:var(--unpaid);background:var(--unpaid-soft)}
 .cell.inrange{outline:2px solid var(--accent);outline-offset:-2px}
 .cell.rend{background:var(--accent-soft)}
+.cell.rpick{outline:3px solid var(--accent);outline-offset:-2px;background:var(--accent-soft)}
+.cell.rpick .d{color:var(--accent);font-weight:700}
 .sec.folded .sec-hd{border-bottom:0}
 
 /* ── calendar ── */
@@ -208,14 +215,14 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .dow span{text-align:center;font-size:10.5px;font-weight:600;color:var(--muted);padding-bottom:2px}
 .dow span:first-child{color:var(--unpaid)}
 .dow span:last-child{color:var(--company)}
-.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.cell{min-height:74px;border:1px solid var(--line2);border-radius:11px;background:var(--surface2);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  cursor:pointer;padding:2px;font-size:13px;position:relative;min-width:0}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--gap);--gap:4px;--bleed:8px}
+.cell{min-height:88px;border:1px solid var(--line2);border-radius:10px;background:var(--surface2);
+  display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:1px;
+  cursor:pointer;padding:5px 3px 4px;font-size:13px;position:relative;min-width:0;text-align:center}
 .cell.pad{visibility:hidden;cursor:default}
 .cell:disabled{cursor:default;opacity:.45}
 .cell .d{font-size:15px;font-weight:600;font-family:Inter,sans-serif;font-variant-numeric:tabular-nums}
-.cell .t{font-size:9px;font-weight:600;line-height:1.1;white-space:nowrap;max-width:100%;letter-spacing:-.03em}
+.cell .t{margin-top:1px;font-size:9px;font-weight:600;line-height:1.1;white-space:nowrap;max-width:100%;letter-spacing:-.03em}
 .cell .h{font-size:8px;font-weight:600;line-height:1.1;color:var(--hol);max-width:100%;
   letter-spacing:-.04em;word-break:keep-all;display:-webkit-box;-webkit-line-clamp:2;
   -webkit-box-orient:vertical;overflow:hidden}
@@ -404,13 +411,14 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .tile b{font-size:18px}
   h1{font-size:22px}
   .sec-body{padding:13px}
-  .sec:has(.grid) .sec-body{padding:9px}       /* 달력만은 폭을 최대한 쓴다 */
-  .grid,.dow{gap:2px}
-  .cell{min-height:84px;border-radius:9px}     /* 손가락으로 누를 최소 크기 */
+  .sec:has(.grid) .sec-body{padding:8px}       /* 달력만은 폭을 최대한 쓴다 */
+  .grid{--gap:2px;--bleed:6px}
+  .dow{gap:2px}
+  .cell{min-height:98px;border-radius:9px;padding:5px 2px 4px}
   .cell .d{font-size:16px}
   .cell .t{font-size:8.5px}
   .cell .h{font-size:8px}
-  .cell .ev{font-size:8px}
+  .ev{height:14px;line-height:14px;font-size:8.5px}
   .nav>button{width:34px;height:34px}          /* 터치 타겟 */
   .opt-row{gap:5px}
   .opt{padding:13px 12px}

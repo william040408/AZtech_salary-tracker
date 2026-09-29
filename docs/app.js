@@ -23,6 +23,7 @@ const KINDS = {
   short:     {label:"지각",     tag:"지각",     cls:"k-short",    desc:"8시간 미만 근무",         off:0},
   holiday:   {label:"공휴일",   tag:null,   cls:"k-holiday",  desc:"법정 공휴일",             off:0},
   weekend:   {label:"주말",     tag:null,   cls:"k-weekend",  desc:"",                       off:0},
+  future:    {label:"예정",     tag:null,   cls:"k-future",   desc:"아직 오지 않은 날",        off:0},
 
   personal:  {label:"연차",      tag:"연차", cls:"k-personal", desc:"유급 · 연차 1일 소모",     off:1},
   half:      {label:"반차",      tag:"반차", cls:"k-half",     desc:"유급 · 연차 0.5일 소모",   off:0.5},
@@ -174,6 +175,8 @@ function drawCal(){
   $("mYear").textContent = y + "년";
   $("mMonth").textContent = m + "월";
   const first = new Date(y, m-1, 1), last = new Date(y, m, 0);
+  const lanes = gcLanes(view);
+  const SHOW_LANES = 3;
   const g = $("grid"); g.textContent = "";
   for (let i=0;i<first.getDay();i++){
     const c = document.createElement("div"); c.className = "cell pad"; g.appendChild(c);
@@ -194,6 +197,7 @@ function drawCal(){
     b.appendChild(dd);
     const pf = $("plFrom").value, pt = $("plTo").value;
     if (pf && (ds === pf || ds === pt)) b.classList.add("rend");
+    if (planPick === 2 && ds === pf) b.classList.add("rpick");   // 끝날 날을 고르는 중
     if (pf && pt && ds >= pf && ds <= pt) b.classList.add("inrange");
     const hn = holName(ds);
     if (K && k !== "weekend" && k !== "holiday"){
@@ -205,23 +209,34 @@ function drawCal(){
       b.appendChild(h);
     }
     const gev = gcEvents.get(ds);
-    if (gev && gev.length){
-      if (gcTitles()){
-        const SHOW = 2;                        // 칸이 좁으니 두 개까지만 적는다
-        for (const e of gev.slice(0, SHOW)){
-          const v = document.createElement("span"); v.className = "ev";
-          const i = document.createElement("i"); i.style.background = e.color || "var(--muted)";
-          const s = document.createElement("span"); s.textContent = e.title;
-          v.append(i, s); b.appendChild(v);
-        }
-        if (gev.length > SHOW){
-          const more = document.createElement("span"); more.className = "ev more";
-          more.textContent = "+" + (gev.length - SHOW);
-          b.appendChild(more);
-        }
-      } else {
-        b.classList.add("hasev");              // 제목을 끄면 점만 찍는다
+    if (gev && gev.length && !gcTitles()) b.classList.add("hasev");
+    if (gev && gev.length && gcTitles()){
+      const here = lanes.list.filter(s => s.from <= ds && ds <= s.to);
+      const box = document.createElement("span"); box.className = "evs";
+      const slot = [];
+      for (const s of here) slot[lanes.lane.get(s)] = s;
+      // 줄 수는 늘 같아야 막대가 칸을 건너 나란히 놓인다.
+      // 넘치면 마지막 줄을 '+N' 으로 바꾼다 — 구글 캘린더와 같은 방식이다.
+      const over = here.length - (SHOW_LANES - 1);
+      const shown = over > 1 ? SHOW_LANES - 1 : SHOW_LANES;
+      for (let i = 0; i < shown; i++){
+        const s = slot[i];
+        const v = document.createElement("span");
+        if (!s){ v.className = "ev blank"; box.appendChild(v); continue; }
+        // 한 주의 시작·끝에서도 막대를 끊어 준다
+        const head = s.from === ds || w0 === 0 || day === 1;
+        const tailEnd = s.to === ds || w0 === 6 || day === last.getDate();
+        v.className = "ev bar" + (head ? " s" : "") + (tailEnd ? " e" : "");
+        v.style.background = s.color;
+        v.style.color = gcInk(s.color);
+        if (head) v.textContent = s.title;      // 시각은 좁아서 못 넣는다. 시트에 있다.
+        box.appendChild(v);
       }
+      if (over > 1){
+        const more = document.createElement("span"); more.className = "ev more";
+        more.textContent = "+" + over; box.appendChild(more);
+      }
+      b.appendChild(box);
     }
     const a = ATT.get(ds);
     b.setAttribute("aria-label", ds + " " + (K?K.label:"기록 없음")
@@ -719,7 +734,8 @@ const GC_ON   = "salary.gcal.on";       // 전에 연결한 적이 있는지
 const GC_TITLES = "salary.gcal.titles"; // 칸에 제목까지 적을지
 
 let gcToken = null, gcClient = null, gcCals = [], gcQuiet = null;
-let gcEvents = new Map();               // "2026-10-05" -> [{t, title, allDay}]
+let gcEvents = new Map();               // "2026-10-05" -> [{t, title, allDay}]  (시트용)
+let gcSpans = [];                       // [{from, to, ...}]                  (달력 막대용)
 let gcLoaded = new Set();               // 이미 받아 온 달
 
 const gcTitles = () => { try { return localStorage.getItem(GC_TITLES) !== "0"; } catch { return true; } };
@@ -762,21 +778,55 @@ async function gcApi(path, params, retried){
 }
 
 /* 하루 종일 일정은 끝 날짜가 하루 뒤로 적혀 온다. 그 규칙을 그대로 따른다. */
-function gcSpread(ev, cal){
-  const out = [];
+/* 일정 하나를 시작~끝 기간으로 만든다. 하루 종일 일정은 끝 날짜가
+   하루 뒤로 적혀 오므로 그 규칙을 그대로 따른다. */
+function gcSpan(ev, cal){
   const allDay = !!(ev.start && ev.start.date);
-  const s = allDay ? ev.start.date : ev.start.dateTime.slice(0, 10);
-  let e = allDay ? ev.end.date : (ev.end && ev.end.dateTime ? ev.end.dateTime.slice(0, 10) : s);
-  const d = new Date(s + "T00:00:00");
-  const last = new Date(e + "T00:00:00");
-  if (allDay) last.setDate(last.getDate() - 1);
-  for (; d <= last; d.setDate(d.getDate() + 1)){
-    out.push({ ds: iso(d), allDay,
-               t: allDay ? "" : ev.start.dateTime.slice(11, 16),
-               title: ev.summary || "(제목 없음)", color: cal.color });
-    if (out.length > 60) break;       // 이상하게 긴 일정이 달력을 삼키지 않게
+  const from = allDay ? ev.start.date : ev.start.dateTime.slice(0, 10);
+  let to = allDay ? ev.end.date : (ev.end && ev.end.dateTime ? ev.end.dateTime.slice(0, 10) : from);
+  if (allDay){                       // 끝 날짜를 하루 당긴다
+    const d = new Date(to + "T00:00:00"); d.setDate(d.getDate() - 1); to = iso(d);
   }
-  return out;
+  if (to < from) to = from;
+  return { from, to, allDay,
+           t: allDay ? "" : ev.start.dateTime.slice(11, 16),
+           title: ev.summary || "(제목 없음)", color: cal.color || "#8a7d7d" };
+}
+
+/* 기간을 날짜별 목록으로 펼친다 — 시트에서 그날 일정을 보여 줄 때 쓴다 */
+function gcFill(sp){
+  const d = new Date(sp.from + "T00:00:00"), last = new Date(sp.to + "T00:00:00");
+  for (let i = 0; d <= last && i < 400; d.setDate(d.getDate() + 1), i++){
+    const ds = iso(d);
+    if (!gcEvents.has(ds)) gcEvents.set(ds, []);
+    gcEvents.get(ds).push({ ds, allDay: sp.allDay, t: sp.t, title: sp.title, color: sp.color });
+  }
+}
+
+/* 배경색이 밝으면 글씨를 어둡게 — 구글 캘린더 색이 밝은 것도 섞여 있다 */
+function gcInk(hex){
+  const c = String(hex || "").replace("#", "");
+  if (c.length < 6) return "#ffffff";
+  const r = parseInt(c.slice(0,2),16), g = parseInt(c.slice(2,4),16), b = parseInt(c.slice(4,6),16);
+  return (r*0.299 + g*0.587 + b*0.114) > 150 ? "#1a1414" : "#ffffff";
+}
+
+/* 이 달에 걸치는 일정에 줄 번호를 매긴다. 같은 일정이 여러 칸에 걸쳐도
+   늘 같은 줄에 오게 해야 막대가 이어져 보인다. */
+function gcLanes(mo){
+  const [y, m] = mo.split("-").map(Number);
+  const first = iso(new Date(y, m-1, 1)), last = iso(new Date(y, m, 0));
+  const list = gcSpans.filter(s => s.to >= first && s.from <= last)
+    .sort((a, b) => a.from.localeCompare(b.from)
+                 || b.to.localeCompare(a.to)              // 긴 것을 위로
+                 || (a.allDay === b.allDay ? a.t.localeCompare(b.t) : (a.allDay ? -1 : 1)));
+  const tail = [], lane = new Map();
+  for (const s of list){
+    let i = 0;
+    while (tail[i] && tail[i] >= s.from) i++;
+    tail[i] = s.to; lane.set(s, i);
+  }
+  return { list, lane };
 }
 
 async function gcLoadMonth(mo){
@@ -793,11 +843,10 @@ async function gcLoadMonth(mo){
         singleEvents: "true",          // 반복 일정을 구글이 펼쳐서 준다
         orderBy: "startTime", maxResults: "250" });
       for (const ev of (r.items || [])){
-        if (ev.status === "cancelled") continue;
-        for (const x of gcSpread(ev, cal)){
-          if (!gcEvents.has(x.ds)) gcEvents.set(x.ds, []);
-          gcEvents.get(x.ds).push(x);
-        }
+        if (ev.status === "cancelled" || !ev.start) continue;
+        const sp = gcSpan(ev, cal);
+        if (gcSpans.some(o => o.from === sp.from && o.to === sp.to && o.title === sp.title)) continue;
+        gcSpans.push(sp); gcFill(sp);
       }
     } catch (e){ gcLoaded.delete(mo); gcMsg(e.message, true); return; }
   }
@@ -867,7 +916,7 @@ function gcInit(){
   $("gcCals").addEventListener("change", () => {
     const on = [...$("gcCals").querySelectorAll("input:checked")].map(i => i.value);
     gcSavePick(on);
-    gcEvents = new Map(); gcLoaded = new Set();
+    gcEvents = new Map(); gcSpans = []; gcLoaded = new Set();
     gcDrawCals();                      // 빈 목록이면 전부 켜진 모습으로 되돌아간다
     gcLoadMonth(view);
     drawCal();
