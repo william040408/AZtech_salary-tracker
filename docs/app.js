@@ -208,6 +208,8 @@ function drawCal(){
       const h = document.createElement("span"); h.className = "h"; h.textContent = hn;
       b.appendChild(h);
     }
+    const acc = accrualEvents().find(e => e.ds === ds);
+    if (acc){ b.classList.add("accday"); b.dataset.acc = "연차 +" + acc.days; }
     const gev = gcEvents.get(ds);
     if (gev && gev.length && !gcTitles()) b.classList.add("hasev");
     if (gev && gev.length && gcTitles()){
@@ -791,10 +793,19 @@ function gcSpan(ev, cal){
   if (to < from) to = from;
   // 일정에 따로 색을 준 것이 있으면 그것을 먼저 쓴다
   const own = ev.colorId && gcColors && gcColors.event && gcColors.event[ev.colorId];
-  return { from, to, allDay,
+  return { calId: cal.id, from, to, allDay,
            t: allDay ? "" : ev.start.dateTime.slice(11, 16),
            title: ev.summary || "(제목 없음)",
            color: (own && own.background) || cal.color || "#8a7d7d" };
+}
+
+/* 고른 캘린더만 골라 날짜별 목록을 다시 만든다. 받아 둔 일정은 건드리지
+   않으므로 체크를 껐다 켜도 다시 받아올 일이 없다. */
+function gcRebuild(){
+  gcEvents = new Map();
+  for (const sp of gcSpans) if (gcUses(sp.calId)) gcFill(sp);
+  for (const list of gcEvents.values())
+    list.sort((a, b) => (a.allDay ? "" : a.t).localeCompare(b.allDay ? "" : b.t));
 }
 
 /* 기간을 날짜별 목록으로 펼친다 — 시트에서 그날 일정을 보여 줄 때 쓴다 */
@@ -820,7 +831,7 @@ function gcInk(hex){
 function gcLanes(mo){
   const [y, m] = mo.split("-").map(Number);
   const first = iso(new Date(y, m-1, 1)), last = iso(new Date(y, m, 0));
-  const list = gcSpans.filter(s => s.to >= first && s.from <= last)
+  const list = gcSpans.filter(s => gcUses(s.calId) && s.to >= first && s.from <= last)
     .sort((a, b) => a.from.localeCompare(b.from)
                  || b.to.localeCompare(a.to)              // 긴 것을 위로
                  || (a.allDay === b.allDay ? a.t.localeCompare(b.t) : (a.allDay ? -1 : 1)));
@@ -835,7 +846,7 @@ function gcLanes(mo){
 
 async function gcLoadMonth(mo){
   if (!gcToken || gcLoaded.has(mo)) return;
-  const use = gcCals.filter(c => gcUses(c.id));
+  const use = gcCals;            // 전부 받아 두고 그릴 때 고른 것만 쓴다
   if (!use.length) return;
   const [y, m] = mo.split("-").map(Number);
   const from = new Date(y, m - 1, 1), to = new Date(y, m, 1);
@@ -853,12 +864,12 @@ async function gcLoadMonth(mo){
     for (const ev of (r.items || [])){
       if (ev.status === "cancelled" || !ev.start) continue;
       const sp = gcSpan(ev, cal);
-      if (gcSpans.some(o => o.from === sp.from && o.to === sp.to && o.title === sp.title)) continue;
-      gcSpans.push(sp); gcFill(sp);
+      if (gcSpans.some(o => o.calId === sp.calId && o.from === sp.from
+                         && o.to === sp.to && o.title === sp.title)) continue;
+      gcSpans.push(sp);
     }
   }
-  for (const list of gcEvents.values())
-    list.sort((a, b) => (a.allDay ? "" : a.t).localeCompare(b.allDay ? "" : b.t));
+  gcRebuild();
   drawCal();
 }
 
@@ -886,12 +897,13 @@ async function gcAfterToken(){
     const sw = $("gcShowTitles");
     sw.checked = gcTitles();
     $("gcTitleOpt").hidden = false;
+    $("gcAgain").hidden = false;
     sw.onchange = () => {
       try { localStorage.setItem(GC_TITLES, sw.checked ? "1" : "0"); } catch {}
       drawCal();
     };
-    $("gcConnect").textContent = "다시 연결";
-    $("gcHint").textContent = "연결됨";
+    $("gcConnect").textContent = "캘린더 " + gcCals.length + "개";
+    $("gcConnect").classList.add("done");
     gcMsg("");
     try { localStorage.setItem(GC_ON, "1"); } catch {}
     await gcLoadMonth(view);
@@ -924,17 +936,25 @@ function gcInit(){
 
   // 체크박스는 다시 그려도 상자 자체는 그대로이므로 여기서 한 번만 단다
   $("gcCals").addEventListener("change", () => {
-    const on = [...$("gcCals").querySelectorAll("input:checked")].map(i => i.value);
-    gcSavePick(on);
-    gcEvents = new Map(); gcSpans = []; gcLoaded = new Set();
+    gcSavePick([...$("gcCals").querySelectorAll("input:checked")].map(i => i.value));
+    gcRebuild();                       // 다시 받아오지 않는다 — 거르기만 한다
     gcDrawCals();                      // 빈 목록이면 전부 켜진 모습으로 되돌아간다
-    gcLoadMonth(view);
     drawCal();
   });
 
+  const openPanel = on => {
+    $("gcPanel").hidden = !on;
+    $("gcConnect").setAttribute("aria-expanded", String(on));
+    $("gcConnect").classList.toggle("on", on);
+  };
   $("gcConnect").addEventListener("click", () => {
     if (!gcClient){ gcMsg("구글 로그인 스크립트를 아직 불러오는 중입니다.", true); return; }
+    if (gcToken) return openPanel($("gcPanel").hidden);   // 이미 연결됐으면 판을 연다
     gcClient.requestAccessToken({ prompt: "consent" });
+  });
+  $("gcAgain").addEventListener("click", () => gcClient.requestAccessToken({ prompt: "consent" }));
+  document.addEventListener("click", e => {              // 바깥을 누르면 닫는다
+    if (!$("gcPanel").hidden && !e.target.closest(".gcwrap")) openPanel(false);
   });
 }
 
@@ -961,6 +981,14 @@ function drawExpiry(rest){
     : "남은 " + (Math.round(rest*10)/10) + "일을 그날까지 쓰지 않으면 사라집니다.";
   box.append(t, d, s);
 
+  const next = accrualEvents().find(e => e.ds > TODAY);
+  if (next){
+    const days = Math.round((new Date(next.ds+"T00:00:00") - new Date(TODAY+"T00:00:00")) / 864e5);
+    const g = document.createElement("div"); g.className = "exp-s";
+    g.textContent = "다음 연차는 " + next.ds.replace(/-/g, ".") + " 에 " + next.days
+      + "일 생깁니다 (D-" + days + ").";
+    box.appendChild(g);
+  }
   const grant = accrualEvents().find(e => e.kind === "annual");
   if (grant){
     const g = document.createElement("div"); g.className = "exp-s";
@@ -1054,7 +1082,7 @@ function openSheet(ds){
     : (hol || "출근 기록 없음");
   const keep = $("shTimes");
   if (keep) $("sheet").appendChild(keep);      // 지워지지 않게 잠시 밖으로
-  drawSheetBal(k);
+  drawSheetBal(k, ds);
   drawSheetEvents(ds);
   const box = $("shOpts"); box.textContent = "";
   for (const g of GROUPS){
@@ -1093,16 +1121,18 @@ function drawSheetEvents(ds){
 }
 
 /* 이 날을 연차로 잡으면 얼마가 깎이는지 미리 알려 준다. */
-function drawSheetBal(k){
+function drawSheetBal(k, ds){
+  const acc = ds && accrualEvents().find(e => e.ds === ds);
   const box = $("shBal");
   const already = CONSUMES[k] || 0;        // 이미 연차로 잡혀 있던 몫은 되돌려 센다
   const free = Math.round((curBal + already) * 10) / 10;
   box.className = "shbal" + (free >= 1 ? "" : " warn");
-  box.textContent = free >= 1
+  const grew = acc ? "이 날 연차가 " + acc.days + "일 생깁니다 · " : "";
+  box.textContent = grew + (free >= 1
     ? "쓸 수 있는 연차 " + free + "일"
     : "쓸 수 있는 연차 " + free + "일 — 하루를 연차로 잡으면 "
       + (Math.round((1 - free) * 10) / 10) + "일이 모자라 약 "
-      + WON((1 - free) * B.dayPay) + "원이 깎입니다";
+      + WON((1 - free) * B.dayPay) + "원이 깎입니다");
   box.hidden = false;
 }
 

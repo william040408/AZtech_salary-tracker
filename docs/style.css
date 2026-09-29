@@ -141,6 +141,10 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .ptip b{display:block;margin-bottom:2px}
 .slip td small{display:block;font-size:11px;font-weight:500;color:var(--muted);
   margin-top:2px;letter-spacing:-.01em;font-family:Inter,"Noto Sans KR",sans-serif}
+/* 연차가 생기는 날 — 오른쪽 위에 조용히 표시한다 */
+.cell.accday::before{content:attr(data-acc);position:absolute;top:3px;right:4px;
+  font-size:7.5px;font-weight:700;color:var(--accent);letter-spacing:-.04em;
+  background:var(--accent-soft);border-radius:4px;padding:1px 3px;line-height:1.3}
 .cell.hasev::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   width:4px;height:4px;border-radius:50%;background:var(--company)}
 .evs{display:flex;flex-direction:column;gap:2px;margin-top:auto;padding-top:3px}
@@ -153,7 +157,22 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .ev.bar:not(.e){margin-right:calc(-1 * var(--bleed));border-top-right-radius:0;border-bottom-right-radius:0}
 .ev.more{height:11px;line-height:11px;font-size:8px;font-weight:600;color:var(--muted);
   text-align:center;padding:0}
-.gc-opt{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:13.5px;cursor:pointer}
+.hd-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.gcwrap{position:relative;flex:none}
+.gcbtn{appearance:none;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;
+  padding:8px 14px;border-radius:11px;border:1px solid var(--line);background:var(--surface);color:var(--ink2)}
+.gcbtn:hover{border-color:var(--accent);color:var(--accent)}
+.gcbtn.done{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.gcbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.gcpanel{position:absolute;right:0;top:calc(100% + 7px);z-index:12;width:262px;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 8px 28px rgba(21,5,8,.13);padding:12px 13px}
+.gcp-h{font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.gcp-again{appearance:none;width:100%;margin-top:10px;padding:8px;border-radius:10px;
+  border:1px solid var(--line);background:none;font-family:inherit;font-size:12.5px;
+  color:var(--muted);cursor:pointer}
+.gcp-again:hover{border-color:var(--accent);color:var(--accent)}
+.gc-opt{display:flex;align-items:center;gap:9px;margin-top:10px;font-size:13px;cursor:pointer}
 .gc-opt input{width:17px;height:17px;accent-color:var(--accent);flex:none}
 .gc-list{margin-top:12px;display:flex;flex-direction:column;gap:2px}
 .gc-cal{display:flex;align-items:center;gap:9px;padding:9px 4px;font-size:13.5px;cursor:pointer}
@@ -468,16 +487,21 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   #calSec{grid-column:1;grid-row:2/span 40;align-self:start;
     position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}
   .cell{min-height:clamp(78px,calc((100vh - 330px) / 6),170px)}
-  .hero,#forecast,.tiles,#gcal,#plan,.sec:not(#calSec),.linkbtn{grid-column:2}
+  .hero,#forecast,.tiles,#plan,.sec:not(#calSec),.linkbtn{grid-column:2}
+  /* 남은 연차 → 실수령 타일 → 이번 달 예상 → 연차 계획 → 대조 순 */
+  .hero{order:1} .tiles{order:2} #forecast{order:3} #plan{order:4}
+  .sec:not(#calSec):not(#plan):not(#forecast){order:5} .linkbtn{order:9}
+
+  /* 누적·만근을 나란히, 쉰 날 합계를 가로로 길게 */
+  .tiles{grid-template-columns:1fr 1fr;gap:10px}
+  .tile:first-child{grid-column:auto}
+  .tile:last-child{grid-column:1/-1}
+  .tile b{font-size:19px}
+  .hero-grid span{font-size:10.5px}
 
   .cell .d{font-size:18px}
   .ev{height:18px;line-height:18px;font-size:11px}
 
-  /* 오른쪽 칸이 좁아 숫자가 줄바꿈된다 — 폰과 같은 배치로 */
-  .tiles{grid-template-columns:1fr 1fr;gap:10px}
-  .tile:first-child{grid-column:1/-1}
-  .tile b{font-size:19px}
-  .hero-grid span{font-size:10.5px}
 }
 
 @media (min-width:1600px){

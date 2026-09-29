@@ -37,10 +37,25 @@
 
   <div class="app" id="app" hidden>
   <header class="hd">
-    <div>
-      <div class="eyebrow" id="org"></div>
-      <!-- 이름은 금고에서 받아 채운다. 저장소가 공개라 파일에 적지 않는다. -->
-      <h1 id="title">급여·연차 기록부</h1>
+    <div class="hd-top">
+      <div>
+        <div class="eyebrow" id="org"></div>
+        <!-- 이름은 금고에서 받아 채운다. 저장소가 공개라 파일에 적지 않는다. -->
+        <h1 id="title">급여·연차 기록부</h1>
+      </div>
+      <div class="gcwrap" id="gcal" hidden>
+        <button class="gcbtn" type="button" id="gcConnect" aria-expanded="false">캘린더 연동</button>
+        <div class="gcpanel" id="gcPanel" hidden>
+          <div class="gcp-h">보여 줄 캘린더</div>
+          <div class="gc-list" id="gcCals" hidden></div>
+          <label class="gc-opt" id="gcTitleOpt" hidden>
+            <input type="checkbox" id="gcShowTitles" checked>
+            <span>달력 칸에 일정 제목 적기</span>
+          </label>
+          <div class="gc-msg" id="gcMsg" hidden></div>
+          <button class="gcp-again" type="button" id="gcAgain" hidden>다시 연결</button>
+        </div>
+      </div>
     </div>
     <div class="svc">
       <div class="svc-row"><span id="svcRange"></span><span class="num" id="svcPct"></span></div>
@@ -112,20 +127,6 @@
       </div>
     </div>
     <div class="note">날짜를 눌러 그날의 성격을 기록합니다.</div>
-  </section>
-
-  <section class="sec" id="gcal" hidden>
-    <div class="sec-hd"><h2>구글 캘린더</h2><span class="hint" id="gcHint"></span></div>
-    <div class="sec-body">
-      <button class="btn pri" type="button" id="gcConnect">구글 캘린더 연결</button>
-      <label class="gc-opt" id="gcTitleOpt" hidden>
-        <input type="checkbox" id="gcShowTitles" checked>
-        <span>달력 칸에 일정 제목 적기</span>
-      </label>
-      <div class="gc-list" id="gcCals" hidden></div>
-      <div class="gc-msg" id="gcMsg" hidden></div>
-    </div>
-    <div class="note">연결하면 달력에 일정이 있는 날에 점이 찍히고, 날짜를 누르면 그날 일정이 보입니다.</div>
   </section>
 
   <section class="sec" id="plan">
