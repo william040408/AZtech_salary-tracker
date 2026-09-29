@@ -144,13 +144,23 @@ function tiles(){
   $("tNet").textContent = WON(nets)+"원";
   $("tNetSub").textContent = B.payslips.length + "개월분 (" + B.payslips[0].period + "~" + B.payslips.at(-1).period + ")";
   $("tRef").textContent = WON(refNet())+"원";
-  let d=0, h=0;
+  // 쉰 날은 연차를 깎는 것과 안 깎는 것이 섞여 있다. 나눠서 보여 준다.
+  let d = 0, used = 0, flat = 0;
   for (const ds of trackedDates()){
-    const k = kindOf(ds);
-    if (KINDS[k]) { d += KINDS[k].off; if (k in DEDUCTS) h += 1; }
+    const k = kindOf(ds), K = KINDS[k];
+    if (!K) continue;
+    d += K.off;
+    used += CONSUMES[k] || 0;
+    if (k in DEDUCTS) flat += 1;
   }
-  $("tOff").textContent = (Math.round(d*10)/10) + "일";
-  $("tOffSub").textContent = h ? ("무급 " + h + "일 포함") : "전부 유급";
+  const r = x => Math.round(x * 10) / 10;
+  const freeOff = r(d - used - flat);              // 연차도 급여도 안 깎인 휴무
+  const parts = [];
+  if (used)    parts.push("연차 " + r(used) + "일");
+  if (freeOff) parts.push("차감 없는 휴무 " + freeOff + "일");
+  if (flat)    parts.push("무급 " + flat + "일");
+  $("tOff").textContent = r(d) + "일";
+  $("tOffSub").textContent = parts.join(" + ") || "쉰 날 없음";
 }
 function refNet(){
   // 역산한 달(2월처럼 일할계산된 달)은 기준이 될 수 없다
@@ -185,6 +195,8 @@ function drawCal(){
     const pf = $("plFrom").value, pt = $("plTo").value;
     if (pf && (ds === pf || ds === pt)) b.classList.add("rend");
     if (pf && pt && ds >= pf && ds <= pt) b.classList.add("inrange");
+    const gev = gcEvents.get(ds);
+    if (gev && gev.length) b.classList.add("hasev");
     const hn = holName(ds);
     if (K && k !== "weekend" && k !== "holiday"){
       const t = document.createElement("span"); t.className = "t"; t.textContent = K.tag;
@@ -199,6 +211,7 @@ function drawCal(){
       + (hn ? " · " + hn : "") + (a&&a.start ? " "+a.start+"~"+a.end : ""));
     g.appendChild(b);
   }
+  gcOnView();
   $("prev").disabled = view <= B.calendarFrom;
   $("next").disabled = view >= B.calendarTo;
 }
@@ -679,6 +692,141 @@ $("heroList").addEventListener("click", e => {
   $("calSec").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
+/* ── 구글 캘린더 ──
+   구글 API 서버는 CORS 를 허용하므로 브라우저가 직접 부른다. 일정은 우리
+   금고를 거치지 않고 구글과 이 기기 사이에서만 오간다. 토큰도 메모리에만
+   둔다 — 한 시간이면 만료되고, 다시 받을 때는 조용히 갱신을 시도한다. */
+const GC_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
+const GC_PICK = "salary.gcal.pick";     // 어떤 캘린더를 볼지 (이 기기에만 저장)
+const GC_ON   = "salary.gcal.on";       // 전에 연결한 적이 있는지
+
+let gcToken = null, gcClient = null, gcCals = [];
+let gcEvents = new Map();               // "2026-10-05" -> [{t, title, allDay}]
+let gcLoaded = new Set();               // 이미 받아 온 달
+
+const gcPick = () => { try { return JSON.parse(localStorage.getItem(GC_PICK)) || null; } catch { return null; } };
+const gcSavePick = v => { try { localStorage.setItem(GC_PICK, JSON.stringify(v)); } catch {} };
+
+function gcMsg(text, bad){
+  const m = $("gcMsg");
+  m.textContent = text || "";
+  m.className = "gc-msg" + (bad ? " bad" : "");
+  m.hidden = !text;
+}
+
+async function gcApi(path, params){
+  const u = new URL("https://www.googleapis.com/calendar/v3/" + path);
+  for (const k in (params || {})) u.searchParams.set(k, params[k]);
+  const r = await fetch(u, { headers: { authorization: "Bearer " + gcToken } });
+  if (r.status === 401 || r.status === 403){ gcToken = null; throw new Error("로그인이 만료되었습니다. 다시 연결해 주세요."); }
+  if (!r.ok) throw new Error("구글 캘린더 오류 " + r.status);
+  return r.json();
+}
+
+/* 하루 종일 일정은 끝 날짜가 하루 뒤로 적혀 온다. 그 규칙을 그대로 따른다. */
+function gcSpread(ev, cal){
+  const out = [];
+  const allDay = !!(ev.start && ev.start.date);
+  const s = allDay ? ev.start.date : ev.start.dateTime.slice(0, 10);
+  let e = allDay ? ev.end.date : (ev.end && ev.end.dateTime ? ev.end.dateTime.slice(0, 10) : s);
+  const d = new Date(s + "T00:00:00");
+  const last = new Date(e + "T00:00:00");
+  if (allDay) last.setDate(last.getDate() - 1);
+  for (; d <= last; d.setDate(d.getDate() + 1)){
+    out.push({ ds: iso(d), allDay,
+               t: allDay ? "" : ev.start.dateTime.slice(11, 16),
+               title: ev.summary || "(제목 없음)", color: cal.color });
+    if (out.length > 60) break;       // 이상하게 긴 일정이 달력을 삼키지 않게
+  }
+  return out;
+}
+
+async function gcLoadMonth(mo){
+  if (!gcToken || gcLoaded.has(mo)) return;
+  const picked = gcPick();
+  const use = gcCals.filter(c => !picked || picked.includes(c.id));
+  if (!use.length) return;
+  const [y, m] = mo.split("-").map(Number);
+  const from = new Date(y, m - 1, 1), to = new Date(y, m, 1);
+  gcLoaded.add(mo);
+  for (const cal of use){
+    try {
+      const r = await gcApi("calendars/" + encodeURIComponent(cal.id) + "/events", {
+        timeMin: from.toISOString(), timeMax: to.toISOString(),
+        singleEvents: "true",          // 반복 일정을 구글이 펼쳐서 준다
+        orderBy: "startTime", maxResults: "250" });
+      for (const ev of (r.items || [])){
+        if (ev.status === "cancelled") continue;
+        for (const x of gcSpread(ev, cal)){
+          if (!gcEvents.has(x.ds)) gcEvents.set(x.ds, []);
+          gcEvents.get(x.ds).push(x);
+        }
+      }
+    } catch (e){ gcLoaded.delete(mo); gcMsg(e.message, true); return; }
+  }
+  for (const list of gcEvents.values())
+    list.sort((a, b) => (a.allDay ? "" : a.t).localeCompare(b.allDay ? "" : b.t));
+  drawCal();
+}
+
+function gcDrawCals(){
+  const box = $("gcCals"); box.textContent = ""; box.hidden = !gcCals.length;
+  const picked = gcPick();
+  for (const c of gcCals){
+    const l = document.createElement("label"); l.className = "gc-cal";
+    const i = document.createElement("input");
+    i.type = "checkbox"; i.value = c.id;
+    i.checked = !picked || picked.includes(c.id);
+    const dot = document.createElement("i"); dot.style.background = c.color || "var(--muted)";
+    const t = document.createElement("span"); t.textContent = c.name;
+    l.append(i, dot, t); box.appendChild(l);
+  }
+  box.addEventListener("change", () => {
+    gcSavePick([...box.querySelectorAll("input:checked")].map(i => i.value));
+    gcEvents = new Map(); gcLoaded = new Set();
+    gcLoadMonth(view);
+    drawCal();
+  }, { once: true });
+}
+
+async function gcAfterToken(){
+  try {
+    const r = await gcApi("users/me/calendarList", { minAccessRole: "reader" });
+    gcCals = (r.items || []).map(c => ({ id: c.id, name: c.summary, color: c.backgroundColor }));
+    gcDrawCals();
+    $("gcConnect").textContent = "다시 연결";
+    $("gcHint").textContent = "연결됨";
+    gcMsg("");
+    try { localStorage.setItem(GC_ON, "1"); } catch {}
+    await gcLoadMonth(view);
+  } catch (e){ gcMsg(e.message, true); }
+}
+
+function gcInit(){
+  if (!B.gcalClientId) return;                 // 설정이 없으면 이 칸을 아예 숨긴다
+  $("gcal").hidden = false;
+  const ready = () => window.google && google.accounts && google.accounts.oauth2;
+  const start = () => {
+    gcClient = google.accounts.oauth2.initTokenClient({
+      client_id: B.gcalClientId, scope: GC_SCOPE,
+      callback: res => {
+        if (res.error){ gcMsg("연결하지 못했습니다: " + res.error, true); return; }
+        gcToken = res.access_token;
+        gcAfterToken();
+      } });
+    // 전에 연결한 적이 있으면 동의 창 없이 조용히 받아 본다
+    let was = null; try { was = localStorage.getItem(GC_ON); } catch {}
+    if (was) gcClient.requestAccessToken({ prompt: "" });
+  };
+  if (ready()) start();
+  else { let k = 0; const t = setInterval(() => { if (ready() || ++k > 40){ clearInterval(t); if (ready()) start(); } }, 150); }
+
+  $("gcConnect").addEventListener("click", () => {
+    if (!gcClient){ gcMsg("구글 로그인 스크립트를 아직 불러오는 중입니다.", true); return; }
+    gcClient.requestAccessToken({ prompt: "consent" });
+  });
+}
+
 /* ── 소멸 예정 ──
    1년 미만 연차는 입사 1주년 전날 한꺼번에 사라진다. 돈은 매달 수당으로
    받아 두었으므로 금전 손해는 없지만, 그때까지 안 쓰면 쉴 기회가 없어진다. */
@@ -796,6 +944,7 @@ function openSheet(ds){
   const keep = $("shTimes");
   if (keep) $("sheet").appendChild(keep);      // 지워지지 않게 잠시 밖으로
   drawSheetBal(k);
+  drawSheetEvents(ds);
   const box = $("shOpts"); box.textContent = "";
   for (const g of GROUPS){
     const h = document.createElement("div"); h.className = "opt-h"; h.textContent = g.title;
@@ -816,6 +965,22 @@ function openSheet(ds){
   syncTimes(ds, k);
   $("scrim").classList.add("on"); $("sheet").classList.add("on");
 }
+/* 그날 구글 캘린더 일정 */
+function drawSheetEvents(ds){
+  const box = $("shEvents"); box.textContent = "";
+  const list = gcEvents.get(ds);
+  box.hidden = !(list && list.length);
+  if (box.hidden) return;
+  for (const e of list){
+    const r = document.createElement("div"); r.className = "shev";
+    const i = document.createElement("i"); i.style.background = e.color || "var(--muted)";
+    const t = document.createElement("span"); t.className = "shev-t num";
+    t.textContent = e.allDay ? "종일" : e.t;
+    const s = document.createElement("span"); s.className = "shev-s"; s.textContent = e.title;
+    r.append(i, t, s); box.appendChild(r);
+  }
+}
+
 /* 이 날을 연차로 잡으면 얼마가 깎이는지 미리 알려 준다. */
 function drawSheetBal(k){
   const box = $("shBal");
@@ -1004,6 +1169,8 @@ $("scrim").addEventListener("click", closeSheet);
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
 $("prev").addEventListener("click", () => { closePicker(); view = shift(view,-1); drawCal(); });
 $("next").addEventListener("click", () => { closePicker(); view = shift(view, 1); drawCal(); });
+function gcOnView(){ if (gcToken) gcLoadMonth(view); }
+
 function shift(v, n){
   let [y,m] = v.split("-").map(Number); m += n;
   if (m < 1){ m = 12; y--; } if (m > 12){ m = 1; y++; }
@@ -1197,6 +1364,7 @@ function start(){
   $("openSetup").hidden = !api;
   $("refreshBtn").hidden = !api;
   if (api) metaAt().catch(() => {});
+  gcInit();
 }
 
 (async function boot(){

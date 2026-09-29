@@ -118,6 +118,8 @@ bundle = {
     "serviceEnd": CFG["serviceEnd"],
     "company": CFG["company"], "team": CFG["team"],
     "repo": CFG.get("repo"),
+    # 구글 OAuth 클라이언트 ID. 비밀이 아니지만 저장소에 적지 않으려고 여기로 보낸다.
+    "gcalClientId": CFG.get("gcalClientId") or None,
     "firstDay": str(FIRST),
     "payslips": pay,
     "attendance": att,

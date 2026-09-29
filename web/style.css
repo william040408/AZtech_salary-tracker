@@ -141,6 +141,19 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .ptip b{display:block;margin-bottom:2px}
 .slip td small{display:block;font-size:11px;font-weight:500;color:var(--muted);
   margin-top:2px;letter-spacing:-.01em;font-family:Inter,"Noto Sans KR",sans-serif}
+.cell.hasev::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:var(--company)}
+.gc-list{margin-top:12px;display:flex;flex-direction:column;gap:2px}
+.gc-cal{display:flex;align-items:center;gap:9px;padding:9px 4px;font-size:13.5px;cursor:pointer}
+.gc-cal input{width:17px;height:17px;accent-color:var(--accent);flex:none}
+.gc-cal i{width:10px;height:10px;border-radius:3px;flex:none}
+.gc-msg{margin-top:10px;font-size:12.5px;color:var(--muted)}
+.gc-msg.bad{color:var(--unpaid)}
+.shevents{margin:-4px 0 12px;display:flex;flex-direction:column;gap:2px}
+.shev{display:flex;align-items:baseline;gap:8px;font-size:13px;padding:5px 2px}
+.shev i{width:8px;height:8px;border-radius:2px;flex:none;align-self:center}
+.shev-t{font-size:11.5px;font-weight:600;color:var(--muted);flex:none;min-width:34px}
+.shev-s{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pempty{margin-top:12px;font-size:12.5px;color:var(--muted)}
 .prow #plClear{flex:1 0 100%}
 .expiry{margin-bottom:12px;padding:13px 15px;border-radius:13px;
