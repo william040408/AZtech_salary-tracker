@@ -287,7 +287,7 @@ const DEDUCTS = { unpaid:1, coUnpaid:1 };   // 급여에서 깎이는 것
 /* 그 달에 생긴 연차 일수 */
 function accOf(mo){
   let n = 0;
-  for (const d of accrualDates()) if (d.slice(0,7) === mo) n++;
+  for (const e of accrualEvents()) if (monthOf(e.ds) === mo && e.ds <= TODAY) n += e.days;
   return n;
 }
 /* 그 달에 연차를 쓴 일수 (반차는 0.5) */
@@ -311,25 +311,26 @@ function deductHoursOf(mo){ return (flatUnpaidOf(mo) + stockUseOf(mo)) * B.daily
 /* 그 달에 현금으로 받을 연차수당 일수 */
 function cashDaysOf(mo){ return Math.max(0, accOf(mo) - useOf(mo)); }
 
-function accrualDates(){
-  const [hy,hm,hd] = B.hireDate.split("-").map(Number);
-  const today = new Date(); const out = [];
-  for (let n=1; n<=11; n++){
-    const d = new Date(hy, hm-1+n, hd);
-    if (d > today) break;
-    out.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"));
-  }
-  return out;
-}
+const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 
-/* 1년치 발생일 — 앞으로 생길 것까지 포함한다 */
-function accrualDatesAll(){
+/* 연차가 생기는 일정.
+   1년 미만은 한 달 개근마다 1일씩, 최대 11일 (근로기준법 60조 2항).
+   1년이 차면 15일이 한꺼번에 생기고 (60조 1항), 그 직전에 1년 미만 몫은
+   전부 사라진다 (60조 7항, 2020.3.31 개정). */
+function accrualEvents(){
   const [hy,hm,hd] = B.hireDate.split("-").map(Number), out = [];
-  for (let k=1; k<=11; k++){
-    const d = new Date(hy, hm-1+k, hd);
-    out.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"));
-  }
-  return out;
+  for (let k=1; k<=11; k++) out.push({ ds: iso(new Date(hy, hm-1+k, hd)), days: 1, kind: "monthly" });
+  for (let y=1; y<=2; y++)  out.push({ ds: iso(new Date(hy+y, hm-1, hd)), days: 15, kind: "annual" });
+  return out.filter(e => e.ds <= B.serviceEnd);
+}
+/* 1년 미만 연차가 사라지는 날 — 입사 1주년 하루 전 */
+function expiryDate(){
+  const [hy,hm,hd] = B.hireDate.split("-").map(Number);
+  const d = new Date(hy+1, hm-1, hd); d.setDate(d.getDate() - 1);
+  return iso(d);
+}
+function accrualDates(){                 // 이미 지난 것만
+  return accrualEvents().filter(e => e.ds <= TODAY);
 }
 
 /* ── 연차 계획 ──
@@ -365,17 +366,20 @@ function drawPlan(){
   const byMonth = {};
   for (const ds of days) byMonth[monthOf(ds)] = (byMonth[monthOf(ds)] || 0) + 1;
 
-  const accAll = accrualDatesAll();
+  const events = accrualEvents(), exp = expiryDate();
   let freeDays = 0, cutDays = 0;
   for (const mo of Object.keys(byMonth)){
     const cnt = byMonth[mo];
-    const a = accAll.filter(d => monthOf(d) === mo).length;   // 그 달에 생기는 연차
+    // 그 달에 생기는 월 1일분까지는 급여가 깎이지 않는다
+    const a = events.filter(e => e.kind === "monthly" && monthOf(e.ds) === mo)
+                    .reduce((x, e) => x + e.days, 0);
     freeDays += Math.min(cnt, a);
     cutDays  += Math.max(0, cnt - a);
   }
-  // 계획이 시작되기 전까지 더 쌓이는 몫
-  const grow = accAll.filter(d => d > TODAY && d < from).length;
-  const stock = Math.max(0, curBal) + grow;
+  // 계획이 시작되기 전까지 더 쌓이는 몫. 1주년 전날 한 번 비워진다.
+  let stock = from > exp ? 0 : Math.max(0, curBal);
+  for (const e of events)
+    if (e.ds > TODAY && e.ds < from && (from <= exp || e.ds > exp)) stock += e.days;
   const covered = Math.min(cutDays, stock);      // 이미 수당으로 받아 둔 몫
   const loss = Math.max(0, cutDays - covered);   // 받은 적 없이 깎이는 몫
 
@@ -416,14 +420,30 @@ function drawPlan(){
       + "매달 하루씩 나눠 쉬면 급여가 한 번도 깎이지 않습니다.";
   }
   tip.append(t, body); out.appendChild(tip);
+
+  const note = (cls, head, text) => {
+    const w = document.createElement("div"); w.className = "ptip " + cls;
+    const a = document.createElement("b"); a.textContent = head;
+    const b = document.createElement("span"); b.textContent = text;
+    w.append(a, b); out.appendChild(w);
+  };
+  if (from <= exp && to > exp)
+    note("warn", "소멸일을 걸쳐 있습니다",
+         exp.replace(/-/g,".") + " 에 1년 미만 연차가 사라지고 다음 날 15일이 새로 생깁니다. "
+         + "걸쳐서 쉬면 계산이 달라지니 앞뒤로 나눠 잡는 편이 낫습니다.");
+  else if (from > exp)
+    note("", "1년차 이후 구간입니다",
+         "15일이 한꺼번에 생긴 뒤라, 회사가 그것도 매달 수당으로 정산하는지는 아직 "
+         + "확인되지 않았습니다. 아래 숫자는 지금 규칙을 그대로 적용한 추정입니다.");
 }
 
 function drawLeave(){
   const fmt = n => Math.round(n * 10) / 10;
+  EXPIRY = expiryDate();
 
   /* 출처 1 — 법정 발생. 근로기준법 제60조 2항. */
   const accByMonth = {};
-  for (const d of accrualDates()) accByMonth[d.slice(0,7)] = (accByMonth[d.slice(0,7)] || 0) + 1;
+  for (const e of accrualDates()) accByMonth[monthOf(e.ds)] = (accByMonth[monthOf(e.ds)] || 0) + e.days;
 
   /* 출처 2 — 명세서가 직접 말해주는 것. 연차수당 일수와 기본급 차감 시간뿐이고,
      며칠 쉬었는지는 적혀 있지 않다. */
@@ -438,7 +458,7 @@ function drawLeave(){
   const useByMonth = {}, mineHByMonth = {}, detail = {}, untouched = {};
   let byMe = 0, byCompany = 0;      // 내가 신청한 것 / 회사가 쓰게 한 것
   detailRows = { acc: [], mine: [], co: [] };
-  for (const d of accrualDates()) detailRows.acc.push({ ds: d, k: "연차 +1일" });
+  for (const e of accrualDates()) detailRows.acc.push({ ds: e.ds, k: "연차 +" + e.days + "일" });
   for (const ds of trackedDates()){
     const mo = monthOf(ds), a = ATT.get(ds), base = a ? baseKind(a) : null;
     if ((base === "company" || base === "personal") && !overrides.has(ds))
@@ -471,6 +491,10 @@ function drawLeave(){
   for (const mo of months){
     const acc = accByMonth[mo]||0, use = useByMonth[mo]||0, cash = cashByMonth[mo]||0;
     const slipH = dedByMonth[mo]||0, mineH = mineHByMonth[mo]||0;
+    // 1년이 차면 그때까지 안 쓴 1년 미만 몫은 사라진다. 돈은 이미 수당으로
+    // 받았으므로 금전 손해는 없고, 쉴 권리만 없어진다.
+    let wiped = 0;
+    if (mo === monthOf(EXPIRY) && bal > 0){ wiped = bal; bal = 0; }
     // 수당은 돈일 뿐 '쉴 권리'는 남는다 (C안). 잔여를 줄이는 것은 실제 사용뿐이다.
     bal += acc - use;
     tAcc += acc; tUse += use; tCash += cash; tMineH += mineH; tSlipH += slipH;
@@ -483,6 +507,7 @@ function drawLeave(){
     const m = document.createElement("span"); m.className = "m num"; m.textContent = mo.replace("-", ".");
     const ev = document.createElement("span"); ev.className = "ev";
     const tag = (cls, txt) => { const e = document.createElement("span"); e.className = "tag " + cls; e.textContent = txt; ev.appendChild(e); };
+    if (wiped) tag("un", "소멸 −" + fmt(wiped) + "일");
     if (acc)  tag("acc",  "발생 +" + acc);
     if (cash) tag("cash", "수당 " + cash + "일분");
     const d = detail[mo] || {};
@@ -531,9 +556,11 @@ function drawLeave(){
   $("lvBal").textContent = rest + "일";
   $("lvBal").closest(".bal").classList.toggle("neg", rest < 0);
   $("lvAsOf").textContent = "오늘까지";
+  drawExpiry(rest);
 
   /* ── 경고 ── */
   const al = $("lvAlerts"); al.textContent = "";
+  void 0;
   const add = (cls, title, body) => {
     const d = document.createElement("div"); d.className = "alert " + cls;
     const b = document.createElement("b"); b.textContent = title;
@@ -593,6 +620,7 @@ function setupFolds(){
 /* ── 요약 칸을 눌러 펼치는 목록 ──
    무엇이 언제였는지 최근 것부터 보여 주고, 누르면 달력이 그 달로 간다. */
 let curBal = 0;
+let EXPIRY = '';
 let detailRows = { acc: [], mine: [], co: [] }, detailOpen = null;
 const DETAIL_TITLE = { acc:"연차가 생긴 날", mine:"내가 쓴 날", co:"회사가 쓰게 한 날" };
 const DETAIL_EMPTY = { acc:"아직 생긴 연차가 없습니다.", mine:"아직 쓴 연차가 없습니다.",
@@ -646,6 +674,37 @@ $("heroList").addEventListener("click", e => {
   if (mo >= B.calendarFrom && mo <= B.calendarTo){ view = mo; drawCal(); }
   $("calSec").scrollIntoView({ behavior: "smooth", block: "start" });
 });
+
+/* ── 소멸 예정 ──
+   1년 미만 연차는 입사 1주년 전날 한꺼번에 사라진다. 돈은 매달 수당으로
+   받아 두었으므로 금전 손해는 없지만, 그때까지 안 쓰면 쉴 기회가 없어진다. */
+function drawExpiry(rest){
+  const box = $("lvExpiry");
+  if (TODAY > EXPIRY){ box.hidden = true; return; }   // 이미 1년차로 넘어갔다
+  const left = Math.round((new Date(EXPIRY+"T00:00:00") - new Date(TODAY+"T00:00:00")) / 864e5);
+  const coming = accrualEvents()
+    .filter(e => e.kind === "monthly" && e.ds > TODAY && e.ds <= EXPIRY)
+    .reduce((a, e) => a + e.days, 0);
+  const total = Math.round((Math.max(0, rest) + coming) * 10) / 10;
+
+  box.textContent = ""; box.hidden = false;
+  const t = document.createElement("div"); t.className = "exp-t";
+  t.textContent = "1년 미만 연차 소멸까지";
+  const d = document.createElement("div"); d.className = "exp-d num";
+  d.textContent = EXPIRY.replace(/-/g, ".") + "  ·  D-" + left;
+  const s = document.createElement("div"); s.className = "exp-s";
+  s.textContent = coming
+    ? "지금 " + (Math.round(rest*10)/10) + "일 + 앞으로 " + coming + "일 = 그날까지 최대 " + total + "일을 쓸 수 있습니다."
+    : "남은 " + (Math.round(rest*10)/10) + "일을 그날까지 쓰지 않으면 사라집니다.";
+  box.append(t, d, s);
+
+  const grant = accrualEvents().find(e => e.kind === "annual");
+  if (grant){
+    const g = document.createElement("div"); g.className = "exp-s";
+    g.textContent = "그 다음 날 " + grant.ds.replace(/-/g, ".") + " 에 15일이 새로 생깁니다.";
+    box.appendChild(g);
+  }
+}
 
 /* ── 월 선택기 ──
    년월을 누르면 달을 고르는 판이 열리고, 연도를 누르면 연도 목록으로 바뀐다. */
@@ -732,6 +791,7 @@ function openSheet(ds){
     : (hol || "출근 기록 없음");
   const keep = $("shTimes");
   if (keep) $("sheet").appendChild(keep);      // 지워지지 않게 잠시 밖으로
+  drawSheetBal(k);
   const box = $("shOpts"); box.textContent = "";
   for (const g of GROUPS){
     const h = document.createElement("div"); h.className = "opt-h"; h.textContent = g.title;
@@ -752,6 +812,20 @@ function openSheet(ds){
   syncTimes(ds, k);
   $("scrim").classList.add("on"); $("sheet").classList.add("on");
 }
+/* 이 날을 연차로 잡으면 얼마가 깎이는지 미리 알려 준다. */
+function drawSheetBal(k){
+  const box = $("shBal");
+  const already = CONSUMES[k] || 0;        // 이미 연차로 잡혀 있던 몫은 되돌려 센다
+  const free = Math.round((curBal + already) * 10) / 10;
+  box.className = "shbal" + (free >= 1 ? "" : " warn");
+  box.textContent = free >= 1
+    ? "쓸 수 있는 연차 " + free + "일"
+    : "쓸 수 있는 연차 " + free + "일 — 하루를 연차로 잡으면 "
+      + (Math.round((1 - free) * 10) / 10) + "일이 모자라 약 "
+      + WON((1 - free) * B.dayPay) + "원이 깎입니다";
+  box.hidden = false;
+}
+
 function syncTimes(ds, k){
   const box = $("shTimes");
   if (!WORK_KINDS.has(k)){ box.hidden = true; return; }
@@ -862,13 +936,18 @@ $("grid").addEventListener("click", e => {
     const ds = b.dataset.date;
     if (planPick === 1){ $("plFrom").value = ds; $("plTo").value = ""; planPick = 2; }
     else {
-      if (ds < $("plFrom").value) $("plFrom").value = ds; else $("plTo").value = ds;
-      planPick = 0;
+      // 나중 날을 먼저 골랐으면 둘을 뒤집는다
+      const first = $("plFrom").value;
+      if (ds < first){ $("plFrom").value = ds; $("plTo").value = first; }
+      else $("plTo").value = ds;
+      planPick = 0; planSaved = null;
     }
     syncPick(); drawCal(); drawPlan(); return;
   }
   openSheet(b.dataset.date);
 });
+
+let planSaved = null;                    // 고르기를 시작할 때의 값 — 취소하면 되돌린다
 
 function syncPick(){
   const b = $("plPick");
@@ -876,14 +955,27 @@ function syncPick(){
   b.textContent = planPick === 1 ? "시작할 날을 누르세요 (취소)"
                 : planPick === 2 ? "끝날 날을 누르세요 (취소)"
                 : "달력에서 고르기";
+  $("plClear").hidden = !!planPick || !($("plFrom").value || $("plTo").value);
 }
 $("plPick").addEventListener("click", () => {
-  planPick = planPick ? 0 : 1;
-  if (planPick){ $("plFrom").value = ""; $("plTo").value = ""; }
+  if (planPick){                         // 고르는 중이었다면 취소 — 원래대로 되돌린다
+    planPick = 0;
+    $("plFrom").value = planSaved ? planSaved.from : "";
+    $("plTo").value   = planSaved ? planSaved.to   : "";
+  } else {
+    planSaved = { from: $("plFrom").value, to: $("plTo").value };
+    planPick = 1;
+    $("plFrom").value = ""; $("plTo").value = "";
+  }
   syncPick(); drawCal(); drawPlan();
   if (planPick) $("calSec").scrollIntoView({ behavior:"smooth", block:"start" });
 });
-for (const id of ["plFrom","plTo"]) $(id).addEventListener("change", () => { drawCal(); drawPlan(); });
+$("plClear").addEventListener("click", () => {
+  planPick = 0; planSaved = null;
+  $("plFrom").value = ""; $("plTo").value = "";
+  syncPick(); drawCal(); drawPlan();
+});
+for (const id of ["plFrom","plTo"]) $(id).addEventListener("change", () => { syncPick(); drawCal(); drawPlan(); });
 $("shOpts").addEventListener("click", e => {
   const b = e.target.closest(".opt"); if (!b || !picked) return;
   const k = b.dataset.kind;

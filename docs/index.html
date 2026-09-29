@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=41633176">
+<link rel="stylesheet" href="style.css?v=30eaf4fc">
 </head>
 <body>
 
@@ -119,6 +119,7 @@
         <label class="pfield"><span>시작</span><input type="date" id="plFrom"></label>
         <label class="pfield"><span>끝</span><input type="date" id="plTo"></label>
         <button class="btn" type="button" id="plPick">달력에서 고르기</button>
+        <button class="btn" type="button" id="plClear" hidden>지우기</button>
       </div>
       <div id="plOut"></div>
     </div>
@@ -129,6 +130,7 @@
     <div class="sec-hd"><h2>연차 대조</h2><span class="hint" id="lvAsOf"></span></div>
     <div class="sec-body">
       <div id="lvAlerts"></div>
+      <div class="expiry" id="lvExpiry" hidden></div>
       <div id="cmpBody"></div>
       <div class="bal"><span>잔여 연차</span><b class="num" id="lvBal"></b></div>
       <h3 class="sub-h">월별 잔여 연차</h3>
@@ -159,6 +161,7 @@
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">
   <h3 id="shTitle">—</h3>
   <div class="sub" id="shSub">—</div>
+  <div class="shbal" id="shBal" hidden></div>
   <div class="opts" id="shOpts"></div>
   <div class="times" id="shTimes" hidden>
     <input id="shStart" type="time" step="60" aria-label="출근 시각">
@@ -173,6 +176,6 @@
 <!-- 데이터 자리. 배포본에는 자리표시자 그대로 나가고, 페이지가 열린 뒤
      금고에서 받아온다. 개발 서버는 여기에 값을 박아서 내려 준다. -->
 <script id="bundle" type="application/json">__BUNDLE__</script>
-<script src="app.js?v=37cab852"></script>
+<script src="app.js?v=bd4b0ba9"></script>
 </body>
 </html>
