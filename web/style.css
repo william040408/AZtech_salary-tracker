@@ -452,10 +452,17 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 }
 
 @media (min-width:1400px){
-  .wrap{max-width:1400px;display:grid;align-items:start;gap:20px;
+  /* 줄 간격을 0 으로 두고 아래 여백으로 띄운다. 달력이 여러 줄에 걸치는데,
+     줄 간격이 있으면 오른쪽에 내용이 없는 줄에도 간격이 붙어 화면 아래에
+     빈 공간이 수백 px 씩 생긴다. */
+  .wrap{max-width:1400px;display:grid;align-items:start;
+    column-gap:20px;row-gap:0;
     grid-template-columns:minmax(0,1fr) minmax(360px,430px);padding-inline:24px}
+  .wrap>*,.app>*{margin-bottom:20px}
   .hd{grid-column:1/-1}
-  #calSec{grid-column:1;grid-row:2/span 40;position:sticky;top:20px}
+  /* 달력이 화면보다 높을 때가 있어 고정하지 않는다 — 고정하면 아래쪽
+     줄에 닿을 방법이 없어진다. */
+  #calSec{grid-column:1;grid-row:2/span 40;align-self:start}
   .hero,#forecast,.tiles,#gcal,#plan,.sec:not(#calSec),.linkbtn{grid-column:2}
 
   .cell{min-height:140px}
