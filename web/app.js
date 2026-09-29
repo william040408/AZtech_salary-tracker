@@ -251,7 +251,11 @@ function drawMonths(){
     const bits = [];
     if (p && p.derived) bits.push(p.note || "명세서가 만료돼 실수령액에서 역산");
     if (p && p.leaveCashed) bits.push("연차수당 +" + WON(p.leaveCashed*B.dayPay) + " (" + p.leaveCashed + "일분)");
-    if (p && p.deductedHours) bits.push("기본급 −" + WON(p.deductedHours*B.hourly) + " (" + p.deductedHours + "시간)");
+    if (p && p.deductedHours){
+      const fullH = B.fullBase / B.hourly;
+      bits.push("기본급 " + fullH + "시간 → " + (fullH - p.deductedHours) + "시간"
+                + "  (−" + p.deductedHours + "시간, −" + WON(p.deductedHours*B.hourly) + "원)");
+    }
     if (off) bits.push("쉰 날 " + (Math.round(off*10)/10) + "일" + (half?" (반차 "+half+")":""));
     if (p && p.deductedHours && p.deductedHours % 4 !== 0)
       bits.push("차감이 4시간 단위가 아님 — 지각·조퇴가 반영된 것으로 보임");
@@ -515,7 +519,7 @@ function drawLeave(){
       if (d[k]) tag(k === "coAnnual" || k === "personal" || k === "half" ? "use" : "acc",
                      KO[k] + " " + d[k] + (k === "half" ? "회" : "일"));
     const stock = stockUseOf(mo);
-    if (stock) tag("un", "모아둔 연차 " + fmt(stock) + "일 사용 → 급여 차감");
+    if (stock) tag("un", "모아둔 연차 " + fmt(stock) + "일 사용 → " + (stock * B.dailyHours) + "시간 차감");
     if (d.unpaid)   tag("un", "무급 " + d.unpaid + "일");
     if (d.coUnpaid) tag("un", "전사무급 " + d.coUnpaid + "일");
     if (hasSlip && slipH !== mineH) tag("un", "명세서 차감 " + slipH + "시간 ≠ 내 기록 " + mineH + "시간");
@@ -899,17 +903,22 @@ function drawForecast(){
   const dedTotal = Object.values(ded).reduce((a, b) => a + b, 0);
 
   const t = $("fcTable"); t.textContent = "";
-  const row = (label, val, cls, guess) => {
+  const row = (label, val, cls, guess, note) => {
     const tr = document.createElement("tr");
     if (cls) tr.className = cls;
     const a = document.createElement("td");
     a.textContent = label;
     if (guess){ const g = document.createElement("span"); g.className = "guess"; g.textContent = "추정"; a.appendChild(g); }
+    if (note){ const s = document.createElement("small"); s.textContent = note; a.appendChild(s); }
     const b = document.createElement("td");
     b.textContent = (cls === "minus" ? "−" : "") + WON(Math.abs(val)) + "원";
     tr.append(a, b); t.appendChild(tr);
   };
-  for (const [k, v, g] of earn) row(k, v, null, g);
+  const fullH = B.fullBase / B.hourly;                 // 만근 소정근로시간 (209)
+  for (const [k, v, g] of earn)
+    row(k, v, null, g, k === "기본급" && deductH
+      ? fullH + "시간 − " + deductH + "시간 = " + (fullH - deductH) + "시간"
+      : k === "기본급" ? fullH + "시간 (만근)" : null);
   row("지급총액", gross, "sum");
   row("공제총액", dedTotal, "minus");
   row("예상 실수령", gross - dedTotal, "net");
