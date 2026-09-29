@@ -209,7 +209,12 @@ function drawCal(){
       b.appendChild(h);
     }
     const acc = accrualEvents().find(e => e.ds === ds);
-    if (acc){ b.classList.add("accday"); b.dataset.acc = "연차 +" + acc.days; }
+    if (acc){
+      b.classList.add("accday");
+      b.dataset.acc = "연차 +" + acc.days;
+      b.title = acc.from.replace(/-/g,".") + " ~ " + acc.to.replace(/-/g,".")
+              + " 만근 시 연차 " + acc.days + "일 발생";
+    }
     const gev = gcEvents.get(ds);
     if (gev && gev.length && !gcTitles()) b.classList.add("hasev");
     if (gev && gev.length && gcTitles()){
@@ -370,10 +375,20 @@ const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+
    전부 사라진다 (60조 7항, 2020.3.31 개정). */
 function accrualEvents(){
   const [hy,hm,hd] = B.hireDate.split("-").map(Number), out = [];
-  for (let k=1; k<=11; k++) out.push({ ds: iso(new Date(hy, hm-1+k, hd)), days: 1, kind: "monthly" });
-  for (let y=1; y<=2; y++)  out.push({ ds: iso(new Date(hy+y, hm-1, hd)), days: 15, kind: "annual" });
+  // 하루 앞당긴 날짜 — 만근해야 하는 기간의 끝은 발생일 전날이다
+  const eve = d => { const x = new Date(d); x.setDate(x.getDate() - 1); return iso(x); };
+  for (let k=1; k<=11; k++){
+    const a = new Date(hy, hm-1+k-1, hd), z = new Date(hy, hm-1+k, hd);
+    out.push({ ds: iso(z), days: 1, kind: "monthly", from: iso(a), to: eve(z) });
+  }
+  for (let y=1; y<=2; y++){
+    const a = new Date(hy+y-1, hm-1, hd), z = new Date(hy+y, hm-1, hd);
+    out.push({ ds: iso(z), days: 15, kind: "annual", from: iso(a), to: eve(z) });
+  }
   return out.filter(e => e.ds <= B.serviceEnd);
 }
+/* "09.03~10.02" 처럼 짧게 */
+const spanText = e => e.from.slice(5).replace("-", ".") + "~" + e.to.slice(5).replace("-", ".");
 /* 1년 미만 연차가 사라지는 날 — 입사 1주년 하루 전 */
 function expiryDate(){
   const [hy,hm,hd] = B.hireDate.split("-").map(Number);
@@ -509,7 +524,8 @@ function drawLeave(){
   const useByMonth = {}, mineHByMonth = {}, detail = {}, untouched = {};
   let byMe = 0, byCompany = 0;      // 내가 신청한 것 / 회사가 쓰게 한 것
   detailRows = { acc: [], mine: [], co: [] };
-  for (const e of accrualDates()) detailRows.acc.push({ ds: e.ds, k: "연차 +" + e.days + "일" });
+  for (const e of accrualDates())
+    detailRows.acc.push({ ds: e.ds, k: spanText(e) + " 만근 +" + e.days + "일" });
   for (const ds of trackedDates()){
     const mo = monthOf(ds), a = ATT.get(ds), base = a ? baseKind(a) : null;
     if ((base === "company" || base === "personal") && !overrides.has(ds))
@@ -902,7 +918,7 @@ async function gcAfterToken(){
       try { localStorage.setItem(GC_TITLES, sw.checked ? "1" : "0"); } catch {}
       drawCal();
     };
-    $("gcConnect").textContent = "캘린더 " + gcCals.length + "개";
+    $("gcConnect").textContent = "구글 캘린더 " + gcCals.length + "개";
     $("gcConnect").classList.add("done");
     gcMsg("");
     try { localStorage.setItem(GC_ON, "1"); } catch {}
@@ -985,14 +1001,15 @@ function drawExpiry(rest){
   if (next){
     const days = Math.round((new Date(next.ds+"T00:00:00") - new Date(TODAY+"T00:00:00")) / 864e5);
     const g = document.createElement("div"); g.className = "exp-s";
-    g.textContent = "다음 연차는 " + next.ds.replace(/-/g, ".") + " 에 " + next.days
-      + "일 생깁니다 (D-" + days + ").";
+    g.textContent = "다음 연차는 " + spanText(next) + " 를 만근하면 "
+      + next.ds.replace(/-/g, ".") + " 에 " + next.days + "일 생깁니다 (D-" + days + ").";
     box.appendChild(g);
   }
   const grant = accrualEvents().find(e => e.kind === "annual");
   if (grant){
     const g = document.createElement("div"); g.className = "exp-s";
-    g.textContent = "그 다음 날 " + grant.ds.replace(/-/g, ".") + " 에 15일이 새로 생깁니다.";
+    g.textContent = grant.from.replace(/-/g, ".") + " ~ " + grant.to.replace(/-/g, ".")
+      + " 1년을 채우면, 그 다음 날 " + grant.ds.replace(/-/g, ".") + " 에 15일이 새로 생깁니다.";
     box.appendChild(g);
   }
 }
@@ -1127,7 +1144,7 @@ function drawSheetBal(k, ds){
   const already = CONSUMES[k] || 0;        // 이미 연차로 잡혀 있던 몫은 되돌려 센다
   const free = Math.round((curBal + already) * 10) / 10;
   box.className = "shbal" + (free >= 1 ? "" : " warn");
-  const grew = acc ? "이 날 연차가 " + acc.days + "일 생깁니다 · " : "";
+  const grew = acc ? spanText(acc) + " 만근으로 이 날 연차 " + acc.days + "일 생김 · " : "";
   box.textContent = grew + (free >= 1
     ? "쓸 수 있는 연차 " + free + "일"
     : "쓸 수 있는 연차 " + free + "일 — 하루를 연차로 잡으면 "
