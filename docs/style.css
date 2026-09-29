@@ -431,3 +431,45 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 /* 세로로 긴 화면에서 시트가 화면을 다 덮지 않도록 */
 .sheet{max-height:min(78vh,560px);overflow-y:auto;overscroll-behavior:contain}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ── 넓은 화면 ──
+   가로가 남으면 달력을 키운다. 다만 어중간한 폭에서 두 칼럼으로 쪼개면
+   달력이 오히려 좁아진다 — 오른쪽 칸이 430px 을 가져가기 때문이다.
+   1400px 을 넘어야 쪼개는 쪽이 넓어지므로 거기서부터 쪼갠다. */
+@media (min-width:1000px){
+  .wrap{max-width:960px;padding-block:28px 80px}
+  .cell{min-height:118px;padding:7px 5px 6px}
+  .cell .d{font-size:17px}
+  .cell .t{font-size:10.5px}
+  .cell .h{font-size:9.5px}
+  .grid{--gap:5px;--bleed:11px}
+  .dow{gap:5px}
+  .dow span{font-size:11.5px}
+  .ev{height:17px;line-height:17px;font-size:10.5px;border-radius:5px;padding:0 5px}
+  .evs{gap:3px}
+  .ev.more{height:13px;line-height:13px;font-size:10px}
+  .legend{font-size:12px;gap:6px 16px}
+}
+
+@media (min-width:1400px){
+  .wrap{max-width:1400px;display:grid;align-items:start;gap:20px;
+    grid-template-columns:minmax(0,1fr) minmax(360px,430px);padding-inline:24px}
+  .hd{grid-column:1/-1}
+  #calSec{grid-column:1;grid-row:2/span 40;position:sticky;top:20px}
+  .hero,#forecast,.tiles,#gcal,#plan,.sec:not(#calSec),.linkbtn{grid-column:2}
+
+  .cell{min-height:140px}
+  .cell .d{font-size:18px}
+  .ev{height:18px;line-height:18px;font-size:11px}
+
+  /* 오른쪽 칸이 좁아 숫자가 줄바꿈된다 — 폰과 같은 배치로 */
+  .tiles{grid-template-columns:1fr 1fr;gap:10px}
+  .tile:first-child{grid-column:1/-1}
+  .tile b{font-size:19px}
+  .hero-grid span{font-size:10.5px}
+}
+
+@media (min-width:1600px){
+  .wrap{max-width:1620px}
+  .cell{min-height:156px}
+}

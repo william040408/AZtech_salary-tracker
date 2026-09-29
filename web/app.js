@@ -736,6 +736,7 @@ const GC_TITLES = "salary.gcal.titles"; // 칸에 제목까지 적을지
 let gcToken = null, gcClient = null, gcCals = [], gcQuiet = null;
 let gcEvents = new Map();               // "2026-10-05" -> [{t, title, allDay}]  (시트용)
 let gcSpans = [];                       // [{from, to, ...}]                  (달력 막대용)
+let gcColors = null;                    // 구글이 쓰는 색표 — colorId 를 실제 색으로 푼다
 let gcLoaded = new Set();               // 이미 받아 온 달
 
 const gcTitles = () => { try { return localStorage.getItem(GC_TITLES) !== "0"; } catch { return true; } };
@@ -788,9 +789,12 @@ function gcSpan(ev, cal){
     const d = new Date(to + "T00:00:00"); d.setDate(d.getDate() - 1); to = iso(d);
   }
   if (to < from) to = from;
+  // 일정에 따로 색을 준 것이 있으면 그것을 먼저 쓴다
+  const own = ev.colorId && gcColors && gcColors.event && gcColors.event[ev.colorId];
   return { from, to, allDay,
            t: allDay ? "" : ev.start.dateTime.slice(11, 16),
-           title: ev.summary || "(제목 없음)", color: cal.color || "#8a7d7d" };
+           title: ev.summary || "(제목 없음)",
+           color: (own && own.background) || cal.color || "#8a7d7d" };
 }
 
 /* 기간을 날짜별 목록으로 펼친다 — 시트에서 그날 일정을 보여 줄 때 쓴다 */
@@ -836,19 +840,22 @@ async function gcLoadMonth(mo){
   const [y, m] = mo.split("-").map(Number);
   const from = new Date(y, m - 1, 1), to = new Date(y, m, 1);
   gcLoaded.add(mo);
-  for (const cal of use){
-    try {
-      const r = await gcApi("calendars/" + encodeURIComponent(cal.id) + "/events", {
+  // 캘린더마다 차례로 기다리면 개수만큼 느려진다. 한꺼번에 보낸다.
+  let got;
+  try {
+    got = await Promise.all(use.map(cal =>
+      gcApi("calendars/" + encodeURIComponent(cal.id) + "/events", {
         timeMin: from.toISOString(), timeMax: to.toISOString(),
         singleEvents: "true",          // 반복 일정을 구글이 펼쳐서 준다
-        orderBy: "startTime", maxResults: "250" });
-      for (const ev of (r.items || [])){
-        if (ev.status === "cancelled" || !ev.start) continue;
-        const sp = gcSpan(ev, cal);
-        if (gcSpans.some(o => o.from === sp.from && o.to === sp.to && o.title === sp.title)) continue;
-        gcSpans.push(sp); gcFill(sp);
-      }
-    } catch (e){ gcLoaded.delete(mo); gcMsg(e.message, true); return; }
+        orderBy: "startTime", maxResults: "250" }).then(r => [cal, r])));
+  } catch (e){ gcLoaded.delete(mo); gcMsg(e.message, true); return; }
+  for (const [cal, r] of got){
+    for (const ev of (r.items || [])){
+      if (ev.status === "cancelled" || !ev.start) continue;
+      const sp = gcSpan(ev, cal);
+      if (gcSpans.some(o => o.from === sp.from && o.to === sp.to && o.title === sp.title)) continue;
+      gcSpans.push(sp); gcFill(sp);
+    }
   }
   for (const list of gcEvents.values())
     list.sort((a, b) => (a.allDay ? "" : a.t).localeCompare(b.allDay ? "" : b.t));
@@ -870,7 +877,10 @@ function gcDrawCals(){
 
 async function gcAfterToken(){
   try {
-    const r = await gcApi("users/me/calendarList", { minAccessRole: "reader" });
+    const [r, colors] = await Promise.all([
+      gcApi("users/me/calendarList", { minAccessRole: "reader" }),
+      gcApi("colors").catch(() => null)]);
+    gcColors = colors;
     gcCals = (r.items || []).map(c => ({ id: c.id, name: c.summary, color: c.backgroundColor }));
     gcDrawCals();
     const sw = $("gcShowTitles");
@@ -1270,7 +1280,11 @@ $("scrim").addEventListener("click", closeSheet);
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
 $("prev").addEventListener("click", () => { closePicker(); view = shift(view,-1); drawCal(); });
 $("next").addEventListener("click", () => { closePicker(); view = shift(view, 1); drawCal(); });
-function gcOnView(){ if (gcToken) gcLoadMonth(view); }
+function gcOnView(){
+  if (!gcToken) return;
+  gcLoadMonth(view);
+  for (const d of [-1, 1]) gcLoadMonth(shift(view, d));   // 앞뒤 달을 미리 받아 둔다
+}
 
 function shift(v, n){
   let [y,m] = v.split("-").map(Number); m += n;
@@ -1444,11 +1458,11 @@ $("openSetup").addEventListener("click", () => showSetup());
 $("refreshBtn").addEventListener("click", doRefresh);
 
 async function loadRemote(){
-  const bundle = await apiCall("bundle", "GET");
+  // 둘은 서로를 기다릴 이유가 없다. 같이 보내면 왕복이 한 번으로 준다.
+  const [bundle, lv] = await Promise.all([apiCall("bundle", "GET"), apiCall("leave", "GET")]);
   if (!bundle || !Array.isArray(bundle.payslips))
     throw new Error("데이터가 아직 올라가지 않았습니다 (python src/push_data.py 를 먼저 실행하세요)");
   B = bundle;
-  const lv = await apiCall("leave", "GET");
   overrides = new Map(Object.entries(lv || {}).filter(([, v]) => kindName(v)));
 }
 
