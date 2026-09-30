@@ -299,7 +299,7 @@ function targetCellH(){
   let reserved = 12;
   if (getComputedStyle(wrap).display === "grid"){            // 두 칼럼 — 머리글 밑에서 시작한다
     const hd = document.querySelector(".hd");
-    reserved = hd.offsetTop + hd.offsetHeight + 20 + 12;
+    reserved = hd.offsetTop + hd.offsetHeight + 14 + 12;
   }
   const gap = parseFloat(getComputedStyle(grid).rowGap) || 2;
   const weeks = Math.max(4, Math.round(grid.children.length / 7));      // 4~6주
@@ -336,6 +336,8 @@ function layoutCal(){
   if (layoutCal.busy) return;
   layoutCal.busy = true;
   try {
+    const hdh = document.querySelector(".hd").offsetHeight;      // 고정된 제목줄 높이 — 달력이 그 밑에 붙는다
+    if (hdh) document.documentElement.style.setProperty("--hd-h", hdh + "px");
     const h = targetCellH();
     if (h && h !== cellH){
       cellH = h;
