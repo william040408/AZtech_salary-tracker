@@ -89,7 +89,7 @@ function defaultKind(ds){
   if (ds > TODAY) return "future";                      // 아직 오지 않은 날은 비워 둔다
   return "work";
 }
-const kindName = v => (v && typeof v === "object") ? v.k : v;
+const kindName = v => { const k = (v && typeof v === "object") ? v.k : v; return k === "restsub" ? "work" : k; };   // restsub 는 화면용 이름일 뿐, 잘못 저장된 것은 근무로 읽는다
 const kindOf = d => {
   if (subTargets().has(d)) return "substitute";           // 대체휴무로 묶인 날은 그 근무와 한 덩어리다
   const k = kindName(overrides.get(d)) || defaultKind(d);
@@ -1384,7 +1384,7 @@ function openSheet(ds){
   if (keep) $("sheet").appendChild(keep);      // 지워지지 않게 잠시 밖으로
   const evs = gcEvents.get(ds) || [];
   deferred = evs.length > 0;
-  pendKind = shown;
+  pendKind = rest ? (restMode === "off" ? "dayoff" : "work") : shown;   // 화면용 이름(restsub)이 아니라 실제 분류를 저장한다
   const tm0 = timesOf(ds);
   pendTimes = tm0 && tm0.mine ? { s: tm0.s, e: tm0.e } : null;
   pendSub = subOf(ds);
@@ -1870,17 +1870,37 @@ async function apiCall(path, method, body){
   return out;
 }
 
-let saveTimer = null, saveQueued = false;
+let saveTimer = null, saveQueued = false, saving = false;
 function pushLeave(){                      // 연속 입력을 한 번으로 묶는다
   saveQueued = true;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     if (!saveQueued || !api) return;
-    saveQueued = false;
+    saveQueued = false; saving = true;
     try { await apiCall("leave", "PUT", Object.fromEntries(overrides)); $("dbWarn").hidden = true; }
     catch { $("dbWarn").hidden = false; }
+    finally { saving = false; }
   }, 600);
 }
+
+/* 다른 기기에서 바꾼 기록을 가져온다. 창으로 돌아올 때와 열려 있는 동안 15초마다 본다.
+   내가 저장 중이거나 편집·고르기 중이면 건드리지 않는다. */
+let syncBusy = false;
+const ovSig = m => JSON.stringify([...m].sort((a, b) => a[0] < b[0] ? -1 : 1));
+async function syncLeave(){
+  if (!api || syncBusy || saving || saveQueued || picked || subPick || workPick || planPick) return;
+  syncBusy = true;
+  try {
+    const lv = await apiCall("leave", "GET");
+    if (saving || saveQueued || picked || subPick || workPick || planPick) return;
+    const next = new Map(Object.entries(lv || {}).filter(([, v]) => kindName(v)));
+    if (ovSig(next) !== ovSig(overrides)){ subMap = null; overrides = next; redraw(); }
+  } catch { /* 다음 번에 다시 본다 */ }
+  finally { syncBusy = false; }
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) syncLeave(); });
+window.addEventListener("focus", syncLeave);
+setInterval(() => { if (!document.hidden) syncLeave(); }, 15000);
 
 /* ── 명세서 불러오기 ──
    브라우저는 메일을 읽을 수 없으므로, 버튼은 Worker 를 거쳐 GitHub 의
