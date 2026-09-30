@@ -200,6 +200,8 @@ function drawCal(){
   for (let i=0;i<first.getDay();i++){
     const c = document.createElement("div"); c.className = "cell pad"; g.appendChild(c);
   }
+  // 어느 달이든 여섯 줄로 그린다. 달마다 달력 높이가 달라지지 않게.
+  const WEEKS = 6;
   for (let day=1; day<=last.getDate(); day++){
     const ds = y+"-"+String(m).padStart(2,"0")+"-"+String(day).padStart(2,"0");
     const k = kindOf(ds), K = KINDS[k];
@@ -238,10 +240,11 @@ function drawCal(){
     const gev = gcEvents.get(ds);
     if (gev && gev.length && !gcTitles()) b.classList.add("hasev");
     if (gev && gev.length && gcTitles()){
-      const here = lanes.list.filter(s => s.from <= ds && ds <= s.to);
+      const wk = lanes.weeks[Math.floor((lanes.pad + day - 1) / 7)];
+      const here = wk.here.filter(s => s.from <= ds && ds <= s.to);
       const box = document.createElement("span"); box.className = "evs";
       const slot = [];
-      for (const s of here) slot[lanes.lane.get(s)] = s;
+      for (const s of here) slot[wk.lane.get(s)] = s;
       // 줄 수는 늘 같아야 막대가 칸을 건너 나란히 놓인다.
       // 넘치면 마지막 줄을 '+N' 으로 바꾼다 — 구글 캘린더와 같은 방식이다.
       const over = here.length - (SHOW_LANES - 1);
@@ -269,6 +272,9 @@ function drawCal(){
     b.setAttribute("aria-label", ds + " " + (K?K.label:"기록 없음")
       + (hn ? " · " + hn : "") + (a&&a.start ? " "+a.start+"~"+a.end : ""));
     g.appendChild(b);
+  }
+  for (let i = first.getDay() + last.getDate(); i < WEEKS * 7; i++){
+    const c = document.createElement("div"); c.className = "cell pad"; g.appendChild(c);
   }
   const fit = measureLanes();
   if (fit !== laneFit && !drawCal.again){    // 한 번만 다시 그린다
@@ -870,18 +876,27 @@ function gcInk(hex){
    늘 같은 줄에 오게 해야 막대가 이어져 보인다. */
 function gcLanes(mo){
   const [y, m] = mo.split("-").map(Number);
-  const first = iso(new Date(y, m-1, 1)), last = iso(new Date(y, m, 0));
-  const list = gcSpans.filter(s => gcUses(s.calId) && s.to >= first && s.from <= last)
-    .sort((a, b) => a.from.localeCompare(b.from)
-                 || b.to.localeCompare(a.to)              // 긴 것을 위로
-                 || (a.allDay === b.allDay ? a.t.localeCompare(b.t) : (a.allDay ? -1 : 1)));
-  const tail = [], lane = new Map();
-  for (const s of list){
-    let i = 0;
-    while (tail[i] && tail[i] >= s.from) i++;
-    tail[i] = s.to; lane.set(s, i);
+  const pad = new Date(y, m-1, 1).getDay();          // 첫 주에 비는 칸 수
+  const days = s => (new Date(s.to) - new Date(s.from)) / 864e5;
+  const all = gcSpans.filter(s => gcUses(s.calId));
+  const weeks = [];
+  for (let w = 0; w < 6; w++){
+    const ws = iso(new Date(y, m-1, 1 - pad + w*7));
+    const we = iso(new Date(y, m-1, 1 - pad + w*7 + 6));
+    const here = all.filter(s => s.to >= ws && s.from <= we)
+      .sort((a, b) => days(b) - days(a)               // 긴 일정을 위로
+                   || (a.allDay === b.allDay ? 0 : (a.allDay ? -1 : 1))
+                   || a.from.localeCompare(b.from)
+                   || a.t.localeCompare(b.t));
+    const tail = [], lane = new Map();
+    for (const s of here){
+      let i = 0;
+      while (tail[i] && tail[i] >= s.from) i++;
+      tail[i] = s.to; lane.set(s, i);
+    }
+    weeks.push({ here, lane });
   }
-  return { list, lane };
+  return { pad, weeks };
 }
 
 async function gcLoadMonth(mo){
