@@ -631,12 +631,22 @@ function drawPlan(){
   const skipped = span - days.length;
   line("실제로 쉬는 날", days.length + "일");
   if (skipped) line("주말·공휴일이라 뺀 날", skipped + "일", "sub");
-  line("그 기간에 생기는 연차", "+" + freeDays + "일", "keep");
+  line("그 달에 생기는 연차 (매달 3일 발생)", "+" + freeDays + "일", "keep");
   line("그때까지 모아둘 연차", (Math.round(stock*10)/10) + "일", "keep");
   line("급여에서 빠지는 날", cutDays ? cutDays + "일  −" + WON(cutDays * B.dayPay) + "원" : "없음", cutDays ? "cut" : "keep");
   if (covered) line("이미 수당으로 받아 둔 몫", (Math.round(covered*10)/10) + "일  실손실 아님", "sub");
   line("실제 손해", loss ? "−" + WON(loss * B.dayPay) + "원" : "0원", loss ? "tot cut" : "tot keep");
   out.appendChild(box);
+
+  // 그 달의 발생일(3일)보다 앞선 날을 쉬면, 아직 안 생긴 연차를 미리 쓰는 셈이다
+  let early = 0;
+  for (const mo of Object.keys(byMonth)){
+    const acc = events.find(e => e.kind === "monthly" && monthOf(e.ds) === mo);
+    if (!acc) continue;
+    const before = days.filter(d => monthOf(d) === mo && d < acc.ds).length;
+    early += Math.min(before, acc.days);
+  }
+  const advance = Math.max(0, early - Math.max(0, stock - cutDays));
 
   const tip = document.createElement("div");
   const t = document.createElement("b"), body = document.createElement("span");
@@ -662,6 +672,11 @@ function drawPlan(){
     const b = document.createElement("span"); b.textContent = text;
     w.append(a, b); out.appendChild(w);
   };
+  if (advance)
+    note("warn", "아직 생기지 않은 연차를 미리 씁니다",
+         "그 날 실제로 쓸 수 있는 연차는 " + (Math.round(Math.max(0, stock - cutDays) * 10) / 10) + "일뿐이고, 모자란 "
+         + (Math.round(advance * 10) / 10) + "일은 그 달 3일에 생기는 연차로 메웁니다. 급여는 한 달 단위로 합산하지만, "
+         + "회사가 미리 쓰게 해 주는지는 확인이 필요합니다. 3일 이후로 잡으면 이 걱정이 없습니다.");
   if (from <= exp && to > exp)
     note("warn", "소멸일을 걸쳐 있습니다",
          exp.replace(/-/g,".") + " 에 1년 미만 연차가 사라지고 다음 날 15일이 새로 생깁니다. "
@@ -1536,8 +1551,8 @@ $("grid").addEventListener("click", e => {
       planSaved = { from, to };                    // 취소하면 방금 고른 범위로 돌아간다
       $("plFrom").value = ds; $("plTo").value = ""; planPick = 2;
     } else if (planPick === 1){
-      $("plFrom").value = ds;
-      if (to && ds > to) $("plTo").value = "";     // 새 시작이 끝보다 뒤면 끝을 비운다
+      if (to && ds > to){ $("plFrom").value = to; $("plTo").value = ds; }   // 끝보다 뒤 날을 시작으로 골랐으면 앞뒤를 바꾼다
+      else $("plFrom").value = ds;
       planPick = $("plTo").value ? 3 : 2;          // 끝이 이미 있으면 여기서 끝난다
     } else {
       if (ds < from){ $("plTo").value = from; $("plFrom").value = ds; }   // 나중 날을 먼저 골랐으면 뒤집는다
