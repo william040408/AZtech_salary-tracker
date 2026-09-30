@@ -186,12 +186,15 @@ function drawCal(skipLayout){
   const first = new Date(y, m-1, 1), last = new Date(y, m, 0);
   const lanes = gcLanes(view);
   const g = $("grid"); g.textContent = "";
-  for (let i=0;i<first.getDay();i++){
-    const c = document.createElement("div"); c.className = "cell pad"; g.appendChild(c);
-  }
-  // 주 수만큼만 그리고, 칸 높이를 주 수로 나눠 달력 전체 높이를 늘 같게 한다.
-  // 5주 달은 칸이 조금 커지고 6주 달은 조금 작아질 뿐, 빈 줄이 남지 않는다.
-  const WEEKS = Math.ceil((first.getDay() + last.getDate()) / 7);
+  // 앞뒤 빈 칸에는 이웃 달의 날짜를 흐리게 적는다 — 구글 캘린더와 같다.
+  // 달마다 4~6주로 줄 수가 달라지면 칸 크기가 바뀌므로, 늘 여섯 줄로 그린다.
+  const padCell = d => {
+    const c = document.createElement("div"); c.className = "cell pad";
+    const dd = document.createElement("span"); dd.className = "d"; dd.textContent = d.getDate();
+    c.appendChild(dd); g.appendChild(c);
+  };
+  for (let i = first.getDay(); i > 0; i--) padCell(new Date(y, m-1, 1 - i));
+  const WEEKS = 6;
   for (let day=1; day<=last.getDate(); day++){
     const ds = y+"-"+String(m).padStart(2,"0")+"-"+String(day).padStart(2,"0");
     const k = kindOf(ds), K = KINDS[k];
@@ -230,10 +233,10 @@ function drawCal(skipLayout){
     const gev = gcEvents.get(ds);
     if (gev && gev.length){
       const wi = Math.floor((lanes.pad + day - 1) / 7);
-      const wk = lanes.weeks[wi], cap = laneCaps[wi];
+      const wk = lanes.weeks[wi], cap = Math.max(2, laneCaps[wi]);      // 최소 두 줄: 막대 하나 + '+N'
       const here = wk.here.filter(s => s.from <= ds && ds <= s.to);
-      if (!gcTitles() || cap < 1 || !here.length){
-        b.classList.add("hasev");                 // 제목을 끄거나 자리가 없으면 점만 찍는다
+      if (!gcTitles() || !here.length){
+        b.classList.add("hasev");                 // 제목을 끈 경우에만 점을 찍는다
       } else {
         const box = document.createElement("span"); box.className = "evs";
         const slot = [];
@@ -256,9 +259,17 @@ function drawCal(skipLayout){
           box.appendChild(v);
         }
         if (overflow){
-          const more = document.createElement("span"); more.className = "ev more";
-          more.textContent = "+" + here.filter(s => wk.lane.get(s) >= shown).length;
-          box.appendChild(more);
+          const hid = here.filter(s => wk.lane.get(s) >= shown);
+          // 가려진 것이 하루짜리 하나뿐이면 '+1' 자리에 그 일정을 적는다 (이어질 막대가 없으니 줄이 어긋나지 않는다)
+          if (hid.length === 1 && hid[0].from === hid[0].to){
+            const v = document.createElement("span");
+            v.className = "ev bar s e"; v.style.background = hid[0].color; v.style.color = gcInk(hid[0].color);
+            v.textContent = hid[0].title; box.appendChild(v);
+          } else {
+            const more = document.createElement("span"); more.className = "ev more";
+            more.textContent = "+" + hid.length;
+            box.appendChild(more);
+          }
         }
         b.appendChild(box);
       }
@@ -268,9 +279,7 @@ function drawCal(skipLayout){
       + (hn ? " · " + hn : "") + (a&&a.start ? " "+a.start+"~"+a.end : ""));
     g.appendChild(b);
   }
-  for (let i = first.getDay() + last.getDate(); i < WEEKS * 7; i++){
-    const c = document.createElement("div"); c.className = "cell pad"; g.appendChild(c);
-  }
+  for (let i = first.getDay() + last.getDate(), k = 1; i < WEEKS * 7; i++, k++) padCell(new Date(y, m, k));
   gcOnView();
   $("prev").disabled = view <= B.calendarFrom;
   $("next").disabled = view >= B.calendarTo;
@@ -299,11 +308,13 @@ function targetCellH(){
   let reserved = 12;
   if (getComputedStyle(wrap).display === "grid"){            // 두 칼럼 — 머리글 밑에서 시작한다
     const hd = document.querySelector(".hd");
-    reserved = hd.offsetTop + hd.offsetHeight + 14 + 12;
+    // 달력이 붙어 있을 수 있는 높이(CSS max-height = 화면 − 제목줄 − 28px)보다 늘 조금 작게 잡는다.
+    // 딱 맞추면 반올림 때문에 몇 px 넘쳐서 달력 안에서 미세하게 스크롤된다.
+    reserved = hd.offsetTop + hd.offsetHeight + 34;
   }
   const gap = parseFloat(getComputedStyle(grid).rowGap) || 2;
-  const weeks = Math.max(4, Math.round(grid.children.length / 7));      // 4~6주
-  return Math.max(48, Math.min(260, Math.floor((viewportH() - reserved - extra - gap * (weeks - 1)) / weeks)));
+  const weeks = 6;                                                      // 늘 여섯 줄 — 달이 바뀌어도 칸 크기가 같다
+  return Math.max(80, Math.min(260, Math.floor((viewportH() - reserved - extra - gap * (weeks - 1)) / weeks)));
 }
 
 /* 각 주에 일정 줄이 몇 개 들어가는지 잰다 — 날짜·분류·공휴일 이름이 쓰고 남은 자리 */
@@ -995,22 +1006,25 @@ function gcInk(hex){
 function gcLanes(mo){
   const [y, m] = mo.split("-").map(Number);
   const pad = new Date(y, m-1, 1).getDay();          // 첫 주에 비는 칸 수
-  const days = s => (new Date(s.to) - new Date(s.from)) / 864e5;
   const all = gcSpans.filter(s => gcUses(s.calId));
   const weeks = [];
   for (let w = 0; w < 6; w++){
     const ws = iso(new Date(y, m-1, 1 - pad + w*7));
     const we = iso(new Date(y, m-1, 1 - pad + w*7 + 6));
+    // 길이는 '그 주 안에서 보이는 만큼' 으로 잰다. 전체 길이로 줄 세우면, 지난주부터 이어져
+    // 이번 주 하루만 걸친 긴 일정이 위 줄을 차지하고 정작 이번 주 내내 이어지는 일정은 아래로 밀린다.
+    const from = s => s.from > ws ? s.from : ws, to = s => s.to < we ? s.to : we;
+    const days = s => (new Date(to(s)) - new Date(from(s))) / 864e5;
     const here = all.filter(s => s.to >= ws && s.from <= we)
-      .sort((a, b) => days(b) - days(a)               // 긴 일정을 위로
+      .sort((a, b) => days(b) - days(a)               // 이번 주에 더 길게 보이는 것을 위로
                    || (a.allDay === b.allDay ? 0 : (a.allDay ? -1 : 1))
-                   || a.from.localeCompare(b.from)
+                   || from(a).localeCompare(from(b))
                    || a.t.localeCompare(b.t));
-    const tail = [], lane = new Map();
+    const lanesUsed = [], lane = new Map();          // 줄마다 이미 들어간 일정들
     for (const s of here){
       let i = 0;
-      while (tail[i] && tail[i] >= s.from) i++;
-      tail[i] = s.to; lane.set(s, i);
+      while (lanesUsed[i] && lanesUsed[i].some(o => o.from <= s.to && s.from <= o.to)) i++;
+      (lanesUsed[i] = lanesUsed[i] || []).push(s); lane.set(s, i);
     }
     weeks.push({ here, lane });
   }

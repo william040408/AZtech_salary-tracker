@@ -248,7 +248,9 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .cell{height:var(--cell-h,96px);border:1px solid var(--line);border-radius:10px;background:var(--surface2);
   display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:1px;
   cursor:pointer;padding:5px 3px 4px;font-size:13px;position:relative;min-width:0;text-align:center}
-.cell.pad{visibility:hidden;cursor:default}
+.cell.pad{cursor:default;pointer-events:none;background:transparent;opacity:.55}
+.cell.pad .d{color:var(--muted);font-weight:500}
+.cell{overflow-x:visible;overflow-y:clip}
 .cell:disabled{cursor:default;opacity:.45}
 .cell .d{font-size:15px;line-height:1.15;font-weight:600;font-family:Inter,sans-serif;font-variant-numeric:tabular-nums}
 .cell .t{margin-top:1px;font-size:9px;font-weight:600;line-height:1.1;white-space:nowrap;max-width:100%;letter-spacing:-.03em}
