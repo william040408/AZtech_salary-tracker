@@ -611,3 +611,9 @@ h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .pickbar{display:flex;align-items:center;gap:10px;justify-content:space-between;font-size:12.5px;font-weight:600;
   padding:8px 11px;margin-bottom:8px;color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent)}
 .cell .t.sb{color:var(--accent);font-weight:700}
+
+.cell.restwork{box-shadow:inset 0 3px 0 var(--hol)}
+.mrow-why span.warn{color:var(--unpaid);background:var(--unpaid-soft);border:1px solid var(--unpaid);
+  padding:2px 8px;font-weight:600;line-height:1.45}
+.opt-row.rest .times{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:flex-start;gap:8px}
+.opt-row.rest .times input{flex:1;min-width:0}

@@ -42,6 +42,16 @@ function holName(ds){
   return (ATT.get(ds) && ATT.get(ds).holiday) || (B.holidays && B.holidays[ds]) || null;
 }
 
+/* 쉬는 날(주말·공휴일)의 시트 — 일했는지, 일했다면 대체휴무인지만 묻는다. 지각 같은 구분은 없다. */
+const REST_GROUPS = [{ title: "쉬는 날에 일했나요?", kinds: ["work", "restsub", "dayoff"] }];
+const REST_INFO = {
+  work:    { label: "휴일 근무",       desc: "휴일근로수당 대상" },
+  restsub: { label: "대체근무", desc: "다른 날 쉬고 갈음" },
+  dayoff:  { label: "쉬는 날",         desc: "일하지 않음" },
+};
+let restMode = "off";                                 // off | work | sub — 쉬는 날 시트에서 고른 것
+const restKey = () => restMode === "sub" ? "restsub" : restMode === "work" ? "work" : "dayoff";
+
 /* 시트에 묶어서 보여 줄 순서. 회사가 실제로 쓰는 갈래를 그대로 따른다. */
 const GROUPS = [
   { title: "출근",             kinds: ["work", "short"] },
@@ -80,7 +90,11 @@ function defaultKind(ds){
   return "work";
 }
 const kindName = v => (v && typeof v === "object") ? v.k : v;
-const kindOf = d => kindName(overrides.get(d)) || defaultKind(d);
+const kindOf = d => {
+  if (subTargets().has(d)) return "substitute";           // 대체휴무로 묶인 날은 그 근무와 한 덩어리다
+  const k = kindName(overrides.get(d)) || defaultKind(d);
+  return (k === "short" && isRest(d)) ? "work" : k;       // 쉬는 날에 일한 것은 지각이 아니다
+};
 const timesOf = d => {                       // 직접 적은 시각이 있으면 그것, 없으면 엑셀 기록
   const v = overrides.get(d);
   if (v && typeof v === "object" && v.s) return { s: v.s, e: v.e, mine: true };
@@ -90,10 +104,13 @@ const timesOf = d => {                       // 직접 적은 시각이 있으�
 const WORK_KINDS = new Set(["work", "short"]);
 /* 대체휴무 — 쉬는 날(주말·공휴일)에 일한 날에, 그 대신 쉰 날을 이어 둔다. 일한 날의 기록에 sub 로 저장한다. */
 const subOf = d => { const v = overrides.get(d); return (v && typeof v === "object" && v.sub) || null; };
+let subMap = null;                                       // 기록이 바뀔 때마다 비워 다시 만든다
 function subTargets(){                                   // 쉰 날 -> 일한 날
-  const m = new Map();
-  for (const [d, v] of overrides) if (v && typeof v === "object" && v.sub) m.set(v.sub, d);
-  return m;
+  if (!subMap){
+    subMap = new Map();
+    for (const [d, v] of overrides) if (v && typeof v === "object" && v.sub) subMap.set(v.sub, d);
+  }
+  return subMap;
 }
 const dotMD = ds => ds.slice(5, 7) + "." + ds.slice(8);
 
@@ -268,8 +285,11 @@ function drawCal(skipLayout){
     const dd = document.createElement("span"); dd.className = "d"; dd.textContent = day;
     drow.appendChild(dd); b.appendChild(drow);
     const hn = holName(ds);
+    const restWork = isRest(ds) && WORK_KINDS.has(k);       // 쉬는 날에 일했다
+    if (restWork) b.classList.add("restwork");
     if (K && k !== "weekend" && k !== "holiday"){
-      const t = document.createElement("span"); t.className = "t"; t.textContent = K.tag;
+      const t = document.createElement("span"); t.className = "t";
+      t.textContent = restWork ? (subOf(ds) ? "대체근무" : "휴일근무") : K.tag;
       b.appendChild(t);
     }
     if (hn){                       // 출근한 날이어도 무슨 날이었는지 남긴다
@@ -454,37 +474,32 @@ function drawMonths(){
       bits.push("차감이 " + (B.dailyHours / 2) + "시간 단위가 아님 — 지각·조퇴가 반영된 것으로 보임");
     const rw = restWorkOf(mo);
     if (rw.n){
-      const when = xs => xs.map(x => dotMD(x.ds) + " " + x.hours + "시간").join(", ");
-      const subs = rw.list.filter(x => x.sub), open = rw.list.filter(x => !x.sub);
       const hasItem = !!p && !p.derived && Object.keys(p.earnings).some(name => /휴일|가산|연장|야간/.test(name));
-      if (subs.length){
-        bits.push("쉬는 날 근무 " + subs.length + "일 (" + subs.map(x => dotMD(x.ds) + " " + x.hours + "시간 → " + dotMD(x.sub) + " 대체휴무").join(", ")
-          + ") — 대체휴무로 갈음했으니 휴일근로수당이 없는 것이 맞습니다"
-          + (hasItem ? ". 다만 명세서에 휴일근로 항목이 있어 중복 지급인지 확인이 필요합니다" : ""));
-        for (const x of subs){                       // 대체휴무일이 말이 되는지 본다
-          const tk = kindOf(x.sub);
-          if (isRest(x.sub)) bits.push("⚠ " + dotMD(x.sub) + " 은 원래 쉬는 날이라 대체휴무가 되지 않습니다");
-          else if (WORK_KINDS.has(tk)) bits.push("⚠ " + dotMD(x.sub) + " 에 출근한 것으로 기록돼 있어 대체휴무와 맞지 않습니다");
-          else if (CONSUMES[tk] > 0) bits.push("⚠ " + dotMD(x.sub) + " 이 연차로 기록돼 있어 대체휴무가 아니라 연차를 쓴 것이 됩니다");
-        }
-      }
-      if (open.length){
-        const openPay = open.reduce((a, x) => a + x.pay, 0);
-        if (p && !p.derived){
-          bits.push("쉬는 날 근무 " + open.length + "일 (" + when(open) + ")"
-            + (hasItem ? " — 명세서에 휴일근로 항목이 있음"
-                       : " — 명세서에 휴일근로수당이 없음. 법정 기준이면 약 " + WON(openPay)
-                         + "원인데, 대체휴무로 갈음했다면 달력에서 그 날을 눌러 대체휴무일을 지정해 주세요"));
-        } else {
-          bits.push("쉬는 날 근무 " + open.length + "일 (" + when(open) + ") — 휴일근로수당 약 " + WON(openPay) + "원 (추정)");
-        }
+      bits.push("쉬는 날 근무 " + rw.n + "일 ("
+        + rw.list.map(x => dotMD(x.ds) + " " + x.hours + "시간" + (x.sub ? " → " + dotMD(x.sub) + " 대체휴무" : "")).join(", ") + ")");
+      const open = rw.list.filter(x => !x.sub), openPay = open.reduce((a, x) => a + x.pay, 0);
+      if (open.length && p && !p.derived && !hasItem)
+        bits.push({ warn: true, t: "대체휴무 없이 쉬는 날에 일했는데 명세서에 휴일근로수당이 없습니다 · 법정 기준 약 " + WON(openPay)
+                                  + "원 (대체휴무라면 그 날을 눌러 지정)" });
+      else if (open.length && !(p && !p.derived))
+        bits.push("휴일근로수당 약 " + WON(openPay) + "원 (추정)");
+      if (hasItem && rw.list.some(x => x.sub))
+        bits.push({ warn: true, t: "대체휴무로 갈음한 근무가 있는데 명세서에 휴일근로 항목이 있어 중복 지급인지 확인이 필요합니다" });
+      for (const x of rw.list.filter(x => x.sub)){          // 대체휴무일이 말이 되는지 본다
+        const tk = kindOf(x.sub);
+        if (WORK_KINDS.has(tk)) bits.push({ warn: true, t: dotMD(x.sub) + " 에 출근한 기록이 있어 대체휴무와 맞지 않습니다" });
       }
     }
     for (const [d, v] of overrides)                  // 다른 달 근무를 대신해 쉰 날
       if (v && typeof v === "object" && v.sub && monthOf(v.sub) === mo && monthOf(d) !== mo)
         bits.push(dotMD(v.sub) + " 은 " + d.replace(/-/g, ".") + " 근무의 대체휴무일");
     if (!bits.length) bits.push("만근, 변동 없음");
-    for (const t of bits){ const s = document.createElement("span"); s.textContent = t; why.appendChild(s); }
+    for (const t of bits){
+      const s = document.createElement("span");
+      s.textContent = typeof t === "string" ? t : t.t;
+      if (t.warn) s.className = "warn";
+      why.appendChild(s);
+    }
     row.appendChild(why);
 
     if (p && !p.derived){
@@ -760,7 +775,7 @@ function drawLeave(){
     detailRows.acc.push({ ds: e.ds, k: spanText(e) + " 만근 +" + e.days + "일" });
   for (const ds of trackedDates()){
     const mo = monthOf(ds), a = ATT.get(ds), base = a ? baseKind(a) : null;
-    if ((base === "company" || base === "personal") && !overrides.has(ds))
+    if ((base === "company" || base === "personal") && !overrides.has(ds) && !subTargets().has(ds))
       untouched[mo] = (untouched[mo] || 0) + 1;          // 엑셀 기본값 그대로인 휴무일
     const k = kindOf(ds);
     if (!(k in CONSUMES) || isRest(ds)) continue;      // 쉬는 날은 연차도 급여도 건드리지 않는다
@@ -1347,9 +1362,14 @@ $("pkGrid").addEventListener("click", e => {
 
 /* ── 편집 시트 ── */
 function openSheet(ds){
+  const via = subTargets().get(ds);                    // 대체휴무일을 눌렀으면 짝이 된 근무일의 시트를 연다
+  const clicked = ds;
+  if (via) ds = via;
   picked = ds;
   const a = ATT.get(ds), k = kindOf(ds);
-  const shown = (k === "weekend" || k === "holiday") ? "dayoff" : k;   // 기본값은 '쉬는 날' 로 보인다
+  const rest = isRest(ds);
+  restMode = !rest || !WORK_KINDS.has(k) ? "off" : (subOf(ds) ? "sub" : "work");
+  const shown = rest ? restKey() : (k === "weekend" || k === "holiday") ? "dayoff" : k;   // 기본값은 '쉬는 날' 로 보인다
   const dt = new Date(ds+"T00:00:00");
   $("shTitle").textContent = ds.replace(/-/g,".") + " (" + "일월화수목금토"[dt.getDay()] + ")";
   const hol = a?.holiday || (B.holidays && B.holidays[ds]);
@@ -1371,12 +1391,12 @@ function openSheet(ds){
   drawSheetBal(k, ds);
   drawSheetEvents(ds);
   const box = $("shOpts"); box.textContent = "";
-  for (const g of GROUPS){
+  for (const g of (rest ? REST_GROUPS : GROUPS)){
     const h = document.createElement("div"); h.className = "opt-h"; h.textContent = g.title;
     box.appendChild(h);
-    const row = document.createElement("div"); row.className = "opt-row";
+    const row = document.createElement("div"); row.className = "opt-row" + (rest ? " rest" : "");
     for (const key of g.kinds){
-      const K = KINDS[key];
+      const K = rest ? REST_INFO[key] : KINDS[key];
       const b = document.createElement("button");
       b.type = "button"; b.className = "opt"; b.dataset.kind = key;
       b.setAttribute("aria-pressed", String(shown === key));
@@ -1387,35 +1407,37 @@ function openSheet(ds){
     if (g.kinds.includes("work")) row.appendChild($("shTimes"));  // 출근 줄 오른쪽 칸
     box.appendChild(row);
   }
-  syncTimes(ds, k);
-  drawSubst(ds, shown);
+  syncTimes(ds, rest ? (restMode === "off" ? "dayoff" : "work") : k);
+  drawSubst(ds, clicked);
   $("scrim").classList.add("on"); $("sheet").classList.add("on"); pushLayer("sheet");
 }
 /* ── 대체휴무 지정 ── */
 let subPick = null;                                   // 대체휴무일을 고르는 중인, 일한 날
-function drawSubst(ds, k){
+function drawSubst(ds, clicked){
   const box = $("shSubst"); box.textContent = "";
-  const worked = isRest(ds) && WORK_KINDS.has(k), from = subTargets().get(ds);
-  box.hidden = !(worked || from);
+  const sub = restMode === "sub", cur = deferred ? pendSub : subOf(ds);
+  const viaTarget = clicked && clicked !== ds ? clicked : null;
+  box.hidden = !(sub || viaTarget);
   if (box.hidden) return;
   const t = document.createElement("span"); t.className = "sb-t";
-  if (worked){
-    const cur = deferred ? pendSub : subOf(ds);
-    t.textContent = cur ? "대체휴무일 " + cur.replace(/-/g, ".") : "이 날 근무를 다른 날 휴무로 대체했다면";
-    box.appendChild(t);
+  t.textContent = viaTarget && !sub ? viaTarget.replace(/-/g, ".") + " 은 " + ds.replace(/-/g, ".") + " 근무의 대체휴무일이라 함께 처리됩니다"
+    : "대체휴무일(이 날 대신 쉰 날) " + (cur ? cur.replace(/-/g, ".") : "— 아직 안 정함");
+  box.appendChild(t);
+  if (sub){
     const go = document.createElement("button"); go.type = "button"; go.className = "btn sm"; go.id = "shSubGo";
-    go.textContent = cur ? "바꾸기" : "대체휴무일 고르기"; box.appendChild(go);
+    go.textContent = cur ? "바꾸기" : "날짜 고르기"; box.appendChild(go);
     if (cur){
       const off = document.createElement("button"); off.type = "button"; off.className = "btn sm"; off.id = "shSubOff";
       off.textContent = "해제"; box.appendChild(off);
     }
-  } else {
-    t.textContent = from.replace(/-/g, ".") + " 근무의 대체휴무일"; box.appendChild(t);
   }
 }
+let subTimes = null;                                  // 대체휴무일을 고르는 동안 적어 둔 실제 근무 시각
 function startSubPick(){
   const ds = picked; if (!ds) return;
   if (deferred && pendKind) storeKind(ds, pendKind, pendTimes, pendSub);   // 시트에서 고친 것은 먼저 저장
+  const a1 = $("shStart").value, b1 = $("shEnd").value;
+  subTimes = (a1 && b1) ? { s: a1, e: b1 } : null;
   $("scrim").classList.remove("on"); $("sheet").classList.remove("on"); picked = null;
   const i = layers.lastIndexOf("sheet");              // 시트가 쌓은 뒤로 가기 칸을 그대로 넘겨받는다
   if (i >= 0) layers[i] = "subpick"; else pushLayer("subpick");
@@ -1430,14 +1452,15 @@ function endSubPick(){
   relayout();
 }
 function setSub(ds, target){
-  const tm = timesOf(ds);
-  return setKind(ds, kindOf(ds), tm && tm.mine ? { s: tm.s, e: tm.e } : null, target);
+  const tm = timesOf(ds), t = subTimes || (tm && tm.mine ? { s: tm.s, e: tm.e } : (tm ? { s: tm.s, e: tm.e } : null));
+  subTimes = null;
+  return setKind(ds, target ? "work" : kindOf(ds), t, target);
 }
 $("shSubst").addEventListener("click", e => {
   if (e.target.closest("#shSubGo")) startSubPick();
   else if (e.target.closest("#shSubOff")){
-    if (deferred){ pendSub = null; drawSubst(picked, pendKind); drawSheetBal(pendKind, picked); }
-    else { setSub(picked, null); drawSubst(picked, kindOf(picked)); drawSheetBal(kindOf(picked), picked); }
+    if (deferred){ restMode = "work"; pendSub = null; markOpt("work"); }
+    else { restMode = "work"; setSub(picked, null); markOpt("work"); syncTimes(picked, "work"); }
   }
 });
 $("pickCancel").addEventListener("click", endSubPick);
@@ -1508,11 +1531,13 @@ function saveTimes(){
   const a = $("shStart").value, b = $("shEnd").value;
   showHours();
   if (!a || !b) return;
-  // 8시간에 못 미치면 지각으로 본다
-  const k = hoursBetween(a, b) < 7.99 ? "short" : "work";
+  const rest = isRest(picked);
+  // 평일은 8시간에 못 미치면 지각으로 본다. 쉬는 날에는 지각이 없다.
+  const k = (!rest && hoursBetween(a, b) < 7.99) ? "short" : "work";
   if (deferred){ pendKind = k; pendTimes = { s: a, e: b }; }
+  else if (rest && restMode === "sub" && !subOf(picked)) { /* 대체휴무일을 고를 때 함께 저장한다 */ }
   else setKind(picked, k, { s: a, e: b });
-  markOpt(k);
+  markOpt(rest ? restKey() : k);
   $("shSub").textContent = a + " ~ " + b + " · " + hoursBetween(a, b) + "시간 (직접 적음)";
 }
 
@@ -1523,8 +1548,8 @@ let deferred = false, pendKind = null, pendTimes = null, pendSub = null;
 function markOpt(k){
   for (const el of $("shOpts").querySelectorAll(".opt"))
     el.setAttribute("aria-pressed", String(el.dataset.kind === k));
-  if (picked && isRest(picked)) drawSheetBal(k, picked);    // 고른 종류에 맞춰 안내를 바꾼다
-  if (picked) drawSubst(picked, k);
+  if (picked && isRest(picked)) drawSheetBal(restMode === "off" ? "dayoff" : "work", picked);    // 고른 것에 맞춰 안내를 바꾼다
+  if (picked) drawSubst(picked);
 }
 
 /* '쉬는 날' 을 고르면, 그 날의 원래 모습이 주말·공휴일일 때는 기록을 지워
@@ -1548,6 +1573,7 @@ async function setKind(ds, kind, times, sub){
   const val = (times && times.s) || sub
     ? { k: kind, ...(times && times.s ? { s: times.s, e: times.e } : {}), ...(sub ? { sub } : {}) } : kind;
   if (kind) overrides.set(ds, val); else overrides.delete(ds);
+  subMap = null;
   redraw();
   if (dbRef){
     try {
@@ -1663,9 +1689,13 @@ $("grid").addEventListener("click", e => {
   }
   if (!b || b.disabled || !b.dataset.date) return;
   if (subPick){                                    // 대체휴무일을 고르는 중
-    const from = subPick;
-    if (b.dataset.date === from) return;
-    endSubPick(); setSub(from, b.dataset.date);
+    const from = subPick, to = b.dataset.date, owner = subTargets().get(to);
+    const bad = to === from ? "일한 날과 다른 날을 눌러 주세요."
+              : isRest(to) ? "쉬는 날은 대체휴무일이 될 수 없습니다. 평일을 눌러 주세요."
+              : (owner && owner !== from) ? owner.replace(/-/g, ".") + " 근무의 대체휴무일로 이미 쓰였습니다."
+              : null;
+    if (bad){ $("pickTxt").textContent = bad; return; }
+    endSubPick(); setSub(from, to);
     return;
   }
   if (planPick){                                   // 연차 계획의 날짜를 고르는 중
@@ -1737,6 +1767,21 @@ $("plClear").addEventListener("click", () => {
 $("shOpts").addEventListener("click", e => {
   const b = e.target.closest(".opt"); if (!b || !picked) return;
   const k = b.dataset.kind;
+  if (isRest(picked)){                    // 쉬는 날 — 휴일 근무 / 대체휴무로 근무 / 쉬는 날
+    restMode = k === "restsub" ? "sub" : k === "work" ? "work" : "off";
+    markOpt(k);
+    if (restMode === "off"){
+      if (deferred){ pendKind = "dayoff"; pendTimes = null; pendSub = null; syncTimes(picked, "dayoff"); return; }
+      storeKind(picked, "dayoff"); closeSheet(); return;
+    }
+    const tm = timesOf(picked), t = tm ? { s: tm.s, e: tm.e } : null;
+    if (restMode === "work"){
+      if (deferred){ pendKind = "work"; pendTimes = t; pendSub = null; }
+      else setKind(picked, "work", t, null);
+    } else if (deferred){ pendKind = "work"; pendTimes = t; }
+    syncTimes(picked, "work"); drawSubst(picked);
+    return;
+  }
   markOpt(k);
   if (deferred){                          // 일정이 있는 날 — 저장 단추로 확정한다
     pendKind = k;
@@ -1942,7 +1987,7 @@ async function loadRemote(){
   if (!bundle || !Array.isArray(bundle.payslips))
     throw new Error("데이터가 아직 올라가지 않았습니다 (python src/push_data.py 를 먼저 실행하세요)");
   B = bundle;
-  overrides = new Map(Object.entries(lv || {}).filter(([, v]) => kindName(v)));
+  subMap = null; overrides = new Map(Object.entries(lv || {}).filter(([, v]) => kindName(v)));
 }
 
 /* ── 글꼴이 늦게 도착하면 글자 높이가 달라져 칸에 들어가는 줄 수가 바뀐다. 그때 다시 잰다. ── */
@@ -1974,7 +2019,7 @@ function start(){
   if (EMBEDDED){                      // 아티팩트·개발서버: 데이터는 페이지 안에 박혀 온다
     B = EMBEDDED;
     // 달력 기록은 금고에 따로 있다. 박혀 온 것이 있으면 그것부터 반영한다.
-    if (B.leave) overrides = new Map(Object.entries(B.leave).filter(([, v]) => kindName(v)));
+    if (B.leave){ subMap = null; overrides = new Map(Object.entries(B.leave).filter(([, v]) => kindName(v))); }
     start();
     if (B.dev){                       // python src/dev.py 로 띄운 개발용 서버
       $("dbWarn").textContent = "개발용 서버입니다. 여기서 바꾼 기록은 저장되지 않습니다.";
@@ -1985,7 +2030,7 @@ function start(){
     dbRef = db;
     db.collection("leave").onSnapshot(
       snap => {
-        overrides = new Map();
+        subMap = null; overrides = new Map();
         for (const d of snap.docs){
         const v = d.data(); if (!v || !v.kind) continue;
         overrides.set(d.id, (v.s || v.sub) ? { k: v.kind, ...(v.s ? { s: v.s, e: v.e } : {}), ...(v.sub ? { sub: v.sub } : {}) } : v.kind);
