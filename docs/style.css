@@ -181,8 +181,8 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .gc-msg{margin-top:10px;font-size:12.5px;color:var(--muted)}
 .gc-msg.bad{color:var(--unpaid)}
 .shev-h{font-size:11.5px;font-weight:600;color:var(--muted);margin:2px 0 4px}
-.shevents{margin:0 0 14px;display:flex;flex-direction:column;gap:2px;
-  max-height:172px;overflow-y:auto}
+.shevents{margin:0 0 12px;display:flex;flex-direction:column;gap:1px;
+  max-height:148px;overflow-y:auto;overscroll-behavior:contain}
 .shev{display:flex;align-items:baseline;gap:8px;font-size:13px;padding:5px 2px}
 .shev i{width:8px;height:8px;border-radius:2px;flex:none;align-self:center}
 .shev-t{font-size:11.5px;font-weight:600;color:var(--muted);flex:none;min-width:34px}
@@ -238,7 +238,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .dow span:last-child{color:var(--company)}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--gap);--gap:4px;--bleed:8px;
   --lane:13px;--lane-gap:2px}
-.cell{height:88px;border:1px solid var(--line2);border-radius:10px;background:var(--surface2);
+.cell{height:124px;border:1px solid var(--line2);border-radius:10px;background:var(--surface2);
   display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:1px;
   cursor:pointer;padding:5px 3px 4px;font-size:13px;position:relative;min-width:0;text-align:center}
 .cell.pad{visibility:hidden;cursor:default}
@@ -417,8 +417,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink)}
 .times input:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .thrs{font-size:11px;font-weight:600;color:var(--accent);text-align:center}
-.sheet-foot{display:flex;gap:8px;margin-top:12px;position:sticky;bottom:0;
-  background:var(--surface);padding-top:10px}
+.sheet-foot{display:flex;gap:8px;margin-top:14px}
 .btn{flex:1;appearance:none;border-radius:13px;padding:11px;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--ink2)}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -437,7 +436,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .sec:has(.grid) .sec-body{padding:8px}       /* 달력만은 폭을 최대한 쓴다 */
   .grid{--gap:2px;--bleed:6px}
   .dow{gap:2px}
-  .cell{height:98px;border-radius:9px;padding:5px 2px 4px}
+  .cell{height:118px;border-radius:9px;padding:5px 2px 4px}
   .cell .d{font-size:16px}
   .cell.accday::before{content:attr(data-acc-short);font-size:8px;padding:1px 3px}
   .cell .t{font-size:8.5px}
@@ -454,7 +453,9 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .lg .lgbal{grid-column:2;justify-self:start}
 }
 /* 세로로 긴 화면에서 시트가 화면을 다 덮지 않도록 */
-.sheet{max-height:min(78vh,560px);overflow-y:auto;overscroll-behavior:contain}
+/* 내용 길이에 맞춰 올라온다. 화면이 아주 작을 때만 안전장치로 스크롤이
+   생기는데, 단추가 더는 떠 있지 않으므로 그 사이로 뒤가 비치지 않는다. */
+.sheet{max-height:94vh;overflow-y:auto;overscroll-behavior:contain}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
 /* ── 넓은 화면 ──
@@ -463,7 +464,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
    1400px 을 넘어야 쪼개는 쪽이 넓어지므로 거기서부터 쪼갠다. */
 @media (min-width:1000px){
   .wrap{max-width:960px;padding-block:28px 80px}
-  .cell{height:118px;padding:7px 5px 6px}
+  .cell{height:140px;padding:7px 5px 6px}
   .cell .d{font-size:17px}
   .cell .t{font-size:10.5px}
   .cell .h{font-size:9.5px}
@@ -493,7 +494,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
      일정이 많아 그래도 넘치면 달력 안에서 스크롤된다. */
   #calSec{grid-column:1;grid-row:2/span 40;align-self:start;
     position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}
-  .cell{height:clamp(84px,calc((100vh - 286px) / 6),180px)}
+  .cell{height:clamp(126px,calc((100vh - 286px) / 6),190px)}
   .hero,#forecast,.tiles,#plan,.sec:not(#calSec),.linkbtn{grid-column:2}
   /* 누적·만근을 나란히, 쉰 날 합계를 가로로 길게 */
   .tiles{grid-template-columns:1fr 1fr;gap:10px}
@@ -510,4 +511,17 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 
 @media (min-width:1600px){
   .wrap{max-width:1620px}
+}
+
+/* 폰이거나 세로가 짧은 화면 — 시트가 스크롤되지 않도록 선택지를 눌러 담는다 */
+@media (max-width:520px), (max-height:880px){
+  .sheet{padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px))}
+  .sheet h3{font-size:15px}
+  .sheet .sub{margin-bottom:10px}
+  .opt{padding:9px 10px}
+  .opt small{display:none}
+  .opt-h{margin-top:8px}
+  .shevents{max-height:176px}
+  .shbal{padding:7px 10px;margin-bottom:10px}
+  .sheet-foot{margin-top:10px}
 }

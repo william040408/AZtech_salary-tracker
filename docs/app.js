@@ -170,24 +170,10 @@ function refNet(){
 }
 
 /* ── 달력 ── */
-/* 칸 높이가 고정이므로, 날짜·분류·공휴일이 쓰고 남은 자리에 일정 줄이
-   몇 개나 들어가는지 재서 그만큼만 그린다. 구글 캘린더와 같은 방식이다. */
-let laneFit = 3;
-function measureLanes(){
-  const cells = [...$("grid").querySelectorAll(".cell:not(.pad)")];
-  if (!cells.length) return laneFit;
-  const cs = getComputedStyle(cells[0]);
-  const inner = cells[0].clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-  const g = getComputedStyle($("grid"));
-  const row = parseFloat(g.getPropertyValue("--lane")) + parseFloat(g.getPropertyValue("--lane-gap"));
-  let worst = 0;                       // 글자가 가장 많은 칸을 기준으로 잡는다
-  for (const c of cells){
-    let t = 0;
-    for (const el of c.children) if (!el.classList.contains("evs")) t += el.getBoundingClientRect().height;
-    worst = Math.max(worst, t);
-  }
-  return Math.max(1, Math.min(5, Math.floor((inner - worst - 3) / row)));
-}
+/* 일정은 늘 세 줄까지 보여 주고, 넘치면 그 아래 한 줄을 더 써서 +N 을
+   적는다. +N 이 줄을 빼앗지 않으므로 여러 날 일정이 잘려 선이 끊기는
+   일이 없다. 칸 높이는 네 줄이 들어가도록 잡아 두었다. */
+const SHOW_LANES = 3;
 
 function drawCal(){
   const [y,m] = view.split("-").map(Number);
@@ -195,7 +181,6 @@ function drawCal(){
   $("mMonth").textContent = m + "월";
   const first = new Date(y, m-1, 1), last = new Date(y, m, 0);
   const lanes = gcLanes(view);
-  const SHOW_LANES = laneFit;
   const g = $("grid"); g.textContent = "";
   for (let i=0;i<first.getDay();i++){
     const c = document.createElement("div"); c.className = "cell pad"; g.appendChild(c);
@@ -245,11 +230,9 @@ function drawCal(){
       const box = document.createElement("span"); box.className = "evs";
       const slot = [];
       for (const s of here) slot[wk.lane.get(s)] = s;
-      // 줄 수는 늘 같아야 막대가 칸을 건너 나란히 놓인다.
-      // 넘치면 마지막 줄을 '+N' 으로 바꾼다 — 구글 캘린더와 같은 방식이다.
-      const over = here.length - (SHOW_LANES - 1);
-      const shown = over > 1 ? SHOW_LANES - 1 : SHOW_LANES;
-      for (let i = 0; i < shown; i++){
+      // 줄 수는 늘 같아야 막대가 칸을 건너 나란히 놓인다
+      const over = here.length - SHOW_LANES;
+      for (let i = 0; i < SHOW_LANES; i++){
         const s = slot[i];
         const v = document.createElement("span");
         if (!s){ v.className = "ev blank"; box.appendChild(v); continue; }
@@ -262,7 +245,7 @@ function drawCal(){
         if (head) v.textContent = s.title;      // 시각은 좁아서 못 넣는다. 시트에 있다.
         box.appendChild(v);
       }
-      if (over > 1){
+      if (over > 0){
         const more = document.createElement("span"); more.className = "ev more";
         more.textContent = "+" + over; box.appendChild(more);
       }
@@ -275,10 +258,6 @@ function drawCal(){
   }
   for (let i = first.getDay() + last.getDate(); i < WEEKS * 7; i++){
     const c = document.createElement("div"); c.className = "cell pad"; g.appendChild(c);
-  }
-  const fit = measureLanes();
-  if (fit !== laneFit && !drawCal.again){    // 한 번만 다시 그린다
-    laneFit = fit; drawCal.again = true; drawCal(); drawCal.again = false; return;
   }
   gcOnView();
   $("prev").disabled = view <= B.calendarFrom;
