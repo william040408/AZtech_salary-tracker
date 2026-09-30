@@ -235,11 +235,11 @@ function drawCal(skipLayout){
     const c = document.createElement("div"); c.className = "cell pad";
     const dd = document.createElement("span"); dd.className = "d"; dd.textContent = d.getDate();
     c.appendChild(dd);
+    c.dataset.goto = iso(d).slice(0, 7);                  // 누르면 그 달로 넘어간다
     addLanes(c, iso(d), Math.floor(idx / 7), idx % 7);
     g.appendChild(c);
   };
   for (let i = first.getDay(); i > 0; i--) padCell(new Date(y, m-1, 1 - i), first.getDay() - i);
-  const WEEKS = 6;
   for (let day=1; day<=last.getDate(); day++){
     const ds = y+"-"+String(m).padStart(2,"0")+"-"+String(day).padStart(2,"0");
     const k = kindOf(ds), K = KINDS[k];
@@ -280,7 +280,9 @@ function drawCal(skipLayout){
       + (hn ? " · " + hn : "") + (a&&a.start ? " "+a.start+"~"+a.end : ""));
     g.appendChild(b);
   }
-  for (let i = first.getDay() + last.getDate(), k = 1; i < WEEKS * 7; i++, k++) padCell(new Date(y, m, k), i);
+  const weeks = Math.ceil((first.getDay() + last.getDate()) / 7);       // 4~6주 — 필요한 줄만 그린다
+  g.style.setProperty("--weeks", weeks);
+  for (let i = first.getDay() + last.getDate(), k = 1; i < weeks * 7; i++, k++) padCell(new Date(y, m, k), i);
   gcOnView();
   $("prev").disabled = view <= B.calendarFrom;
   $("next").disabled = view >= B.calendarTo;
@@ -315,8 +317,9 @@ function targetCellH(){
   }
   const g0 = parseFloat(getComputedStyle(grid).rowGap);
   const gap = isNaN(g0) ? 2 : g0;             // 0 도 유효한 값이다 (표 모양 시안)
-  const weeks = 6;                                                      // 늘 여섯 줄 — 달이 바뀌어도 칸 크기가 같다
-  return Math.max(80, Math.min(260, Math.floor((viewportH() - reserved - extra - gap * (weeks - 1)) / weeks)));
+  // 달력 전체 크기는 늘 같고, 주 수(4~6)가 적으면 칸이 그만큼 세로로 길어진다
+  const weeks = Math.max(4, Math.round(grid.children.length / 7));
+  return Math.max(80, Math.min(300, Math.floor((viewportH() - reserved - extra - gap * (weeks - 1)) / weeks)));
 }
 
 /* 각 주에 일정 줄이 몇 개 들어가는지 잰다 — 날짜·분류·공휴일 이름이 쓰고 남은 자리 */
@@ -933,26 +936,15 @@ function gcMsg(text, bad){
   m.hidden = !text;
 }
 
-/* 토큰은 한 시간짜리다. 만료되면 동의 창 없이 한 번 다시 받아 보고,
-   그래도 안 되면 그때만 버튼을 누르라고 한다. */
-function gcQuietToken(){
-  return new Promise(resolve => {
-    if (!gcClient) return resolve(false);
-    gcQuiet = resolve;
-    try { gcClient.requestAccessToken({ prompt: "" }); }
-    catch { gcQuiet = null; resolve(false); }
-    setTimeout(() => { if (gcQuiet){ gcQuiet = null; resolve(false); } }, 8000);
-  });
-}
-
+/* 토큰은 한 시간짜리다. 만료돼도 로그인 창을 저절로 띄우지 않는다 — 버튼을 눌러야 뜬다. */
 async function gcApi(path, params, retried){
   const u = new URL("https://www.googleapis.com/calendar/v3/" + path);
   for (const k in (params || {})) u.searchParams.set(k, params[k]);
   const r = await fetch(u, { headers: { authorization: "Bearer " + gcToken } });
   if (r.status === 401 || r.status === 403){
     gcToken = null;
-    if (!retried && await gcQuietToken()) return gcApi(path, params, true);
-    throw new Error("로그인이 만료되었습니다. 다시 연결해 주세요.");
+    $("gcConnect").classList.remove("done"); $("gcConnect").textContent = "구글 캘린더 다시 연결";
+    throw new Error("로그인이 만료되었습니다. 위 버튼을 눌러 다시 연결해 주세요.");
   }
   if (!r.ok) throw new Error("구글 캘린더 오류 " + r.status);
   return r.json();
@@ -1022,7 +1014,7 @@ function gcLanes(mo){
   const pad = new Date(y, m-1, 1).getDay();          // 첫 주에 비는 칸 수
   const all = gcSpans.filter(s => gcUses(s.calId));
   const plan = planSpan(); if (plan) all.push(plan);
-  const weeks = [];
+  const weeks = []; let prev = new Map();
   for (let w = 0; w < 6; w++){
     const ws = iso(new Date(y, m-1, 1 - pad + w*7));
     const we = iso(new Date(y, m-1, 1 - pad + w*7 + 6));
@@ -1037,12 +1029,22 @@ function gcLanes(mo){
                    || from(a).localeCompare(from(b))
                    || a.t.localeCompare(b.t));
     const lanesUsed = [], lane = new Map();          // 줄마다 이미 들어간 일정들
+    const free = (i, s) => !(lanesUsed[i] && lanesUsed[i].some(o => o.from <= s.to && s.from <= o.to));
+    const put = (s, i) => { (lanesUsed[i] = lanesUsed[i] || []).push(s); lane.set(s, i); };
+    // 지난주에서 이어지는 일정은 가능하면 같은 줄에 둔다 — 주가 바뀌며 막대가 위아래로 어긋나 끊겨 보이지 않게.
+    // 계획은 늘 맨 위 줄을 먼저 잡아 가려지지 않게 한다.
+    for (const s of here) if (s.plan) put(s, 0);
     for (const s of here){
-      let i = 0;
-      while (lanesUsed[i] && lanesUsed[i].some(o => o.from <= s.to && s.from <= o.to)) i++;
-      (lanesUsed[i] = lanesUsed[i] || []).push(s); lane.set(s, i);
+      if (lane.has(s) || !prev.has(s)) continue;
+      const i = prev.get(s); if (free(i, s)) put(s, i);
     }
-    weeks.push({ here, lane, need: lanesUsed.length });   // need = 이 주가 쓰는 줄 수
+    for (const s of here){
+      if (lane.has(s)) continue;
+      let i = 0; while (!free(i, s)) i++;
+      put(s, i);
+    }
+    prev = lane;
+    weeks.push({ here, lane, need: lanesUsed.length });   // need = 이 주가 쓰는 줄 수 (빈 줄 포함)
   }
   return { pad, weeks };
 }
@@ -1117,6 +1119,7 @@ function gcInit(){
   if (!B.gcalClientId) return;                 // 설정이 없으면 이 칸을 아예 숨긴다
   $("gcal").hidden = false;
   const ready = () => window.google && google.accounts && google.accounts.oauth2;
+  const wasOn = () => { try { return !!localStorage.getItem(GC_ON); } catch { return false; } };
   const start = () => {
     gcClient = google.accounts.oauth2.initTokenClient({
       client_id: B.gcalClientId, scope: GC_SCOPE,
@@ -1130,9 +1133,8 @@ function gcInit(){
         if (quiet){ gcMsg(""); return quiet(true); }
         gcAfterToken();
       } });
-    // 전에 연결한 적이 있으면 동의 창 없이 조용히 받아 본다
-    let was = null; try { was = localStorage.getItem(GC_ON); } catch {}
-    if (was) gcClient.requestAccessToken({ prompt: "" });
+    // 로그인 창은 버튼을 눌렀을 때만 띄운다. 전에 연결했다면 버튼 글만 바꿔 둔다.
+    if (wasOn()) $("gcConnect").textContent = "구글 캘린더 불러오기";
   };
   if (ready()) start();
   else { let k = 0; const t = setInterval(() => { if (ready() || ++k > 40){ clearInterval(t); if (ready()) start(); } }, 150); }
@@ -1153,7 +1155,7 @@ function gcInit(){
   $("gcConnect").addEventListener("click", () => {
     if (!gcClient){ gcMsg("구글 로그인 스크립트를 아직 불러오는 중입니다.", true); return; }
     if (gcToken) return openPanel($("gcPanel").hidden);   // 이미 연결됐으면 판을 연다
-    gcClient.requestAccessToken({ prompt: "consent" });
+    gcClient.requestAccessToken({ prompt: wasOn() ? "" : "consent" });   // 전에 연결했으면 동의 화면은 건너뛴다
   });
   $("gcAgain").addEventListener("click", () => gcClient.requestAccessToken({ prompt: "consent" }));
   document.addEventListener("click", e => {              // 바깥을 누르면 닫는다
@@ -1315,7 +1317,7 @@ function openSheet(ds){
     box.appendChild(row);
   }
   syncTimes(ds, k);
-  $("scrim").classList.add("on"); $("sheet").classList.add("on");
+  $("scrim").classList.add("on"); $("sheet").classList.add("on"); pushLayer("sheet");
 }
 /* 그날 구글 캘린더 일정 */
 function drawSheetEvents(ds){
@@ -1410,7 +1412,7 @@ function commitSheet(){
   closeSheet();
 }
 
-function closeSheet(){ $("scrim").classList.remove("on"); $("sheet").classList.remove("on"); picked = null; }
+function closeSheet(){ $("scrim").classList.remove("on"); $("sheet").classList.remove("on"); picked = null; dropLayer("sheet"); }
 
 async function setKind(ds, kind, times){
   const val = times && times.s ? { k: kind, s: times.s, e: times.e } : kind;
@@ -1494,9 +1496,36 @@ function drawForecast(){
 
 function redraw(){ drawCal(); drawMonths(); drawLeave(); drawForecast(); tiles(); drawPlan(); setupFolds(); }
 
+/* ── 뒤로 가기 ──
+   폰의 뒤로 가기는 페이지를 떠나 버린다. 근태 시트나 날짜 고르기를 열 때 기록을 한 칸 쌓아 두고,
+   뒤로 가기가 오면 그 창만 닫는다. 화면에서 스스로 닫을 때는 쌓아 둔 칸을 되돌려 놓는다. */
+const layers = []; let ignorePop = 0;
+function pushLayer(n){
+  if (layers.includes(n)) return;
+  layers.push(n);
+  try { history.pushState({ layer: n }, ""); } catch { layers.pop(); }
+}
+function dropLayer(n){
+  const i = layers.lastIndexOf(n); if (i < 0) return;
+  layers.splice(i, 1); ignorePop++;
+  history.back();
+}
+window.addEventListener("popstate", () => {
+  if (ignorePop){ ignorePop--; return; }
+  const n = layers.pop();
+  if (n === "sheet") closeSheet();
+  else if (n === "pick") cancelPick();
+});
+
 /* ── 이벤트 ── */
 $("grid").addEventListener("click", e => {
-  const b = e.target.closest(".cell"); if (!b || b.disabled || !b.dataset.date) return;
+  const b = e.target.closest(".cell"); if (!b) return;
+  if (b.dataset.goto){                             // 이웃 달의 흐린 칸 — 그 달로 넘어간다
+    const mo = b.dataset.goto;
+    if (mo >= B.calendarFrom && mo <= B.calendarTo){ view = mo; closePicker(); drawCal(); }
+    return;
+  }
+  if (!b || b.disabled || !b.dataset.date) return;
   if (planPick){                                   // 연차 계획의 날짜를 고르는 중
     const ds = b.dataset.date, from = $("plFrom").value, to = $("plTo").value;
     if (planPick === 1){
@@ -1508,7 +1537,7 @@ $("grid").addEventListener("click", e => {
       else $("plTo").value = ds;
       planPick = 0;
     }
-    if (!planPick) planSaved = null;
+    if (!planPick){ planSaved = null; dropLayer("pick"); }
     syncPick(); drawCal(); drawPlan();
     if (!planPick) ensureVisible($("plan"), "nearest");   // 다 골랐으면 계획 칸으로 돌아온다 (폰)
     return;
@@ -1541,13 +1570,14 @@ function startPick(mode){                // 1 = 시작, 2 = 끝
   if (planPick === mode){ cancelPick(); return; }          // 같은 칸을 다시 누르면 취소
   if (!planPick) planSaved = { from: $("plFrom").value, to: $("plTo").value };
   planPick = (mode === 2 && !$("plFrom").value) ? 1 : mode;    // 시작이 없으면 시작부터
+  pushLayer("pick");
   syncPick(); drawCal(); drawPlan();
   ensureVisible($("calSec"), "start");                     // 폰은 달력이 위에 있으니 올려 보여 준다
 }
 function cancelPick(){
   planPick = 0;
   if (planSaved){ $("plFrom").value = planSaved.from; $("plTo").value = planSaved.to; }
-  planSaved = null;
+  planSaved = null; dropLayer("pick");
   syncPick(); drawCal(); drawPlan();
 }
 $("plFromBtn").addEventListener("click", () => startPick(1));
