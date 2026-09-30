@@ -59,7 +59,8 @@ body{
 .eyebrow{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
 h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balance;line-height:1.25}
 .svc{display:flex;flex-direction:column;gap:4px}
-.hd,#calSec{-webkit-user-select:none;user-select:none}
+.hd,#calSec{-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+#calSec *{-webkit-user-drag:none}
 .svc-row>span{white-space:nowrap}
 .svc-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;font-size:11.5px;line-height:1.3;color:var(--muted)}
 .bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
@@ -444,7 +445,7 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .tiles{grid-template-columns:1fr 1fr;gap:8px}
   .hero-main b{font-size:30px}
   .hero-grid span{font-size:10px;letter-spacing:-.02em}
-  .tile:first-child{grid-column:1/-1}
+  .tile:last-child{grid-column:1/-1}
   .tile b{font-size:18px}
   .sec-body{padding:13px}
   .sec:has(.grid) .sec-body{padding:8px}       /* 달력만은 폭을 최대한 쓴다 */
@@ -511,7 +512,7 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
      더 밀리지 않아 아래쪽 줄에 닿을 수 없기 때문이다. 그래서 칸
      높이를 화면 높이에서 끌어와 여섯 줄이 꼭 맞게 한다.
      일정이 많아 그래도 넘치면 달력 안에서 스크롤된다. */
-  #calSec{grid-column:1;grid-row:2/span 40;align-self:start;
+  #calSec{grid-column:1;grid-row:2/span 40;align-self:start;margin-bottom:0;
     position:sticky;top:calc(var(--hd-h,52px) + 14px);
     max-height:calc(100vh - var(--hd-h,52px) - 28px);overflow-y:auto}
   .hero,#forecast,.tiles,#plan,.sec:not(#calSec),.linkbtn{grid-column:2}
