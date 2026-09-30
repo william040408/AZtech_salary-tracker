@@ -435,6 +435,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .dow{gap:2px}
   .cell{min-height:98px;border-radius:9px;padding:5px 2px 4px}
   .cell .d{font-size:16px}
+  .cell.accday::before{content:attr(data-acc-short);font-size:8px;padding:1px 3px}
   .cell .t{font-size:8.5px}
   .cell .h{font-size:8px}
   .ev{height:14px;line-height:14px;font-size:8.5px}
@@ -488,10 +489,6 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
     position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}
   .cell{min-height:clamp(78px,calc((100vh - 330px) / 6),170px)}
   .hero,#forecast,.tiles,#plan,.sec:not(#calSec),.linkbtn{grid-column:2}
-  /* 남은 연차 → 실수령 타일 → 이번 달 예상 → 연차 계획 → 대조 순 */
-  .hero{order:1} .tiles{order:2} #forecast{order:3} #plan{order:4}
-  .sec:not(#calSec):not(#plan):not(#forecast){order:5} .linkbtn{order:9}
-
   /* 누적·만근을 나란히, 쉰 날 합계를 가로로 길게 */
   .tiles{grid-template-columns:1fr 1fr;gap:10px}
   .tile:first-child{grid-column:auto}

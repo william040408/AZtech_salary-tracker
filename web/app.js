@@ -212,6 +212,7 @@ function drawCal(){
     if (acc){
       b.classList.add("accday");
       b.dataset.acc = "연차 +" + acc.days;
+      b.dataset.accShort = "+" + acc.days;        // 좁은 화면에서는 날짜를 가리지 않게
       b.title = acc.from.replace(/-/g,".") + " ~ " + acc.to.replace(/-/g,".")
               + " 만근 시 연차 " + acc.days + "일 발생";
     }
