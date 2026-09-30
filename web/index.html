@@ -37,30 +37,28 @@
 
   <div class="app" id="app" hidden>
   <header class="hd">
-    <div class="hd-top">
-      <div>
-        <div class="eyebrow" id="org"></div>
-        <!-- 이름은 금고에서 받아 채운다. 저장소가 공개라 파일에 적지 않는다. -->
-        <h1 id="title">급여·연차 기록부</h1>
-      </div>
-      <div class="gcwrap" id="gcal" hidden>
-        <button class="gcbtn" type="button" id="gcConnect" aria-expanded="false">구글 캘린더 연동</button>
-        <div class="gcpanel" id="gcPanel" hidden>
-          <div class="gcp-h">보여 줄 캘린더</div>
-          <div class="gc-list" id="gcCals" hidden></div>
-          <label class="gc-opt" id="gcTitleOpt" hidden>
-            <input type="checkbox" id="gcShowTitles" checked>
-            <span>달력 칸에 일정 제목 적기</span>
-          </label>
-          <div class="gc-msg" id="gcMsg" hidden></div>
-          <button class="gcp-again" type="button" id="gcAgain" hidden>다시 연결</button>
-        </div>
-      </div>
+    <div class="hd-title">
+      <div class="eyebrow" id="org"></div>
+      <!-- 이름은 금고에서 받아 채운다. 저장소가 공개라 파일에 적지 않는다. -->
+      <h1 id="title">급여·연차 기록부</h1>
     </div>
     <div class="svc">
       <div class="svc-row"><span id="svcRange"></span><span class="num" id="svcPct"></span></div>
       <div class="bar"><i id="svcBar" style="width:0%"></i></div>
       <div class="svc-row"><span class="num" id="svcDone"></span><span class="num" id="svcLeft"></span></div>
+    </div>
+    <div class="gcwrap" id="gcal" hidden>
+      <button class="gcbtn" type="button" id="gcConnect" aria-expanded="false">구글 캘린더 연동</button>
+      <div class="gcpanel" id="gcPanel" hidden>
+        <div class="gcp-h">보여 줄 캘린더</div>
+        <div class="gc-list" id="gcCals" hidden></div>
+        <label class="gc-opt" id="gcTitleOpt" hidden>
+          <input type="checkbox" id="gcShowTitles" checked>
+          <span>달력 칸에 일정 제목 적기</span>
+        </label>
+        <div class="gc-msg" id="gcMsg" hidden></div>
+        <button class="gcp-again" type="button" id="gcAgain" hidden>다시 연결</button>
+      </div>
     </div>
   </header>
 

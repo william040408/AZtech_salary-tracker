@@ -23,6 +23,7 @@ const KINDS = {
   short:     {label:"지각",     tag:"지각",     cls:"k-short",    desc:"8시간 미만 근무",         off:0},
   holiday:   {label:"공휴일",   tag:null,   cls:"k-holiday",  desc:"법정 공휴일",             off:0},
   weekend:   {label:"주말",     tag:null,   cls:"k-weekend",  desc:"",                       off:0},
+  dayoff:    {label:"쉬는 날",  tag:"쉬는날", cls:"k-weekend",  desc:"원래 안 나오는 날 · 차감 없음", off:0},
   future:    {label:"예정",     tag:null,   cls:"k-future",   desc:"아직 오지 않은 날",        off:0},
 
   personal:  {label:"연차",      tag:"연차", cls:"k-personal", desc:"유급 · 연차 1일 소모",     off:1},
@@ -46,7 +47,7 @@ const GROUPS = [
   { title: "출근",             kinds: ["work", "short"] },
   { title: "내가 신청한 휴가",  kinds: ["personal", "half", "unpaid"] },
   { title: "회사가 지정한 휴가", kinds: ["coAnnual", "coUnpaid", "company"] },
-  { title: "그 외",            kinds: ["substitute", "official"] },
+  { title: "그 외",            kinds: ["substitute", "official", "dayoff"] },
 ];
 
 // 엑셀이 준 기본 분류를 사용자 분류 체계로 옮긴다
@@ -150,9 +151,9 @@ function tiles(){
   for (const ds of trackedDates()){
     const k = kindOf(ds), K = KINDS[k];
     if (!K) continue;
-    d += K.off;
-    used += CONSUMES[k] || 0;
-    if (k in DEDUCTS) flat += 1;
+    d += offOn(ds, k);
+    used += consumeOn(ds, k);
+    if (deductOn(ds, k)) flat += 1;
   }
   const r = x => Math.round(x * 10) / 10;
   const freeOff = r(d - used - flat);              // 연차도 급여도 안 깎인 휴무
@@ -170,12 +171,15 @@ function refNet(){
 }
 
 /* ── 달력 ── */
-/* 일정은 늘 세 줄까지 보여 주고, 넘치면 그 아래 한 줄을 더 써서 +N 을
-   적는다. +N 이 줄을 빼앗지 않으므로 여러 날 일정이 잘려 선이 끊기는
-   일이 없다. 칸 높이는 네 줄이 들어가도록 잡아 두었다. */
-const SHOW_LANES = 3;
+/* 달력 칸에 몇 줄이 들어가는지는 화면이 정한다.
+   칸 높이(--cell-h)는 화면 높이에서, 일정 줄 수는 그 칸에 남는 자리에서
+   계산한다. 일정이 그 줄 수를 넘을 때만 마지막 줄이 +N 이 된다.
+   줄 수는 주(가로 한 줄)마다 따로 잰다 — 막대는 같은 주 안에서만 이어지므로
+   주마다 달라도 선이 끊기지 않고, 공휴일 이름이 붙은 주만 줄 수가 줄어든다. */
+let laneCaps = [3, 3, 3, 3, 3, 3];
+let cellH = 0;
 
-function drawCal(){
+function drawCal(skipLayout){
   const [y,m] = view.split("-").map(Number);
   $("mYear").textContent = y + "년";
   $("mMonth").textContent = m + "월";
@@ -185,8 +189,9 @@ function drawCal(){
   for (let i=0;i<first.getDay();i++){
     const c = document.createElement("div"); c.className = "cell pad"; g.appendChild(c);
   }
-  // 어느 달이든 여섯 줄로 그린다. 달마다 달력 높이가 달라지지 않게.
-  const WEEKS = 6;
+  // 주 수만큼만 그리고, 칸 높이를 주 수로 나눠 달력 전체 높이를 늘 같게 한다.
+  // 5주 달은 칸이 조금 커지고 6주 달은 조금 작아질 뿐, 빈 줄이 남지 않는다.
+  const WEEKS = Math.ceil((first.getDay() + last.getDate()) / 7);
   for (let day=1; day<=last.getDate(); day++){
     const ds = y+"-"+String(m).padStart(2,"0")+"-"+String(day).padStart(2,"0");
     const k = kindOf(ds), K = KINDS[k];
@@ -223,33 +228,40 @@ function drawCal(){
               + " 만근 시 연차 " + acc.days + "일 발생";
     }
     const gev = gcEvents.get(ds);
-    if (gev && gev.length && !gcTitles()) b.classList.add("hasev");
-    if (gev && gev.length && gcTitles()){
-      const wk = lanes.weeks[Math.floor((lanes.pad + day - 1) / 7)];
+    if (gev && gev.length){
+      const wi = Math.floor((lanes.pad + day - 1) / 7);
+      const wk = lanes.weeks[wi], cap = laneCaps[wi];
       const here = wk.here.filter(s => s.from <= ds && ds <= s.to);
-      const box = document.createElement("span"); box.className = "evs";
-      const slot = [];
-      for (const s of here) slot[wk.lane.get(s)] = s;
-      // 줄 수는 늘 같아야 막대가 칸을 건너 나란히 놓인다
-      const over = here.length - SHOW_LANES;
-      for (let i = 0; i < SHOW_LANES; i++){
-        const s = slot[i];
-        const v = document.createElement("span");
-        if (!s){ v.className = "ev blank"; box.appendChild(v); continue; }
-        // 한 주의 시작·끝에서도 막대를 끊어 준다
-        const head = s.from === ds || w0 === 0 || day === 1;
-        const tailEnd = s.to === ds || w0 === 6 || day === last.getDate();
-        v.className = "ev bar" + (head ? " s" : "") + (tailEnd ? " e" : "");
-        v.style.background = s.color;
-        v.style.color = gcInk(s.color);
-        if (head) v.textContent = s.title;      // 시각은 좁아서 못 넣는다. 시트에 있다.
-        box.appendChild(v);
+      if (!gcTitles() || cap < 1 || !here.length){
+        b.classList.add("hasev");                 // 제목을 끄거나 자리가 없으면 점만 찍는다
+      } else {
+        const box = document.createElement("span"); box.className = "evs";
+        const slot = [];
+        for (const s of here) slot[wk.lane.get(s)] = s;
+        const need = Math.max(...here.map(s => wk.lane.get(s))) + 1;   // 이 칸이 쓰는 줄 수
+        const overflow = need > cap;                                    // 칸을 넘을 때만 +N
+        const shown = overflow ? cap - 1 : cap;                         // +N 이 한 줄을 쓴다
+        // 줄 수는 늘 같아야 막대가 칸을 건너 나란히 놓인다
+        for (let i = 0; i < shown; i++){
+          const s = slot[i];
+          const v = document.createElement("span");
+          if (!s){ v.className = "ev blank"; box.appendChild(v); continue; }
+          // 한 주의 시작·끝에서도 막대를 끊어 준다
+          const head = s.from === ds || w0 === 0 || day === 1;
+          const tailEnd = s.to === ds || w0 === 6 || day === last.getDate();
+          v.className = "ev bar" + (head ? " s" : "") + (tailEnd ? " e" : "");
+          v.style.background = s.color;
+          v.style.color = gcInk(s.color);
+          if (head) v.textContent = s.title;      // 시각은 좁아서 못 넣는다. 시트에 있다.
+          box.appendChild(v);
+        }
+        if (overflow){
+          const more = document.createElement("span"); more.className = "ev more";
+          more.textContent = "+" + here.filter(s => wk.lane.get(s) >= shown).length;
+          box.appendChild(more);
+        }
+        b.appendChild(box);
       }
-      if (over > 0){
-        const more = document.createElement("span"); more.className = "ev more";
-        more.textContent = "+" + over; box.appendChild(more);
-      }
-      b.appendChild(box);
     }
     const a = ATT.get(ds);
     b.setAttribute("aria-label", ds + " " + (K?K.label:"기록 없음")
@@ -262,7 +274,90 @@ function drawCal(){
   gcOnView();
   $("prev").disabled = view <= B.calendarFrom;
   $("next").disabled = view >= B.calendarTo;
+  if (!skipLayout){ layoutCal.n = 0; layoutCal(); }
 }
+
+/* ── 달력을 화면에 맞추기 ──
+   스크롤 없이 달력 한 장이 화면에 들어오도록 칸 높이를 화면 높이에서 뽑는다.
+   폰은 주소창이 오르내리며 화면 높이가 출렁이므로, 늘 가장 작은 높이(svh)를
+   기준으로 삼는다. 그렇지 않으면 스크롤할 때마다 칸이 커졌다 작아진다. */
+function viewportH(){
+  let p = document.getElementById("vhProbe");
+  if (!p){
+    p = document.createElement("div"); p.id = "vhProbe";
+    p.style.cssText = "position:fixed;left:0;top:0;width:0;height:100svh;visibility:hidden;pointer-events:none";
+    document.body.appendChild(p);
+  }
+  return p.offsetHeight || innerHeight;
+}
+
+function targetCellH(){
+  const sec = $("calSec"), grid = $("grid");
+  if (!sec || !grid.offsetHeight) return 0;                  // 접혔거나 아직 안 보인다
+  const extra = sec.scrollHeight - grid.offsetHeight;        // 제목줄·요일줄·범례·여백
+  const wrap = document.querySelector(".wrap");
+  let reserved = 12;
+  if (getComputedStyle(wrap).display === "grid"){            // 두 칼럼 — 머리글 밑에서 시작한다
+    const hd = document.querySelector(".hd");
+    reserved = hd.offsetTop + hd.offsetHeight + 20 + 12;
+  }
+  const gap = parseFloat(getComputedStyle(grid).rowGap) || 2;
+  const weeks = Math.max(4, Math.round(grid.children.length / 7));      // 4~6주
+  return Math.max(48, Math.min(260, Math.floor((viewportH() - reserved - extra - gap * (weeks - 1)) / weeks)));
+}
+
+/* 각 주에 일정 줄이 몇 개 들어가는지 잰다 — 날짜·분류·공휴일 이름이 쓰고 남은 자리 */
+function measureLanes(){
+  const cells = [...$("grid").querySelectorAll(".cell")];
+  const gs = getComputedStyle($("grid"));
+  const lane = parseFloat(gs.getPropertyValue("--lane")) || 14;
+  const gap = parseFloat(gs.getPropertyValue("--lane-gap")) || 2;
+  const caps = [];
+  for (let w = 0; w < 6; w++){
+    if (w * 7 >= cells.length){ caps.push(laneCaps[w]); continue; }     // 이 달에 없는 주
+    let worst = 0, inner = 0;
+    for (const c of cells.slice(w * 7, w * 7 + 7)){
+      if (c.classList.contains("pad")) continue;
+      const cs = getComputedStyle(c);
+      inner = c.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      let t = 0, k = 0;
+      for (const el of c.children){
+        if (el.classList.contains("evs")) continue;
+        t += el.getBoundingClientRect().height; k++;
+      }
+      worst = Math.max(worst, t + k);                        // 자식 사이 1px
+    }
+    caps.push(inner ? Math.max(0, Math.min(6, Math.floor((inner - worst - 3 + gap) / (lane + gap)))) : laneCaps[w]);
+  }
+  return caps;
+}
+
+function layoutCal(){
+  if (layoutCal.busy) return;
+  layoutCal.busy = true;
+  try {
+    const h = targetCellH();
+    if (h && h !== cellH){
+      cellH = h;
+      document.documentElement.style.setProperty("--cell-h", h + "px");
+    }
+    if (!$("grid").offsetHeight) return;
+    const caps = measureLanes();
+    if (caps.join() !== laneCaps.join() && layoutCal.n < 4){   // 무한히 다시 그리지 않게
+      laneCaps = caps; layoutCal.n++;
+      drawCal(true);
+    }
+  } finally { layoutCal.busy = false; }
+}
+layoutCal.n = 0;
+
+let layoutTimer = 0;
+const relayout = () => {
+  cancelAnimationFrame(layoutTimer);
+  layoutTimer = requestAnimationFrame(() => { layoutCal.n = 0; layoutCal(); });
+};
+window.addEventListener("resize", relayout);
+if (window.ResizeObserver) new ResizeObserver(relayout).observe($("calSec"));   // 접기·경고 줄 따위로 크기가 바뀔 때
 
 /* ── 월별 대조 ── */
 function drawMonths(){
@@ -304,8 +399,8 @@ function drawMonths(){
       if (monthOf(ds) !== mo) continue;
       const k = kindOf(ds);
       if (!KINDS[k]) continue;
-      off += KINDS[k].off;
-      if (k in DEDUCTS) unpaidDays += 1;
+      off += offOn(ds, k);
+      if (deductOn(ds, k)) unpaidDays += 1;
       if (k === "half") half += 1;
     }
     const why = document.createElement("div"); why.className = "mrow-why";
@@ -320,6 +415,19 @@ function drawMonths(){
     if (off) bits.push("쉰 날 " + (Math.round(off*10)/10) + "일" + (half?" (반차 "+half+")":""));
     if (p && p.deductedHours && p.deductedHours % 4 !== 0)
       bits.push("차감이 4시간 단위가 아님 — 지각·조퇴가 반영된 것으로 보임");
+    const rw = restWorkOf(mo);
+    if (rw.n){
+      const when = rw.list.map(x => x.ds.slice(5).replace("-", ".") + " " + x.hours + "시간").join(", ");
+      if (p && !p.derived){
+        const has = Object.keys(p.earnings).some(name => /휴일|가산|연장|야간/.test(name));
+        bits.push("쉬는 날 근무 " + rw.n + "일 (" + when + ")"
+          + (has ? " — 명세서에 휴일근로 항목이 있음"
+                 : " — 명세서에 휴일근로수당이 없음. 법정 기준이면 약 " + WON(rw.pay)
+                   + "원인데, 대체휴무로 갈음했는지 확인이 필요합니다"));
+      } else {
+        bits.push("쉬는 날 근무 " + rw.n + "일 (" + when + ") — 휴일근로수당 약 " + WON(rw.pay) + "원 (추정)");
+      }
+    }
     if (!bits.length) bits.push("만근, 변동 없음");
     for (const t of bits){ const s = document.createElement("span"); s.textContent = t; why.appendChild(s); }
     row.appendChild(why);
@@ -346,6 +454,35 @@ function drawMonths(){
    무엇이 연차를 소모하는지는 달력에서 직접 분류한 값을 따른다. */
 const CONSUMES = { personal:1, half:0.5, coAnnual:1,
                    unpaid:0, coUnpaid:0, company:0, substitute:0, official:0 };
+/* 쉬는 날 = 주말과 공휴일. 원래 일하지 않는 날이라 연차도, 무급 차감도,
+   '쉰 날' 집계도 붙지 않는다. 그 날을 연차로 찍어 놓아도 마찬가지다. */
+function isRest(ds){
+  const w = new Date(ds + "T00:00:00").getDay();
+  return w === 0 || w === 6 || !!(B.holidays && B.holidays[ds]);
+}
+const consumeOn = (ds, k) => isRest(ds) ? 0 : (CONSUMES[k] || 0);
+const deductOn  = (ds, k) => !isRest(ds) && (k in DEDUCTS);
+const offOn     = (ds, k) => (isRest(ds) || !KINDS[k]) ? 0 : KINDS[k].off;
+
+/* 쉬는 날에 일한 시간. 시각을 적었으면 그것, 근태 기록이 있으면 그것, 없으면 8시간 */
+function restHours(ds){
+  const tm = timesOf(ds), a = ATT.get(ds);
+  return tm ? hoursBetween(tm.s, tm.e) : (a && a.hours) ? a.hours : B.dailyHours;
+}
+/* 휴일근로 법정 기준: 8시간까지 1.5배, 넘는 시간은 2배 (근로기준법 56조) */
+const restPay = h => Math.round(B.hourly * (1.5 * Math.min(h, 8) + 2 * Math.max(0, h - 8)));
+
+function restWorkOf(mo){
+  const list = [];
+  for (const ds of trackedDates()){
+    if (monthOf(ds) !== mo || !isRest(ds) || !WORK_KINDS.has(kindOf(ds))) continue;
+    const h = restHours(ds);
+    if (h > 0) list.push({ ds, hours: h, pay: restPay(h) });
+  }
+  const hours = Math.round(list.reduce((a, x) => a + x.hours, 0) * 100) / 100;
+  return { list, n: list.length, hours, pay: list.reduce((a, x) => a + x.pay, 0) };
+}
+
 // 급여에서 차감되는 분류 (명세서의 기본급 차감과 대조한다)
 const DEDUCTS = { unpaid:1, coUnpaid:1 };   // 급여에서 깎이는 것
 
@@ -359,14 +496,14 @@ function accOf(mo){
 function useOf(mo){
   let u = 0;
   for (const ds of trackedDates())
-    if (monthOf(ds) === mo){ const k = kindOf(ds); if (CONSUMES[k]) u += CONSUMES[k]; }
+    if (monthOf(ds) === mo) u += consumeOn(ds, kindOf(ds));
   return u;
 }
 /* 연차와 무관하게 무급으로 적어 둔 날 */
 function flatUnpaidOf(mo){
   let n = 0;
   for (const ds of trackedDates())
-    if (monthOf(ds) === mo && (kindOf(ds) in DEDUCTS)) n += 1;
+    if (monthOf(ds) === mo && deductOn(ds, kindOf(ds))) n += 1;
   return n;
 }
 /* 그 달 발생분을 넘겨 쓴 일수 — 이미 수당으로 받아 둔 재고를 쓰는 것이라 급여에서 빠진다 */
@@ -540,7 +677,7 @@ function drawLeave(){
     if ((base === "company" || base === "personal") && !overrides.has(ds))
       untouched[mo] = (untouched[mo] || 0) + 1;          // 엑셀 기본값 그대로인 휴무일
     const k = kindOf(ds);
-    if (!(k in CONSUMES)) continue;
+    if (!(k in CONSUMES) || isRest(ds)) continue;      // 쉬는 날은 연차도 급여도 건드리지 않는다
     detail[mo] = detail[mo] || {};
     detail[mo][k] = (detail[mo][k] || 0) + 1;
     if (CONSUMES[k]){
@@ -1108,6 +1245,7 @@ $("pkGrid").addEventListener("click", e => {
 function openSheet(ds){
   picked = ds;
   const a = ATT.get(ds), k = kindOf(ds);
+  const shown = (k === "weekend" || k === "holiday") ? "dayoff" : k;   // 기본값은 '쉬는 날' 로 보인다
   const dt = new Date(ds+"T00:00:00");
   $("shTitle").textContent = ds.replace(/-/g,".") + " (" + "일월화수목금토"[dt.getDay()] + ")";
   const hol = a?.holiday || (B.holidays && B.holidays[ds]);
@@ -1119,7 +1257,7 @@ function openSheet(ds){
   if (keep) $("sheet").appendChild(keep);      // 지워지지 않게 잠시 밖으로
   const evs = gcEvents.get(ds) || [];
   deferred = evs.length > 0;
-  pendKind = k;
+  pendKind = shown;
   const tm0 = timesOf(ds);
   pendTimes = tm0 && tm0.mine ? { s: tm0.s, e: tm0.e } : null;
   $("shSave").hidden = !deferred;
@@ -1136,7 +1274,7 @@ function openSheet(ds){
       const K = KINDS[key];
       const b = document.createElement("button");
       b.type = "button"; b.className = "opt"; b.dataset.kind = key;
-      b.setAttribute("aria-pressed", String(k === key));
+      b.setAttribute("aria-pressed", String(shown === key));
       const t = document.createElement("span"); t.textContent = K.label;
       const sm = document.createElement("small"); sm.textContent = K.desc;
       b.append(t, sm); row.appendChild(b);
@@ -1169,6 +1307,17 @@ function drawSheetEvents(ds){
 function drawSheetBal(k, ds){
   const acc = ds && accrualEvents().find(e => e.ds === ds);
   const box = $("shBal");
+  if (ds && isRest(ds)){                     // 쉬는 날 — 연차 계산이 붙지 않는다
+    const why = holName(ds) || "주말";
+    const grew0 = acc ? spanText(acc) + " 만근으로 이 날 연차 " + acc.days + "일 생김 · " : "";
+    box.className = "shbal calm";
+    box.textContent = grew0 + (WORK_KINDS.has(k)
+      ? "쉬는 날(" + why + ")에 일하면 휴일근로입니다 · 법정 기준 약 " + WON(restPay(restHours(ds)))
+        + "원 (추정, 대체휴무로 갈음하면 없음)"
+      : "쉬는 날(" + why + ")이라 연차도 급여도 깎이지 않습니다");
+    box.hidden = false;
+    return;
+  }
   const already = CONSUMES[k] || 0;        // 이미 연차로 잡혀 있던 몫은 되돌려 센다
   const free = Math.round((curBal + already) * 10) / 10;
   box.className = "shbal" + (free >= 1 ? "" : " warn");
@@ -1214,9 +1363,18 @@ let deferred = false, pendKind = null, pendTimes = null;
 function markOpt(k){
   for (const el of $("shOpts").querySelectorAll(".opt"))
     el.setAttribute("aria-pressed", String(el.dataset.kind === k));
+  if (picked && isRest(picked)) drawSheetBal(k, picked);    // 고른 종류에 맞춰 안내를 바꾼다
+}
+
+/* '쉬는 날' 을 고르면, 그 날의 원래 모습이 주말·공휴일일 때는 기록을 지워
+   기본값으로 되돌린다. 평일이면 '쉬는 날' 로 남긴다. */
+function storeKind(ds, k, times){
+  const d = defaultKind(ds);
+  if (k === "dayoff" && (d === "weekend" || d === "holiday")) return setKind(ds, null);
+  return setKind(ds, k, times);
 }
 function commitSheet(){
-  if (picked && pendKind) setKind(picked, pendKind, pendTimes);
+  if (picked && pendKind) storeKind(picked, pendKind, pendTimes);
   closeSheet();
 }
 
@@ -1253,12 +1411,14 @@ function drawForecast(){
   const base = B.fullBase - deductH * B.hourly;
   const fixed = {};
   for (const [k, v] of Object.entries(last.earnings))
-    if (k !== "기본급" && k !== "연차수당") fixed[k] = v;
+    if (k !== "기본급" && k !== "연차수당" && !/휴일|가산|연장|야간/.test(k)) fixed[k] = v;
   // 그 달 발생분을 안 쓰면 그만큼 연차수당으로 나온다
   const cash = Math.round(cashDaysOf(target) * B.dayPay);
 
   const earn = [["기본급", base], ...Object.entries(fixed)];
   if (cash) earn.push(["연차수당", cash, true]);
+  const rw = restWorkOf(target);
+  if (rw.pay) earn.push(["휴일근로수당", rw.pay, true, rw.n + "일 · " + rw.hours + "시간 × 1.5배 (쉬는 날 근무)"]);
   const gross = earn.reduce((a, e) => a + e[1], 0);
 
   const ded = {};
@@ -1279,10 +1439,10 @@ function drawForecast(){
     tr.append(a, b); t.appendChild(tr);
   };
   const fullH = B.fullBase / B.hourly;                 // 만근 소정근로시간 (209)
-  for (const [k, v, g] of earn)
-    row(k, v, null, g, k === "기본급" && deductH
+  for (const [k, v, g, nt] of earn)
+    row(k, v, null, g, nt || (k === "기본급" && deductH
       ? fullH + "시간 − " + deductH + "시간 = " + (fullH - deductH) + "시간"
-      : k === "기본급" ? fullH + "시간 (만근)" : null);
+      : k === "기본급" ? fullH + "시간 (만근)" : null));
   row("지급총액", gross, "sum");
   row("공제총액", dedTotal, "minus");
   row("예상 실수령", gross - dedTotal, "net");
@@ -1365,7 +1525,7 @@ $("shOpts").addEventListener("click", e => {
     syncTimes(picked, k);
     return;
   }
-  setKind(picked, k); closeSheet();
+  storeKind(picked, k); closeSheet();
 });
 $("shSave").addEventListener("click", commitSheet);
 for (const id of ["shStart", "shEnd"]) $(id).addEventListener("change", saveTimes);
