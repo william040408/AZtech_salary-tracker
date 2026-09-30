@@ -587,7 +587,7 @@ function planWorkdays(from, to){
 function drawPlan(){
   const out = $("plOut"); out.textContent = "";
   const from = $("plFrom").value, to = $("plTo").value;
-  $("plHint").textContent = "모아둔 연차 " + (Math.round(curBal*10)/10) + "일";
+  $("plHint").textContent = "모아둔 연차 " + (Math.round(curBal*10)/10) + "일" + (planPick === 3 ? " · 달력에서 다른 날을 누르면 새로 시작" : "");
   if (!from || !to || from > to){
     const e = document.createElement("div"); e.className = "pempty";
     e.textContent = planPick === 1 ? "근태 달력에서 시작하는 날을 눌러 주세요."
@@ -1532,18 +1532,21 @@ $("grid").addEventListener("click", e => {
   if (!b || b.disabled || !b.dataset.date) return;
   if (planPick){                                   // 연차 계획의 날짜를 고르는 중
     const ds = b.dataset.date, from = $("plFrom").value, to = $("plTo").value;
-    if (planPick === 1){
+    if (planPick === 3){                           // 다 골라 둔 뒤 다른 칸을 누르면 거기서부터 새로 시작한다
+      planSaved = { from, to };                    // 취소하면 방금 고른 범위로 돌아간다
+      $("plFrom").value = ds; $("plTo").value = ""; planPick = 2;
+    } else if (planPick === 1){
       $("plFrom").value = ds;
       if (to && ds > to) $("plTo").value = "";     // 새 시작이 끝보다 뒤면 끝을 비운다
-      planPick = $("plTo").value ? 0 : 2;          // 끝이 이미 있으면 여기서 끝난다
+      planPick = $("plTo").value ? 3 : 2;          // 끝이 이미 있으면 여기서 끝난다
     } else {
       if (ds < from){ $("plTo").value = from; $("plFrom").value = ds; }   // 나중 날을 먼저 골랐으면 뒤집는다
       else $("plTo").value = ds;
-      planPick = 0;
+      planPick = 3;
     }
-    if (!planPick){ planSaved = null; dropLayer("pick"); }
+    if (planPick === 3) planSaved = null;          // 고르기 모드는 '완료' 를 눌러야 끝난다
     syncPick(); drawCal(); drawPlan();
-    if (!planPick) ensureVisible($("plan"), "nearest");   // 다 골랐으면 계획 칸으로 돌아온다 (폰)
+    if (planPick === 3) ensureVisible($("plan"), "nearest");   // 다 골랐으면 계획 칸으로 돌아온다 (폰)
     return;
   }
   openSheet(b.dataset.date);
@@ -1564,7 +1567,7 @@ function syncPick(){
   $("plFromBtn").classList.toggle("on", planPick === 1);
   $("plToBtn").classList.toggle("on", planPick === 2);
   $("plClear").hidden = !(f || t || planPick);
-  $("plClear").textContent = planPick ? "취소" : "지우기";
+  $("plClear").textContent = planPick === 3 ? "완료" : planPick ? "취소" : "지우기";
 }
 function ensureVisible(el, block){
   const r = el.getBoundingClientRect();
@@ -1572,7 +1575,8 @@ function ensureVisible(el, block){
 }
 function startPick(mode){                // 1 = 시작, 2 = 끝
   if (planPick === mode){ cancelPick(); return; }          // 같은 칸을 다시 누르면 취소
-  if (!planPick) planSaved = { from: $("plFrom").value, to: $("plTo").value };
+  if (!planPick || planPick === 3) planSaved = { from: $("plFrom").value, to: $("plTo").value };
+  if (planPick === 3) planPick = 0;
   planPick = (mode === 2 && !$("plFrom").value) ? 1 : mode;    // 시작이 없으면 시작부터
   pushLayer("pick");
   syncPick(); drawCal(); drawPlan();
@@ -1587,6 +1591,7 @@ function cancelPick(){
 $("plFromBtn").addEventListener("click", () => startPick(1));
 $("plToBtn").addEventListener("click", () => startPick(2));
 $("plClear").addEventListener("click", () => {
+  if (planPick === 3){ planPick = 0; planSaved = null; dropLayer("pick"); syncPick(); drawCal(); drawPlan(); return; }   // 완료
   if (planPick){ cancelPick(); return; }
   planSaved = null; $("plFrom").value = ""; $("plTo").value = "";
   syncPick(); drawCal(); drawPlan();
