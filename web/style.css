@@ -15,7 +15,11 @@
   --hol:#a3102c; --hol-soft:#f7d3da;
   --shadow:0 1px 2px rgba(21,5,8,.05);
   /* 모양 — 시안마다 다르게 할 수 있게 변수로 둔다 */
-  --r-card:16px; --r-cell:10px; --r-ctl:13px;
+  --font:"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+  --font-head:var(--font);
+  --font-num:Inter,"Noto Sans KR",-apple-system,sans-serif;
+  --r-card:16px; --r-cell:10px; --r-ctl:13px; --r-btn:13px; --r-sm:8px; --r-sheet:22px;
+  --card-line:var(--line);
   --cell-work:var(--surface2); --cell-rest:transparent; --cell-future:transparent;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -46,10 +50,11 @@
 [hidden]{display:none!important}   /* .app 의 display:contents 보다 우선해야 한다 */
 body{
   margin:0;background:var(--ground);color:var(--ink);
-  font-family:"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+  font-family:var(--font);
   font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%;
 }
-.num{font-family:Inter,"Noto Sans KR",-apple-system,sans-serif;
+h1,.sec-hd h2,.sheet h3{font-family:var(--font-head)}
+.num{font-family:var(--font-num);
   font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;letter-spacing:-.01em}
 .wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:14px 96px;display:flex;flex-direction:column;gap:18px}
 
@@ -66,11 +71,11 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 #calSec *{-webkit-user-drag:none}
 .svc-row>span{white-space:nowrap}
 .svc-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;font-size:11.5px;line-height:1.3;color:var(--muted)}
-.bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
-.bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.svc .bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.svc .bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
 
 /* ── hero ── */
-.hero{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);
+.hero{background:var(--surface);border:1px solid var(--card-line);border-radius:var(--r-card);
   box-shadow:var(--shadow);overflow:hidden}
 .hero-main{background:var(--surface);padding:17px 24px 14px 18px;display:flex;align-items:baseline;
   justify-content:space-between;gap:12px;border-bottom:1px solid var(--line2)}
@@ -104,13 +109,13 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 
 /* ── tiles ── */
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:13px 14px;display:flex;flex-direction:column;gap:3px}
+.tile{background:var(--surface);border:1px solid var(--card-line);border-radius:var(--r-card);padding:13px 14px;display:flex;flex-direction:column;gap:3px}
 .tile b{font-size:19px;font-weight:600;letter-spacing:-.01em}
 .tile span{font-size:11.5px;color:var(--muted);font-weight:500}
 .tile small{font-size:11px;color:var(--muted)}
 
 /* ── section ── */
-.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow);overflow:hidden}
+.sec{background:var(--surface);border:1px solid var(--card-line);border-radius:var(--r-card);box-shadow:var(--shadow);overflow:hidden}
 .sec-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:14px 16px;border-bottom:1px solid var(--line2);flex-wrap:nowrap}
 .sec-hd h2{margin:0;font-size:14px;font-weight:600;letter-spacing:-.01em;
@@ -132,8 +137,8 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .prow{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
 .pfield{display:flex;flex-direction:column;gap:4px;flex:1;min-width:118px}
 .pfield span{font-size:11.5px;font-weight:600;color:var(--muted)}
-.pfield input{font-family:Inter,"Noto Sans KR",sans-serif;font-size:14px;padding:9px 10px;
-  border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);width:100%}
+.pfield input{font-family:var(--font-num);font-size:14px;padding:9px 10px;
+  border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);width:100%}
 .pfield input:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .prow .btn{flex:1 0 100%;padding:10px}
 .prow .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -153,7 +158,7 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .ptip.warn{background:var(--warn-soft);color:var(--warn)}
 .ptip b{display:block;margin-bottom:2px}
 .slip td small{display:block;font-size:11px;font-weight:500;color:var(--muted);
-  margin-top:2px;letter-spacing:-.01em;font-family:Inter,"Noto Sans KR",sans-serif}
+  margin-top:2px;letter-spacing:-.01em;font-family:var(--font-num)}
 /* 연차가 생기는 날 — 오른쪽 위에 조용히 표시한다 */
 .cell.accday::before{content:attr(data-acc);position:absolute;top:3px;right:4px;
   font-size:7.5px;font-weight:700;color:var(--accent);letter-spacing:-.04em;
@@ -172,12 +177,12 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   text-align:center;padding:0}
 .gcwrap{position:relative}
 .gcbtn{appearance:none;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;
-  padding:8px 14px;border-radius:11px;border:1px solid var(--line);background:var(--surface);color:var(--ink2)}
+  padding:8px 14px;border-radius:var(--r-btn);border:1px solid var(--line);background:var(--surface);color:var(--ink2)}
 .gcbtn:hover{border-color:var(--accent);color:var(--accent)}
 .gcbtn.done{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
 .gcbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .gcpanel{position:absolute;right:0;top:calc(100% + 7px);z-index:12;width:262px;
-  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-ctl);
   box-shadow:0 8px 28px rgba(21,5,8,.13);padding:12px 13px}
 .gcp-h{font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:4px}
 .gcp-again{appearance:none;width:100%;margin-top:10px;padding:8px;border-radius:10px;
@@ -217,27 +222,27 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 /* ── calendar ── */
 .nav{display:flex;align-items:center;gap:3px;flex-wrap:nowrap;flex:none}
 .nav>button{appearance:none;background:none;border:1px solid var(--line);color:var(--ink2);
-  width:28px;height:28px;flex:none;border-radius:8px;cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center}
+  width:28px;height:28px;flex:none;border-radius:var(--r-sm);cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center}
 .nav>button:hover:not(:disabled){background:var(--surface2);color:var(--accent)}
 .nav>button:disabled{opacity:.3;cursor:default}
 .mlabel{display:inline-flex;gap:2px;justify-content:center;white-space:nowrap;flex:0 0 auto}
-.mpart{appearance:none;width:auto;height:auto;background:none;border:1px solid transparent;border-radius:9px;
-  font-size:13.5px;font-weight:600;color:var(--ink);font-family:Inter,sans-serif;
+.mpart{appearance:none;width:auto;height:auto;background:none;border:1px solid transparent;border-radius:var(--r-sm);
+  font-size:13.5px;font-weight:600;color:var(--ink);font-family:var(--font-num);
   cursor:pointer;padding:5px 6px;flex:none}
 .mpart:hover{border-color:var(--line);background:var(--surface2);color:var(--accent)}
 .mpart:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .picker{padding:4px 0 10px}
 .pk-head{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:12px}
 .pk-head button{appearance:none;background:none;border:1px solid var(--line);color:var(--ink2);
-  border-radius:8px;cursor:pointer;font-family:inherit;padding:6px 10px;font-size:13px}
+  border-radius:var(--r-sm);cursor:pointer;font-family:inherit;padding:6px 10px;font-size:13px}
 #pkTitle{min-width:112px;text-align:center;font-weight:700;font-size:14.5px;
-  color:var(--ink);font-family:Inter,sans-serif}
+  color:var(--ink);font-family:var(--font-num)}
 .pk-head button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .pk-head button:disabled{opacity:.3;cursor:default}
 .pk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .pk-grid button{appearance:none;background:var(--surface2);border:1px solid var(--line2);
-  color:var(--ink);border-radius:12px;padding:13px 6px;cursor:pointer;
-  font-family:Inter,sans-serif;font-size:13.5px;font-weight:600}
+  color:var(--ink);border-radius:var(--r-sm);padding:13px 6px;cursor:pointer;
+  font-family:var(--font-num);font-size:13.5px;font-weight:600}
 .pk-grid button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .pk-grid button:disabled{opacity:.28;cursor:default}
 .pk-grid button.has{border-color:var(--paid);color:var(--paid);background:var(--paid-soft)}
@@ -246,16 +251,16 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .dow span{text-align:center;font-size:10.5px;font-weight:600;color:var(--muted);padding-bottom:2px}
 .dow span:first-child{color:var(--unpaid)}
 .dow span:last-child{color:var(--company)}
-.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--gap);--gap:4px;--bleed:8px;
-  --lane:13px;--lane-gap:2px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--gap);--gap:4px;--cpx:3px;
+  --bleed:calc(var(--cpx) + 3px + var(--gap) / 2);--lane:13px;--lane-gap:2px}
 .cell{height:var(--cell-h,96px);border:1px solid var(--line);border-radius:var(--r-cell);background:var(--cell-work);
   display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:1px;
-  cursor:pointer;padding:5px 3px 4px;font-size:13px;position:relative;min-width:0;text-align:center}
+  cursor:pointer;padding:5px var(--cpx) 4px;font-size:13px;position:relative;min-width:0;text-align:center}
 .cell.pad{cursor:default;pointer-events:none;background:transparent;opacity:.55}
 .cell.pad .d{color:var(--muted);font-weight:500}
 .cell{overflow-x:visible;overflow-y:clip}
 .cell:disabled{cursor:default;opacity:.45}
-.cell .d{font-size:15px;line-height:1.15;font-weight:600;font-family:Inter,sans-serif;font-variant-numeric:tabular-nums}
+.cell .d{font-size:15px;line-height:1.15;font-weight:600;font-family:var(--font-num);font-variant-numeric:tabular-nums}
 .cell .t{margin-top:1px;font-size:9px;font-weight:600;line-height:1.1;white-space:nowrap;max-width:100%;letter-spacing:-.03em}
 .cell .h{font-size:8px;font-weight:600;line-height:1.1;color:var(--hol);max-width:100%;
   letter-spacing:-.04em;word-break:keep-all;display:-webkit-box;-webkit-line-clamp:2;
@@ -300,7 +305,7 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 /* ── forecast ── */
 .slip{width:100%;border-collapse:collapse;font-size:13.5px}
 .slip td{padding:7px 0;border-bottom:1px solid var(--line2)}
-.slip td:last-child{text-align:right;font-family:Inter,sans-serif;
+.slip td:last-child{text-align:right;font-family:var(--font-num);
   font-variant-numeric:tabular-nums;white-space:nowrap}
 .slip tr.sum td{border-top:1px solid var(--line);border-bottom:0;font-weight:600;padding-top:9px}
 .slip tr.net td{border-top:2px solid var(--accent);border-bottom:0;font-weight:700;
@@ -325,7 +330,7 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   border-bottom:1px solid var(--line);letter-spacing:.03em;white-space:nowrap}
 .cmp th:first-child{text-align:left}
 .cmp td{padding:9px 0;border-bottom:1px solid var(--line2);text-align:right;
-  font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+  font-family:var(--font-num);font-variant-numeric:tabular-nums;white-space:nowrap}
 .cmp td:first-child{text-align:left;font-family:inherit;font-weight:500;padding-right:8px;white-space:normal}
 .cmp tr:last-child td{border-bottom:0}
 .cmp .dash{color:var(--muted);opacity:.45}
@@ -365,7 +370,7 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .tag.un{background:var(--unpaid-soft);color:var(--unpaid)}
 
 .rbtn{appearance:none;border:1px solid var(--accent);background:var(--accent);color:#fff;
-  font-family:inherit;font-size:12.5px;font-weight:600;padding:8px 15px;border-radius:11px;cursor:pointer;white-space:nowrap}
+  font-family:inherit;font-size:12.5px;font-weight:600;padding:8px 15px;border-radius:var(--r-btn);cursor:pointer;white-space:nowrap}
 .rbtn:hover:not(:disabled){filter:brightness(1.08)}
 .rbtn:disabled{opacity:.5;cursor:default}
 .rbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -407,7 +412,7 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .scrim{position:fixed;inset:0;background:rgba(10,14,20,.45);opacity:0;pointer-events:none;transition:opacity .16s;z-index:20}
 .scrim.on{opacity:1;pointer-events:auto}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--surface);
-  border-radius:22px 22px 0 0;border-top:1px solid var(--line);
+  border-radius:var(--r-sheet) var(--r-sheet) 0 0;border-top:1px solid var(--line);
   padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));
   transform:translateY(102%);transition:transform .2s cubic-bezier(.4,0,.2,1);
   max-width:760px;margin:0 auto;box-shadow:0 -6px 30px rgba(10,14,20,.18)}
@@ -429,12 +434,12 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .opt:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .times{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:8px 9px;
   background:var(--surface2);border:1px solid var(--line2);border-radius:13px}
-.times input{font-family:Inter,sans-serif;font-size:13px;padding:6px 7px;
+.times input{font-family:var(--font-num);font-size:13px;padding:6px 7px;
   border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink)}
 .times input:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .thrs{font-size:11px;font-weight:600;color:var(--accent);text-align:center}
 .sheet-foot{display:flex;gap:8px;margin-top:14px}
-.btn{flex:1;appearance:none;border-radius:var(--r-ctl);padding:11px;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--ink2)}
+.btn{flex:1;appearance:none;border-radius:var(--r-btn);padding:11px;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--ink2)}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .note{font-size:12px;color:var(--muted);padding:10px 16px;border-top:1px solid var(--line2);background:var(--surface2)}
@@ -454,9 +459,9 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .tile b{font-size:18px}
   .sec-body{padding:13px}
   .sec:has(.grid) .sec-body{padding:8px}       /* 달력만은 폭을 최대한 쓴다 */
-  .grid{--gap:2px;--bleed:6px}
+  .grid{--gap:2px;--cpx:2px}
   .dow{gap:2px}
-  .cell{border-radius:calc(var(--r-cell) - 1px);padding:4px 2px 3px}
+  .cell{border-radius:calc(var(--r-cell) - 1px);padding:4px var(--cpx) 3px}
   .cell .d{font-size:14px}
   .cell.accday::before{content:attr(data-acc-short);font-size:8px;padding:1px 3px}
   .cell .t{font-size:8.5px}
@@ -484,11 +489,11 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
    1400px 을 넘어야 쪼개는 쪽이 넓어지므로 거기서부터 쪼갠다. */
 @media (min-width:1000px){
   .wrap{max-width:960px;padding-block:28px 80px}
-  .cell{padding:6px 5px 5px}
+  .cell{padding:6px var(--cpx) 5px}
   .cell .d{font-size:17px}
   .cell .t{font-size:10.5px}
   .cell .h{font-size:9.5px}
-  .grid{--gap:5px;--bleed:11px}
+  .grid{--gap:5px;--cpx:5px}
   .dow{gap:5px}
   .dow span{font-size:11.5px}
   .grid{--lane:15px}
@@ -553,64 +558,94 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 
 
 /* ══════════ 시안 ══════════
-   주소 뒤에 ?palette=a | b | c 를 붙이면 바뀐다. 아무것도 안 붙이면 지금 그대로.
-   색은 밝은 화면에서만 바꾼다(어두운 화면은 그대로). 모양(모서리 등)은 어느 쪽이든 바뀐다. */
+   주소 뒤에 ?look=1 | 2 | 3 을 붙이면 바뀐다. 색만이 아니라 글씨체·모서리·카드 표현·
+   달력 격자 모양까지 다르다. 시안은 OS 밝기와 상관없이 그 시안의 색으로 나온다. */
 
-/* A · 페이퍼 — 따뜻한 크림 바탕, 진홍색 공휴일, 숲 초록 */
-:root[data-palette="a"]{--r-card:14px;--r-cell:9px;--r-ctl:11px}
-@media (prefers-color-scheme:light){:root[data-palette="a"]{
-  --ground:#f6f0e6; --surface:#fffcf6; --surface2:#f0e7d8;
-  --ink:#2b1d14; --ink2:#5b4636; --muted:#8f7b67; --line:#e3d7c3; --line2:#eee5d4;
-  --accent:#2d7a4f; --accent-soft:#e2f0e6; --accent-bright:#3f9a66;
-  --paid:#2d7a4f; --paid-soft:#e2f0e6;
-  --half:#7a8f2a; --half-soft:#eef0d8;
-  --unpaid:#d0432b; --unpaid-soft:#fbe4dc;
-  --company:#8f7b67; --company-soft:#ebe1d0;
-  --warn:#a2650f; --warn-soft:#f9ebcd;
-  --hol:#94102a; --hol-soft:#f2cdd2;
-  --shadow:0 1px 0 rgba(43,29,20,.06);
-  --cell-work:#fbf4e8; --cell-rest:transparent; --cell-future:#fdf9f1;
-}}
+/* ── 1 · 소프트 ── 둥근 글씨체, 큼직한 모서리, 알약 버튼, 선 없이 떠 있는 카드 */
+:root[data-look="1"]{
+  --font:"Gowun Dodum","Noto Sans KR",sans-serif; --font-head:"Gowun Dodum","Noto Sans KR",sans-serif;
+  --font-num:"Nunito","Gowun Dodum",sans-serif;
+  --ground:#fff7f1; --surface:#ffffff; --surface2:#fff0e6;
+  --ink:#3b2a2e; --ink2:#6c5459; --muted:#a88d92; --line:#f4ddd0; --line2:#faece3;
+  --accent:#2fa36b; --accent-soft:#dff5e9; --accent-bright:#4bc48a;
+  --paid:#2fa36b; --paid-soft:#dff5e9; --half:#86b02e; --half-soft:#edf5d3;
+  --unpaid:#ea4c62; --unpaid-soft:#ffe0e5; --company:#a88d92; --company-soft:#f8e9df;
+  --warn:#c4740f; --warn-soft:#fdefcf; --hol:#a3102c; --hol-soft:#fbd8de;
+  --shadow:0 10px 30px rgba(196,110,88,.13); --card-line:transparent;
+  --r-card:28px; --r-cell:20px; --r-ctl:20px; --r-btn:999px; --r-sm:14px; --r-sheet:34px;
+  --cell-work:#ffffff; --cell-rest:transparent; --cell-future:transparent;
+}
+:root[data-look="1"] .grid{--gap:7px}
+@media (max-width:520px){
+  :root[data-look="1"] .grid{--gap:4px}
+  :root[data-look="1"]{--r-cell:12px}
+  :root[data-look="1"] .cell{border-width:1.5px}
+}
+:root[data-look="1"] .cell{border-width:1.5px}
+:root[data-look="1"] .ev{border-radius:999px}
+:root[data-look="1"] .cell.today .d{background:var(--accent);color:#fff;border-radius:999px;
+  min-width:1.75em;padding:0 .4em;align-self:center;line-height:1.5}
+:root[data-look="1"] h1{font-size:24px;font-weight:400;letter-spacing:-.03em}
+:root[data-look="1"] .svc .bar{height:9px;border-radius:999px}
+:root[data-look="1"] .svc .bar i{border-radius:999px}
+:root[data-look="1"] .hero-main b{font-weight:800}
 
-/* B · 슬레이트 — 차분한 회색 바탕, 흰 칸, 각진 모서리, 에메랄드. 오늘은 동그라미 */
-:root[data-palette="b"]{--r-card:10px;--r-cell:6px;--r-ctl:8px}
-@media (prefers-color-scheme:light){:root[data-palette="b"]{
-  --ground:#f3f5f8; --surface:#ffffff; --surface2:#f0f3f7;
-  --ink:#0f172a; --ink2:#334155; --muted:#667085; --line:#dde3ea; --line2:#eceff4;
-  --accent:#0e9f6e; --accent-soft:#dcf4ea; --accent-bright:#22c58b;
-  --paid:#0e9f6e; --paid-soft:#dcf4ea;
-  --half:#7c9a1f; --half-soft:#edf3d3;
-  --unpaid:#e5484d; --unpaid-soft:#fde3e4;
-  --company:#667085; --company-soft:#e6eaf0;
-  --warn:#b45309; --warn-soft:#fef0c7;
-  --hol:#b0122a; --hol-soft:#fad5da;
-  --shadow:none;
-  --cell-work:#ffffff; --cell-rest:#eceff4; --cell-future:#ffffff;
-}}
-:root[data-palette="b"] .cell.today{box-shadow:none;border-color:var(--line)}
-:root[data-palette="b"] .cell.today .d{background:var(--accent);color:#fff;border-radius:50%;
-  min-width:1.55em;height:1.55em;display:inline-grid;place-items:center;align-self:center;margin-top:-1px}
+/* ── 2 · 에디토리얼 ── 세리프 제목·숫자, 각진 모서리, 표처럼 이어진 달력 */
+:root[data-look="2"]{
+  --font:"IBM Plex Sans KR","Noto Sans KR",sans-serif; --font-head:"Noto Serif KR","Noto Sans KR",serif;
+  --font-num:"Noto Serif KR",Georgia,serif;
+  --ground:#f2efe6; --surface:#fffefa; --surface2:#f8f5ec;
+  --ink:#1c1b17; --ink2:#4a473c; --muted:#7d7869; --line:#d2ccb9; --line2:#e7e2d3;
+  --accent:#1d5b3d; --accent-soft:#dfece4; --accent-bright:#2b7a54;
+  --paid:#1d5b3d; --paid-soft:#e0ede6; --half:#67781a; --half-soft:#eaedd0;
+  --unpaid:#b8321f; --unpaid-soft:#f7e0da; --company:#7d7869; --company-soft:#ece8db;
+  --warn:#8a5a0a; --warn-soft:#f5e7c5; --hol:#8c0b22; --hol-soft:#f0ced4;
+  --shadow:none; --card-line:#8a8572;
+  --r-card:2px; --r-cell:0px; --r-ctl:2px; --r-btn:2px; --r-sm:2px; --r-sheet:4px;
+  --cell-work:#fffefa; --cell-rest:#f4f0e5; --cell-future:#fffefa;
+}
+:root[data-look="2"] .grid{--gap:0px;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+:root[data-look="2"] .cell{border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0}
+:root[data-look="2"] .cell[class]{border-color:var(--line)}
+:root[data-look="2"] .cell.k-personal,:root[data-look="2"] .cell.k-half,:root[data-look="2"] .cell.k-unpaid,
+:root[data-look="2"] .cell.k-company,:root[data-look="2"] .cell.k-holiday{box-shadow:inset 0 3px 0 currentColor}
+:root[data-look="2"] .cell.inrange{box-shadow:inset 0 0 0 1px var(--accent)}
+:root[data-look="2"] .cell.today,:root[data-look="2"] .cell.rend,:root[data-look="2"] .cell.rpick{box-shadow:inset 0 0 0 2px var(--accent)}
+:root[data-look="2"] .ev{border-radius:0}
+:root[data-look="2"] h1{font-size:23px;font-weight:700;letter-spacing:-.01em}
+:root[data-look="2"] .sec-hd{border-bottom-color:var(--ink)}
+:root[data-look="2"] .svc .bar,:root[data-look="2"] .svc .bar i{border-radius:0}
 
-/* C · 블루 — 토스 같은 파란 포인트, 큰 둥근 카드, 테두리 없이 그림자 */
-:root[data-palette="c"]{--r-card:20px;--r-cell:14px;--r-ctl:14px}
-@media (prefers-color-scheme:light){:root[data-palette="c"]{
-  --ground:#f2f4f6; --surface:#ffffff; --surface2:#f6f7f9;
-  --ink:#191f28; --ink2:#4e5968; --muted:#8b95a1; --line:#e5e8eb; --line2:#f2f4f6;
-  --accent:#3182f6; --accent-soft:#e8f3ff; --accent-bright:#4593fc;
-  --paid:#16a34a; --paid-soft:#e3f5e9;
-  --half:#7ba318; --half-soft:#f0f6d9;
-  --unpaid:#f04452; --unpaid-soft:#ffe8ea;
-  --company:#8b95a1; --company-soft:#eceff2;
-  --warn:#d97706; --warn-soft:#fdf0d5;
-  --hol:#b3162a; --hol-soft:#ffdfe3;
-  --shadow:0 2px 14px rgba(25,31,40,.07);
-  --cell-work:#f6f7f9; --cell-rest:transparent; --cell-future:#fbfcfd;
-}}
-:root[data-palette="c"] .sec,:root[data-palette="c"] .hero,:root[data-palette="c"] .tile{
-  border-color:transparent;box-shadow:var(--shadow)}
-:root[data-palette="c"] .hero-main b{color:var(--accent)}
+/* ── 3 · 나이트 ── 어두운 바탕, 고정폭 숫자, 분류를 왼쪽 띠로 */
+:root[data-look="3"]{
+  color-scheme:dark;
+  --font:"Noto Sans KR",-apple-system,"Segoe UI",sans-serif; --font-head:"Noto Sans KR",-apple-system,sans-serif;
+  --font-num:"JetBrains Mono","Noto Sans KR",ui-monospace,monospace;
+  --ground:#0d1015; --surface:#151921; --surface2:#1b2029;
+  --ink:#e9edf4; --ink2:#b6bfce; --muted:#7e8a9d; --line:#2b3240; --line2:#222833;
+  --accent:#4ade80; --accent-soft:#11301f; --accent-bright:#86efac;
+  --paid:#4ade80; --paid-soft:#11301f; --half:#bef264; --half-soft:#26310f;
+  --unpaid:#fb7185; --unpaid-soft:#3b1821; --company:#94a3b8; --company-soft:#232a36;
+  --warn:#fbbf24; --warn-soft:#33270a; --hol:#ff3b57; --hol-soft:#4a1420;
+  --shadow:0 0 0 1px rgba(255,255,255,.03); --card-line:#2b3240;
+  --r-card:12px; --r-cell:8px; --r-ctl:10px; --r-btn:8px; --r-sm:6px; --r-sheet:16px;
+  --cell-work:#181d26; --cell-rest:transparent; --cell-future:transparent;
+}
+:root[data-look="3"] .grid{--gap:3px}
+:root[data-look="3"] .cell[class]{border-color:var(--line)}
+:root[data-look="3"] .cell.k-personal,:root[data-look="3"] .cell.k-half,:root[data-look="3"] .cell.k-unpaid,
+:root[data-look="3"] .cell.k-company,:root[data-look="3"] .cell.k-holiday{box-shadow:inset 3px 0 0 currentColor}
+:root[data-look="3"] .cell.today,:root[data-look="3"] .cell.inrange,:root[data-look="3"] .cell.rend,
+:root[data-look="3"] .cell.rpick{border-color:var(--accent)}
+:root[data-look="3"] .ev{border-radius:3px}
+:root[data-look="3"] h1{font-weight:700;letter-spacing:-.03em}
+:root[data-look="3"] .svc .bar{height:4px}
+:root[data-look="3"] .btn.pri,:root[data-look="3"] .rbtn,:root[data-look="3"] .gcbtn.on,
+:root[data-look="3"] .prow .btn.on,:root[data-look="3"] .pk-grid button[aria-current="true"],
+:root[data-look="3"] .palpick button[aria-pressed="true"]{color:#04200f}
 
 /* 시안 고르는 줄 (주소에 ?palette= 가 있을 때만 나온다) */
+body:has(.palpick){padding-bottom:72px}
 .palpick{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:40;display:flex;gap:2px;width:max-content;max-width:calc(100vw - 20px);
   padding:4px;border-radius:999px;background:var(--surface);border:1px solid var(--line);
   box-shadow:0 6px 24px rgba(0,0,0,.16)}

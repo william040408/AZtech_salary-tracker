@@ -18,10 +18,28 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 <script>
-/* 시안: 주소 뒤에 ?palette=a|b|c (기본으로 돌아가려면 ?palette=) — 고른 것은 이 기기에 남는다 */
-(function(){try{var q=new URLSearchParams(location.search).get("palette"),p=q;
-  if(q!==null)localStorage.setItem("salary.palette",q);else p=localStorage.getItem("salary.palette");
-  if(/^[abc]$/.test(p))document.documentElement.dataset.palette=p;}catch(e){}})();
+/* 시안: 주소 뒤에 ?look=1|2|3 (기본으로 돌아가려면 ?look=) — 고른 것은 이 기기에 남는다.
+   시안 글꼴은 그 시안일 때만 불러온다. 기본 화면은 그대로 가볍다. */
+window.LOOK_FONTS = {
+  "1": "family=Gowun+Dodum&family=Nunito:wght@600;700;800",
+  "2": "family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@500;600;700",
+  "3": "family=JetBrains+Mono:wght@500;600;700"
+};
+window.applyLook = function(v){
+  var r = document.documentElement;
+  if (window.LOOK_FONTS[v]){
+    r.dataset.look = v;
+    var id = "lookfont" + v;
+    if (!document.getElementById(id)){
+      var l = document.createElement("link"); l.id = id; l.rel = "stylesheet";
+      l.href = "https://fonts.googleapis.com/css2?" + window.LOOK_FONTS[v] + "&display=swap";
+      document.head.appendChild(l);
+    }
+  } else delete r.dataset.look;
+};
+(function(){try{var q=new URLSearchParams(location.search).get("look"),p=q;
+  if(q!==null)localStorage.setItem("salary.look",q);else p=localStorage.getItem("salary.look");
+  window.applyLook(p);}catch(e){}})();
 </script>
 <!-- 구글 로그인. 연결하지 않으면 아무 일도 하지 않는다. -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>

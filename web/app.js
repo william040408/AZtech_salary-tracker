@@ -312,7 +312,8 @@ function targetCellH(){
     // 딱 맞추면 반올림 때문에 몇 px 넘쳐서 달력 안에서 미세하게 스크롤된다.
     reserved = hd.offsetTop + hd.offsetHeight + 34;
   }
-  const gap = parseFloat(getComputedStyle(grid).rowGap) || 2;
+  const g0 = parseFloat(getComputedStyle(grid).rowGap);
+  const gap = isNaN(g0) ? 2 : g0;             // 0 도 유효한 값이다 (표 모양 시안)
   const weeks = 6;                                                      // 늘 여섯 줄 — 달이 바뀌어도 칸 크기가 같다
   return Math.max(80, Math.min(260, Math.floor((viewportH() - reserved - extra - gap * (weeks - 1)) / weeks)));
 }
@@ -1737,20 +1738,26 @@ async function loadRemote(){
 }
 
 /* ── 시안 고르는 줄 ──
-   주소에 ?palette= 가 있을 때만 나온다. 고른 것은 주소와 이 기기에 남는다. */
+   주소에 ?look= 가 있을 때만 나온다. 고른 것은 주소와 이 기기에 남는다.
+   글꼴이 늦게 도착하면 글자 높이가 달라져 칸에 들어가는 줄 수가 바뀌므로, 그때 다시 잰다. */
 function initPalettePicker(){
-  if (new URLSearchParams(location.search).get("palette") === null) return;
+  if (document.fonts){
+    document.fonts.ready.then(relayout);
+    document.fonts.addEventListener("loadingdone", relayout);
+  }
+  if (new URLSearchParams(location.search).get("look") === null) return;
   const bar = document.createElement("div"); bar.className = "palpick";
+  const cur = () => document.documentElement.dataset.look || "";
   const set = v => {
-    if (v) document.documentElement.dataset.palette = v; else delete document.documentElement.dataset.palette;
-    try { localStorage.setItem("salary.palette", v); } catch {}
-    const u = new URL(location.href); u.searchParams.set("palette", v); history.replaceState(null, "", u);
-    for (const b of bar.children) b.setAttribute("aria-pressed", String((b.dataset.v || "") === v));
+    window.applyLook(v);
+    try { localStorage.setItem("salary.look", v); } catch {}
+    const u = new URL(location.href); u.searchParams.set("look", v); history.replaceState(null, "", u);
+    for (const b of bar.children) b.setAttribute("aria-pressed", String(b.dataset.v === v));
     relayout();
   };
-  for (const [v, t] of [["", "기본"], ["a", "A 페이퍼"], ["b", "B 슬레이트"], ["c", "C 블루"]]){
+  for (const [v, t] of [["", "기본"], ["1", "1 소프트"], ["2", "2 에디토리얼"], ["3", "3 나이트"]]){
     const b = document.createElement("button"); b.type = "button"; b.dataset.v = v; b.textContent = t;
-    b.setAttribute("aria-pressed", String((document.documentElement.dataset.palette || "") === v));
+    b.setAttribute("aria-pressed", String(cur() === v));
     b.addEventListener("click", () => set(v)); bar.appendChild(b);
   }
   document.body.appendChild(bar);
