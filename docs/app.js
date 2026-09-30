@@ -1736,6 +1736,26 @@ async function loadRemote(){
   overrides = new Map(Object.entries(lv || {}).filter(([, v]) => kindName(v)));
 }
 
+/* ── 시안 고르는 줄 ──
+   주소에 ?palette= 가 있을 때만 나온다. 고른 것은 주소와 이 기기에 남는다. */
+function initPalettePicker(){
+  if (new URLSearchParams(location.search).get("palette") === null) return;
+  const bar = document.createElement("div"); bar.className = "palpick";
+  const set = v => {
+    if (v) document.documentElement.dataset.palette = v; else delete document.documentElement.dataset.palette;
+    try { localStorage.setItem("salary.palette", v); } catch {}
+    const u = new URL(location.href); u.searchParams.set("palette", v); history.replaceState(null, "", u);
+    for (const b of bar.children) b.setAttribute("aria-pressed", String((b.dataset.v || "") === v));
+    relayout();
+  };
+  for (const [v, t] of [["", "기본"], ["a", "A 페이퍼"], ["b", "B 슬레이트"], ["c", "C 블루"]]){
+    const b = document.createElement("button"); b.type = "button"; b.dataset.v = v; b.textContent = t;
+    b.setAttribute("aria-pressed", String((document.documentElement.dataset.palette || "") === v));
+    b.addEventListener("click", () => set(v)); bar.appendChild(b);
+  }
+  document.body.appendChild(bar);
+}
+
 /* ── 시작 ── */
 function start(){
   ATT = new Map(B.attendance.map(a => [a.date, a]));
@@ -1750,6 +1770,7 @@ function start(){
   $("refreshBtn").hidden = !api;
   if (api) metaAt().catch(() => {});
   gcInit();
+  initPalettePicker();
 }
 
 (async function boot(){

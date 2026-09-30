@@ -16,7 +16,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=2b64dd6d">
+<link rel="stylesheet" href="style.css?v=4b5ab01e">
+<script>
+/* 시안: 주소 뒤에 ?palette=a|b|c (기본으로 돌아가려면 ?palette=) — 고른 것은 이 기기에 남는다 */
+(function(){try{var q=new URLSearchParams(location.search).get("palette"),p=q;
+  if(q!==null)localStorage.setItem("salary.palette",q);else p=localStorage.getItem("salary.palette");
+  if(/^[abc]$/.test(p))document.documentElement.dataset.palette=p;}catch(e){}})();
+</script>
 <!-- 구글 로그인. 연결하지 않으면 아무 일도 하지 않는다. -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -193,6 +199,6 @@
 <!-- 데이터 자리. 배포본에는 자리표시자 그대로 나가고, 페이지가 열린 뒤
      금고에서 받아온다. 개발 서버는 여기에 값을 박아서 내려 준다. -->
 <script id="bundle" type="application/json">__BUNDLE__</script>
-<script src="app.js?v=cf7b94ba"></script>
+<script src="app.js?v=361c47a8"></script>
 </body>
 </html>
