@@ -565,11 +565,12 @@ h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .sec-hd{background:var(--surface2);border-bottom:1px solid var(--line)}
 
 /* 날짜 줄과 연차 배지 — 배지는 날짜와 같은 줄의 세로 가운데에 놓인다 */
-.cell .drow{display:flex;align-items:center;justify-content:center;gap:3px}
+.cell .drow{position:relative;display:block}
 .cell .drow .d{display:block}
-.acc{white-space:nowrap;font-size:9px;font-weight:700;line-height:1;letter-spacing:-.02em;color:var(--accent)}
+.acc{position:absolute;right:2px;top:1px;white-space:nowrap;font-size:9px;font-weight:700;line-height:1;
+  letter-spacing:-.02em;color:var(--accent)}
 .acc .s{display:none}
-@media (max-width:520px){.acc .f{display:none}.acc .s{display:inline}.acc{font-size:8.5px}}
+@media (max-width:520px){.acc .f{display:none}.acc .s{display:inline}.acc{font-size:8.5px;right:1px}}
 .cell.pad{cursor:pointer}
 
 /* 달력 제목줄: 제목 · 범례 · 연월 이동. 범례가 이동 단추와 겹치지 않게 가운데 자리를 쓴다 */

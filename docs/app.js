@@ -228,6 +228,9 @@ function drawCal(skipLayout){
         more.textContent = "+" + hid.length; box.appendChild(more);
       }
     }
+    else if (wk.need > cap){                                          // '+N' 줄이 있는 주는 모든 칸이 그 자리를 비워 둔다
+      const v = document.createElement("span"); v.className = "ev blank"; box.appendChild(v);
+    }
     cell.appendChild(box);
   };
 
@@ -313,7 +316,8 @@ function targetCellH(){
     const hd = document.querySelector(".hd");
     // 달력이 붙어 있을 수 있는 높이(CSS max-height = 화면 − 제목줄 − 28px)보다 늘 조금 작게 잡는다.
     // 딱 맞추면 반올림 때문에 몇 px 넘쳐서 달력 안에서 미세하게 스크롤된다.
-    reserved = hd.offsetTop + hd.offsetHeight + 34;
+    // hd.offsetTop 은 붙어 있는 동안 스크롤만큼 커진다 — 스크롤하면 칸이 줄어드는 원인이었다. 붙지 않는 wrap 을 기준으로 잡는다.
+    reserved = wrap.offsetTop + parseFloat(getComputedStyle(wrap).paddingTop) + hd.offsetHeight + 34;
   }
   const g0 = parseFloat(getComputedStyle(grid).rowGap);
   const gap = isNaN(g0) ? 2 : g0;             // 0 도 유효한 값이다 (표 모양 시안)
