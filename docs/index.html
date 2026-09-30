@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Serif+KR:wght@600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=e8278faf">
+<link rel="stylesheet" href="style.css?v=5e2b3909">
 <!-- 구글 로그인. 연결하지 않으면 아무 일도 하지 않는다. -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -96,6 +96,7 @@
       </div>
     </div>
     <div class="sec-body">
+      <div class="pickbar" id="pickBar" hidden><span id="pickTxt"></span><button type="button" class="btn sm" id="pickCancel">취소</button></div>
       <div id="dbWarn" hidden class="offline">저장소에 연결하지 못했습니다. 변경한 내용이 저장되지 않습니다.</div>
       <div class="picker" id="picker" hidden>
         <div class="pk-head">
@@ -178,6 +179,7 @@
   <div class="shev-h" id="shEvHead" hidden></div>
   <div class="shevents" id="shEvents" hidden></div>
   <div class="shbal" id="shBal" hidden></div>
+  <div class="subst" id="shSubst" hidden></div>
   <div class="opts" id="shOpts"></div>
   <div class="times" id="shTimes" hidden>
     <input id="shStart" type="time" step="60" aria-label="출근 시각">
@@ -193,6 +195,6 @@
 <!-- 데이터 자리. 배포본에는 자리표시자 그대로 나가고, 페이지가 열린 뒤
      금고에서 받아온다. 개발 서버는 여기에 값을 박아서 내려 준다. -->
 <script id="bundle" type="application/json">__BUNDLE__</script>
-<script src="app.js?v=829963d9"></script>
+<script src="app.js?v=f2204f71"></script>
 </body>
 </html>

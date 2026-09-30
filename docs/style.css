@@ -602,3 +602,12 @@ h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   width:calc(var(--n,1) * (100% - var(--bleed)) + (var(--n,1) - 1) * (2 * var(--cpx) + 1px))}
 .ev.bar.s.e .lbl{width:100%}
+
+/* 대체휴무 */
+.subst{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;padding:8px 11px;margin-bottom:12px;
+  border:1px solid var(--line);background:var(--surface2)}
+.subst .sb-t{flex:1 1 auto;font-weight:600;color:var(--ink2)}
+.btn.sm{flex:none;padding:4px 10px;font-size:12px;min-height:0}
+.pickbar{display:flex;align-items:center;gap:10px;justify-content:space-between;font-size:12.5px;font-weight:600;
+  padding:8px 11px;margin-bottom:8px;color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent)}
+.cell .t.sb{color:var(--accent);font-weight:700}

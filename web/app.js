@@ -88,6 +88,14 @@ const timesOf = d => {                       // 직접 적은 시각이 있으�
   return a && a.start ? { s: a.start, e: a.end, mine: false } : null;
 };
 const WORK_KINDS = new Set(["work", "short"]);
+/* 대체휴무 — 쉬는 날(주말·공휴일)에 일한 날에, 그 대신 쉰 날을 이어 둔다. 일한 날의 기록에 sub 로 저장한다. */
+const subOf = d => { const v = overrides.get(d); return (v && typeof v === "object" && v.sub) || null; };
+function subTargets(){                                   // 쉰 날 -> 일한 날
+  const m = new Map();
+  for (const [d, v] of overrides) if (v && typeof v === "object" && v.sub) m.set(v.sub, d);
+  return m;
+}
+const dotMD = ds => ds.slice(5, 7) + "." + ds.slice(8);
 
 /** 점심(12~13시)과 겹치는 만큼만 빼고 실근무 시간을 센다. */
 function hoursBetween(st, en){
@@ -234,6 +242,7 @@ function drawCal(skipLayout){
     cell.appendChild(box);
   };
 
+  const subTo = subTargets();
   const padCell = (d, idx) => {
     const c = document.createElement("div"); c.className = "cell pad";
     const dd = document.createElement("span"); dd.className = "d"; dd.textContent = d.getDate();
@@ -267,6 +276,12 @@ function drawCal(skipLayout){
       const h = document.createElement("span"); h.className = "h"; h.textContent = hn;
       b.appendChild(h);
     }
+    const sbTo = subOf(ds), sbFrom = subTo.get(ds);
+    if (sbTo || sbFrom){                            // 대체휴무로 이어진 두 날
+      const x = document.createElement("span"); x.className = "t sb";
+      x.textContent = sbTo ? "→" + dotMD(sbTo) : "←" + dotMD(sbFrom);
+      b.appendChild(x);
+    }
     const acc = accrualEvents().find(e => e.ds === ds);
     if (acc){
       b.classList.add("accday");
@@ -280,7 +295,7 @@ function drawCal(skipLayout){
     addLanes(b, ds, Math.floor((lanes.pad + day - 1) / 7), w0);
     const a = ATT.get(ds);
     b.setAttribute("aria-label", ds + " " + (K?K.label:"기록 없음")
-      + (hn ? " · " + hn : "") + (a&&a.start ? " "+a.start+"~"+a.end : ""));
+      + (hn ? " · " + hn : "") + (sbTo ? " · " + sbTo + " 대체휴무로 갈음" : sbFrom ? " · " + sbFrom + " 근무의 대체휴무일" : "") + (a&&a.start ? " "+a.start+"~"+a.end : ""));
     g.appendChild(b);
   }
   const weeks = Math.ceil((first.getDay() + last.getDate()) / 7);       // 4~6주 — 필요한 줄만 그린다
@@ -439,17 +454,35 @@ function drawMonths(){
       bits.push("차감이 " + (B.dailyHours / 2) + "시간 단위가 아님 — 지각·조퇴가 반영된 것으로 보임");
     const rw = restWorkOf(mo);
     if (rw.n){
-      const when = rw.list.map(x => x.ds.slice(5).replace("-", ".") + " " + x.hours + "시간").join(", ");
-      if (p && !p.derived){
-        const has = Object.keys(p.earnings).some(name => /휴일|가산|연장|야간/.test(name));
-        bits.push("쉬는 날 근무 " + rw.n + "일 (" + when + ")"
-          + (has ? " — 명세서에 휴일근로 항목이 있음"
-                 : " — 명세서에 휴일근로수당이 없음. 법정 기준이면 약 " + WON(rw.pay)
-                   + "원인데, 대체휴무로 갈음했는지 확인이 필요합니다"));
-      } else {
-        bits.push("쉬는 날 근무 " + rw.n + "일 (" + when + ") — 휴일근로수당 약 " + WON(rw.pay) + "원 (추정)");
+      const when = xs => xs.map(x => dotMD(x.ds) + " " + x.hours + "시간").join(", ");
+      const subs = rw.list.filter(x => x.sub), open = rw.list.filter(x => !x.sub);
+      const hasItem = !!p && !p.derived && Object.keys(p.earnings).some(name => /휴일|가산|연장|야간/.test(name));
+      if (subs.length){
+        bits.push("쉬는 날 근무 " + subs.length + "일 (" + subs.map(x => dotMD(x.ds) + " " + x.hours + "시간 → " + dotMD(x.sub) + " 대체휴무").join(", ")
+          + ") — 대체휴무로 갈음했으니 휴일근로수당이 없는 것이 맞습니다"
+          + (hasItem ? ". 다만 명세서에 휴일근로 항목이 있어 중복 지급인지 확인이 필요합니다" : ""));
+        for (const x of subs){                       // 대체휴무일이 말이 되는지 본다
+          const tk = kindOf(x.sub);
+          if (isRest(x.sub)) bits.push("⚠ " + dotMD(x.sub) + " 은 원래 쉬는 날이라 대체휴무가 되지 않습니다");
+          else if (WORK_KINDS.has(tk)) bits.push("⚠ " + dotMD(x.sub) + " 에 출근한 것으로 기록돼 있어 대체휴무와 맞지 않습니다");
+          else if (CONSUMES[tk] > 0) bits.push("⚠ " + dotMD(x.sub) + " 이 연차로 기록돼 있어 대체휴무가 아니라 연차를 쓴 것이 됩니다");
+        }
+      }
+      if (open.length){
+        const openPay = open.reduce((a, x) => a + x.pay, 0);
+        if (p && !p.derived){
+          bits.push("쉬는 날 근무 " + open.length + "일 (" + when(open) + ")"
+            + (hasItem ? " — 명세서에 휴일근로 항목이 있음"
+                       : " — 명세서에 휴일근로수당이 없음. 법정 기준이면 약 " + WON(openPay)
+                         + "원인데, 대체휴무로 갈음했다면 달력에서 그 날을 눌러 대체휴무일을 지정해 주세요"));
+        } else {
+          bits.push("쉬는 날 근무 " + open.length + "일 (" + when(open) + ") — 휴일근로수당 약 " + WON(openPay) + "원 (추정)");
+        }
       }
     }
+    for (const [d, v] of overrides)                  // 다른 달 근무를 대신해 쉰 날
+      if (v && typeof v === "object" && v.sub && monthOf(v.sub) === mo && monthOf(d) !== mo)
+        bits.push(dotMD(v.sub) + " 은 " + d.replace(/-/g, ".") + " 근무의 대체휴무일");
     if (!bits.length) bits.push("만근, 변동 없음");
     for (const t of bits){ const s = document.createElement("span"); s.textContent = t; why.appendChild(s); }
     row.appendChild(why);
@@ -499,10 +532,13 @@ function restWorkOf(mo){
   for (const ds of trackedDates()){
     if (monthOf(ds) !== mo || !isRest(ds) || !WORK_KINDS.has(kindOf(ds))) continue;
     const h = restHours(ds);
-    if (h > 0) list.push({ ds, hours: h, pay: restPay(h) });
+    if (h > 0){ const sub = subOf(ds); list.push({ ds, hours: h, sub, pay: sub ? 0 : restPay(h) }); }
   }
-  const hours = Math.round(list.reduce((a, x) => a + x.hours, 0) * 100) / 100;
-  return { list, n: list.length, hours, pay: list.reduce((a, x) => a + x.pay, 0) };
+  const open = list.filter(x => !x.sub);      // 대체휴무로 갈음하지 않은 것만 수당 대상이다
+  const r2 = a => Math.round(a * 100) / 100;
+  return { list, n: list.length, hours: r2(list.reduce((a, x) => a + x.hours, 0)),
+           payN: open.length, payHours: r2(open.reduce((a, x) => a + x.hours, 0)),
+           pay: open.reduce((a, x) => a + x.pay, 0) };
 }
 
 // 급여에서 차감되는 분류 (명세서의 기본급 차감과 대조한다)
@@ -1328,6 +1364,7 @@ function openSheet(ds){
   pendKind = shown;
   const tm0 = timesOf(ds);
   pendTimes = tm0 && tm0.mine ? { s: tm0.s, e: tm0.e } : null;
+  pendSub = subOf(ds);
   $("shSave").hidden = !deferred;
   $("shClose").classList.toggle("pri", !deferred);
   $("shClose").textContent = deferred ? "취소" : "닫기";
@@ -1351,8 +1388,60 @@ function openSheet(ds){
     box.appendChild(row);
   }
   syncTimes(ds, k);
+  drawSubst(ds, shown);
   $("scrim").classList.add("on"); $("sheet").classList.add("on"); pushLayer("sheet");
 }
+/* ── 대체휴무 지정 ── */
+let subPick = null;                                   // 대체휴무일을 고르는 중인, 일한 날
+function drawSubst(ds, k){
+  const box = $("shSubst"); box.textContent = "";
+  const worked = isRest(ds) && WORK_KINDS.has(k), from = subTargets().get(ds);
+  box.hidden = !(worked || from);
+  if (box.hidden) return;
+  const t = document.createElement("span"); t.className = "sb-t";
+  if (worked){
+    const cur = deferred ? pendSub : subOf(ds);
+    t.textContent = cur ? "대체휴무일 " + cur.replace(/-/g, ".") : "이 날 근무를 다른 날 휴무로 대체했다면";
+    box.appendChild(t);
+    const go = document.createElement("button"); go.type = "button"; go.className = "btn sm"; go.id = "shSubGo";
+    go.textContent = cur ? "바꾸기" : "대체휴무일 고르기"; box.appendChild(go);
+    if (cur){
+      const off = document.createElement("button"); off.type = "button"; off.className = "btn sm"; off.id = "shSubOff";
+      off.textContent = "해제"; box.appendChild(off);
+    }
+  } else {
+    t.textContent = from.replace(/-/g, ".") + " 근무의 대체휴무일"; box.appendChild(t);
+  }
+}
+function startSubPick(){
+  const ds = picked; if (!ds) return;
+  if (deferred && pendKind) storeKind(ds, pendKind, pendTimes, pendSub);   // 시트에서 고친 것은 먼저 저장
+  $("scrim").classList.remove("on"); $("sheet").classList.remove("on"); picked = null;
+  const i = layers.lastIndexOf("sheet");              // 시트가 쌓은 뒤로 가기 칸을 그대로 넘겨받는다
+  if (i >= 0) layers[i] = "subpick"; else pushLayer("subpick");
+  subPick = ds;
+  $("pickTxt").textContent = Number(ds.slice(5, 7)) + "월 " + Number(ds.slice(8)) + "일 근무를 대신해 쉰 날을 달력에서 눌러 주세요.";
+  $("pickBar").hidden = false;
+  ensureVisible($("calSec"), "start");
+  relayout();
+}
+function endSubPick(){
+  subPick = null; $("pickBar").hidden = true; dropLayer("subpick");
+  relayout();
+}
+function setSub(ds, target){
+  const tm = timesOf(ds);
+  return setKind(ds, kindOf(ds), tm && tm.mine ? { s: tm.s, e: tm.e } : null, target);
+}
+$("shSubst").addEventListener("click", e => {
+  if (e.target.closest("#shSubGo")) startSubPick();
+  else if (e.target.closest("#shSubOff")){
+    if (deferred){ pendSub = null; drawSubst(picked, pendKind); drawSheetBal(pendKind, picked); }
+    else { setSub(picked, null); drawSubst(picked, kindOf(picked)); drawSheetBal(kindOf(picked), picked); }
+  }
+});
+$("pickCancel").addEventListener("click", endSubPick);
+
 /* 그날 구글 캘린더 일정 */
 function drawSheetEvents(ds){
   const box = $("shEvents"); box.textContent = "";
@@ -1378,11 +1467,14 @@ function drawSheetBal(k, ds){
   if (ds && isRest(ds)){                     // 쉬는 날 — 연차 계산이 붙지 않는다
     const why = holName(ds) || "주말";
     const grew0 = acc ? spanText(acc) + " 만근으로 이 날 연차 " + acc.days + "일 생김 · " : "";
+    const cs = deferred ? pendSub : subOf(ds), from = subTargets().get(ds);
     box.className = "shbal calm";
     box.textContent = grew0 + (WORK_KINDS.has(k)
-      ? "쉬는 날(" + why + ")에 일하면 휴일근로입니다 · 법정 기준 약 " + WON(restPay(restHours(ds)))
-        + "원 (추정, 대체휴무로 갈음하면 없음)"
-      : "쉬는 날(" + why + ")이라 연차도 급여도 깎이지 않습니다");
+      ? (cs ? "쉬는 날(" + why + ")에 일했지만 " + dotMD(cs) + " 대체휴무로 갈음해 휴일근로수당은 없습니다"
+            : "쉬는 날(" + why + ")에 일하면 휴일근로입니다 · 법정 기준 약 " + WON(restPay(restHours(ds)))
+              + "원 (추정, 대체휴무로 갈음하면 없음)")
+      : from ? dotMD(from) + " 근무의 대체휴무일입니다 · 쉬는 날이라 연차도 급여도 깎이지 않습니다"
+             : "쉬는 날(" + why + ")이라 연차도 급여도 깎이지 않습니다");
     box.hidden = false;
     return;
   }
@@ -1426,36 +1518,41 @@ function saveTimes(){
 
 /* 일정이 있는 날은 곧바로 저장하지 않고 '저장하기' 를 누를 때 확정한다.
    일정을 읽다가 잘못 눌러 기록이 바뀌는 일을 막기 위해서다. */
-let deferred = false, pendKind = null, pendTimes = null;
+let deferred = false, pendKind = null, pendTimes = null, pendSub = null;
 
 function markOpt(k){
   for (const el of $("shOpts").querySelectorAll(".opt"))
     el.setAttribute("aria-pressed", String(el.dataset.kind === k));
   if (picked && isRest(picked)) drawSheetBal(k, picked);    // 고른 종류에 맞춰 안내를 바꾼다
+  if (picked) drawSubst(picked, k);
 }
 
 /* '쉬는 날' 을 고르면, 그 날의 원래 모습이 주말·공휴일일 때는 기록을 지워
    기본값으로 되돌린다. 평일이면 '쉬는 날' 로 남긴다. */
-function storeKind(ds, k, times){
+function storeKind(ds, k, times, sub){
   const d = defaultKind(ds);
   if (k === "dayoff" && (d === "weekend" || d === "holiday")) return setKind(ds, null);
-  return setKind(ds, k, times);
+  return setKind(ds, k, times, sub);
 }
 function commitSheet(){
-  if (picked && pendKind) storeKind(picked, pendKind, pendTimes);
+  if (picked && pendKind) storeKind(picked, pendKind, pendTimes, pendSub);
   closeSheet();
 }
 
 function closeSheet(){ $("scrim").classList.remove("on"); $("sheet").classList.remove("on"); picked = null; dropLayer("sheet"); }
 
-async function setKind(ds, kind, times){
-  const val = times && times.s ? { k: kind, s: times.s, e: times.e } : kind;
+async function setKind(ds, kind, times, sub){
+  // 대체휴무일은 일한 날(쉬는 날에 출근)에만 붙는다. 넘기지 않으면 기존 것을 유지한다.
+  const keep = sub === undefined ? subOf(ds) : sub;
+  sub = (kind && WORK_KINDS.has(kind) && isRest(ds)) ? keep : null;
+  const val = (times && times.s) || sub
+    ? { k: kind, ...(times && times.s ? { s: times.s, e: times.e } : {}), ...(sub ? { sub } : {}) } : kind;
   if (kind) overrides.set(ds, val); else overrides.delete(ds);
   redraw();
   if (dbRef){
     try {
       const doc = dbRef.collection("leave").doc(ds);
-      if (kind) await doc.set({ date: ds, kind, s: times?.s || null, e: times?.e || null,
+      if (kind) await doc.set({ date: ds, kind, s: times?.s || null, e: times?.e || null, sub: sub || null,
                                 updatedAt: new Date().toISOString() });
       else await doc.delete();
     } catch { $("dbWarn").hidden = false; }
@@ -1486,7 +1583,7 @@ function drawForecast(){
   const earn = [["기본급", base], ...Object.entries(fixed)];
   if (cash) earn.push(["연차수당", cash, true]);
   const rw = restWorkOf(target);
-  if (rw.pay) earn.push(["휴일근로수당", rw.pay, true, rw.n + "일 · " + rw.hours + "시간 × 1.5배 (쉬는 날 근무)"]);
+  if (rw.pay) earn.push(["휴일근로수당", rw.pay, true, rw.payN + "일 · " + rw.payHours + "시간 × 1.5배 (쉬는 날 근무)"]);
   const gross = earn.reduce((a, e) => a + e[1], 0);
 
   const ded = {};
@@ -1553,6 +1650,7 @@ window.addEventListener("popstate", () => {
   const n = layers.pop();
   if (n === "sheet") closeSheet();
   else if (n === "pick") cancelPick();
+  else if (n === "subpick") endSubPick();
 });
 
 /* ── 이벤트 ── */
@@ -1564,6 +1662,12 @@ $("grid").addEventListener("click", e => {
     return;
   }
   if (!b || b.disabled || !b.dataset.date) return;
+  if (subPick){                                    // 대체휴무일을 고르는 중
+    const from = subPick;
+    if (b.dataset.date === from) return;
+    endSubPick(); setSub(from, b.dataset.date);
+    return;
+  }
   if (planPick){                                   // 연차 계획의 날짜를 고르는 중
     const ds = b.dataset.date, from = $("plFrom").value, to = $("plTo").value;
     if (planPick === 3){                           // 다 골라 둔 뒤 다른 칸을 누르면 거기서부터 새로 시작한다
@@ -1884,7 +1988,7 @@ function start(){
         overrides = new Map();
         for (const d of snap.docs){
         const v = d.data(); if (!v || !v.kind) continue;
-        overrides.set(d.id, v.s ? { k: v.kind, s: v.s, e: v.e } : v.kind);
+        overrides.set(d.id, (v.s || v.sub) ? { k: v.kind, ...(v.s ? { s: v.s, e: v.e } : {}), ...(v.sub ? { sub: v.sub } : {}) } : v.kind);
       }
         redraw();
       },
