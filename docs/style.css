@@ -617,3 +617,8 @@ h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   padding:2px 8px;font-weight:600;line-height:1.45}
 .opt-row.rest .times{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:flex-start;gap:8px}
 .opt-row.rest .times input{flex:1;min-width:0}
+
+/* 날짜·분류·공휴일 이름은 일정에 밀려 잘리지 않는다 — 자리가 모자라면 일정 쪽이 줄고 +N 으로 남는다 */
+.cell > *{flex-shrink:0}
+.cell > .evs{flex-shrink:1;min-height:0}
+.pickbar .btn{flex:none}
