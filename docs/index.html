@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=e108230f">
+<link rel="stylesheet" href="style.css?v=2fa76598">
 <!-- 구글 로그인. 연결하지 않으면 아무 일도 하지 않는다. -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -112,7 +112,6 @@
         <span><i style="background:var(--hol-soft);border-color:var(--hol)"></i>공휴일</span>
       </div>
     </div>
-    <div class="note">날짜를 눌러 그날의 성격을 기록합니다.</div>
   </section>
 
   <div class="tiles">
@@ -179,6 +178,7 @@
   <h3 id="shTitle">—</h3>
   <div class="sub" id="shSub">—</div>
   <div class="shbal" id="shBal" hidden></div>
+  <div class="shev-h" id="shEvHead" hidden></div>
   <div class="shevents" id="shEvents" hidden></div>
   <div class="opts" id="shOpts"></div>
   <div class="times" id="shTimes" hidden>
@@ -187,13 +187,14 @@
     <span class="thrs" id="shHours"></span>
   </div>
   <div class="sheet-foot">
-    <button class="btn pri" id="shClose">닫기</button>
+    <button class="btn" id="shClose">닫기</button>
+    <button class="btn pri" id="shSave" hidden>저장하기</button>
   </div>
 </div>
 
 <!-- 데이터 자리. 배포본에는 자리표시자 그대로 나가고, 페이지가 열린 뒤
      금고에서 받아온다. 개발 서버는 여기에 값을 박아서 내려 준다. -->
 <script id="bundle" type="application/json">__BUNDLE__</script>
-<script src="app.js?v=d08c028a"></script>
+<script src="app.js?v=858bb991"></script>
 </body>
 </html>

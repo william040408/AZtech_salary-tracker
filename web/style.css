@@ -147,15 +147,15 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   background:var(--accent-soft);border-radius:4px;padding:1px 3px;line-height:1.3}
 .cell.hasev::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   width:4px;height:4px;border-radius:50%;background:var(--company)}
-.evs{display:flex;flex-direction:column;gap:2px;margin-top:auto;padding-top:3px}
-.ev{height:13px;line-height:13px;font-size:8px;font-weight:600;letter-spacing:-.04em;
+.evs{display:flex;flex-direction:column;gap:var(--lane-gap);margin-top:auto;padding-top:3px;overflow:hidden}
+.ev{height:var(--lane);line-height:var(--lane);font-size:8px;font-weight:600;letter-spacing:-.04em;
   border-radius:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
   padding:0 3px;text-align:left}
 .ev.blank{background:none}
 /* 같은 일정이 옆 칸으로 이어질 때는 칸 사이를 넘어가 하나로 보이게 한다 */
 .ev.bar:not(.s){margin-left:calc(-1 * var(--bleed));border-top-left-radius:0;border-bottom-left-radius:0}
 .ev.bar:not(.e){margin-right:calc(-1 * var(--bleed));border-top-right-radius:0;border-bottom-right-radius:0}
-.ev.more{height:11px;line-height:11px;font-size:8px;font-weight:600;color:var(--muted);
+.ev.more{height:var(--lane);line-height:var(--lane);font-size:8px;font-weight:600;color:var(--muted);
   text-align:center;padding:0}
 .hd-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
 .gcwrap{position:relative;flex:none}
@@ -180,7 +180,9 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .gc-cal i{width:10px;height:10px;border-radius:3px;flex:none}
 .gc-msg{margin-top:10px;font-size:12.5px;color:var(--muted)}
 .gc-msg.bad{color:var(--unpaid)}
-.shevents{margin:-4px 0 12px;display:flex;flex-direction:column;gap:2px}
+.shev-h{font-size:11.5px;font-weight:600;color:var(--muted);margin:2px 0 4px}
+.shevents{margin:0 0 14px;display:flex;flex-direction:column;gap:2px;
+  max-height:172px;overflow-y:auto}
 .shev{display:flex;align-items:baseline;gap:8px;font-size:13px;padding:5px 2px}
 .shev i{width:8px;height:8px;border-radius:2px;flex:none;align-self:center}
 .shev-t{font-size:11.5px;font-weight:600;color:var(--muted);flex:none;min-width:34px}
@@ -234,8 +236,9 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .dow span{text-align:center;font-size:10.5px;font-weight:600;color:var(--muted);padding-bottom:2px}
 .dow span:first-child{color:var(--unpaid)}
 .dow span:last-child{color:var(--company)}
-.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--gap);--gap:4px;--bleed:8px}
-.cell{min-height:88px;border:1px solid var(--line2);border-radius:10px;background:var(--surface2);
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--gap);--gap:4px;--bleed:8px;
+  --lane:13px;--lane-gap:2px}
+.cell{height:88px;border:1px solid var(--line2);border-radius:10px;background:var(--surface2);
   display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:1px;
   cursor:pointer;padding:5px 3px 4px;font-size:13px;position:relative;min-width:0;text-align:center}
 .cell.pad{visibility:hidden;cursor:default}
@@ -414,7 +417,8 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink)}
 .times input:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .thrs{font-size:11px;font-weight:600;color:var(--accent);text-align:center}
-.sheet-foot{display:flex;gap:8px;margin-top:12px}
+.sheet-foot{display:flex;gap:8px;margin-top:12px;position:sticky;bottom:0;
+  background:var(--surface);padding-top:10px}
 .btn{flex:1;appearance:none;border-radius:13px;padding:11px;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--ink2)}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -433,12 +437,13 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .sec:has(.grid) .sec-body{padding:8px}       /* 달력만은 폭을 최대한 쓴다 */
   .grid{--gap:2px;--bleed:6px}
   .dow{gap:2px}
-  .cell{min-height:98px;border-radius:9px;padding:5px 2px 4px}
+  .cell{height:98px;border-radius:9px;padding:5px 2px 4px}
   .cell .d{font-size:16px}
   .cell.accday::before{content:attr(data-acc-short);font-size:8px;padding:1px 3px}
   .cell .t{font-size:8.5px}
   .cell .h{font-size:8px}
-  .ev{height:14px;line-height:14px;font-size:8.5px}
+  .grid{--lane:14px}
+  .ev{font-size:8.5px}
   .nav>button{width:34px;height:34px}          /* 터치 타겟 */
   .opt-row{gap:5px}
   .opt{padding:13px 12px}
@@ -458,16 +463,17 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
    1400px 을 넘어야 쪼개는 쪽이 넓어지므로 거기서부터 쪼갠다. */
 @media (min-width:1000px){
   .wrap{max-width:960px;padding-block:28px 80px}
-  .cell{min-height:118px;padding:7px 5px 6px}
+  .cell{height:118px;padding:7px 5px 6px}
   .cell .d{font-size:17px}
   .cell .t{font-size:10.5px}
   .cell .h{font-size:9.5px}
   .grid{--gap:5px;--bleed:11px}
   .dow{gap:5px}
   .dow span{font-size:11.5px}
-  .ev{height:17px;line-height:17px;font-size:10.5px;border-radius:5px;padding:0 5px}
+  .grid{--lane:17px}
+  .ev{font-size:10.5px;border-radius:5px;padding:0 5px}
   .evs{gap:3px}
-  .ev.more{height:13px;line-height:13px;font-size:10px}
+  .ev.more{font-size:10px}
   .legend{font-size:12px;gap:6px 16px}
 }
 
@@ -487,7 +493,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
      일정이 많아 그래도 넘치면 달력 안에서 스크롤된다. */
   #calSec{grid-column:1;grid-row:2/span 40;align-self:start;
     position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}
-  .cell{min-height:clamp(78px,calc((100vh - 330px) / 6),170px)}
+  .cell{height:clamp(84px,calc((100vh - 286px) / 6),180px)}
   .hero,#forecast,.tiles,#plan,.sec:not(#calSec),.linkbtn{grid-column:2}
   /* 누적·만근을 나란히, 쉰 날 합계를 가로로 길게 */
   .tiles{grid-template-columns:1fr 1fr;gap:10px}
@@ -497,7 +503,8 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .hero-grid span{font-size:10.5px}
 
   .cell .d{font-size:18px}
-  .ev{height:18px;line-height:18px;font-size:11px}
+  .grid{--lane:16px}
+  .ev{font-size:10.5px}
 
 }
 

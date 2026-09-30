@@ -170,13 +170,32 @@ function refNet(){
 }
 
 /* ── 달력 ── */
+/* 칸 높이가 고정이므로, 날짜·분류·공휴일이 쓰고 남은 자리에 일정 줄이
+   몇 개나 들어가는지 재서 그만큼만 그린다. 구글 캘린더와 같은 방식이다. */
+let laneFit = 3;
+function measureLanes(){
+  const cells = [...$("grid").querySelectorAll(".cell:not(.pad)")];
+  if (!cells.length) return laneFit;
+  const cs = getComputedStyle(cells[0]);
+  const inner = cells[0].clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const g = getComputedStyle($("grid"));
+  const row = parseFloat(g.getPropertyValue("--lane")) + parseFloat(g.getPropertyValue("--lane-gap"));
+  let worst = 0;                       // 글자가 가장 많은 칸을 기준으로 잡는다
+  for (const c of cells){
+    let t = 0;
+    for (const el of c.children) if (!el.classList.contains("evs")) t += el.getBoundingClientRect().height;
+    worst = Math.max(worst, t);
+  }
+  return Math.max(1, Math.min(5, Math.floor((inner - worst - 3) / row)));
+}
+
 function drawCal(){
   const [y,m] = view.split("-").map(Number);
   $("mYear").textContent = y + "년";
   $("mMonth").textContent = m + "월";
   const first = new Date(y, m-1, 1), last = new Date(y, m, 0);
   const lanes = gcLanes(view);
-  const SHOW_LANES = 3;
+  const SHOW_LANES = laneFit;
   const g = $("grid"); g.textContent = "";
   for (let i=0;i<first.getDay();i++){
     const c = document.createElement("div"); c.className = "cell pad"; g.appendChild(c);
@@ -250,6 +269,10 @@ function drawCal(){
     b.setAttribute("aria-label", ds + " " + (K?K.label:"기록 없음")
       + (hn ? " · " + hn : "") + (a&&a.start ? " "+a.start+"~"+a.end : ""));
     g.appendChild(b);
+  }
+  const fit = measureLanes();
+  if (fit !== laneFit && !drawCal.again){    // 한 번만 다시 그린다
+    laneFit = fit; drawCal.again = true; drawCal(); drawCal.again = false; return;
   }
   gcOnView();
   $("prev").disabled = view <= B.calendarFrom;
@@ -1100,6 +1123,14 @@ function openSheet(ds){
     : (hol || "출근 기록 없음");
   const keep = $("shTimes");
   if (keep) $("sheet").appendChild(keep);      // 지워지지 않게 잠시 밖으로
+  const evs = gcEvents.get(ds) || [];
+  deferred = evs.length > 0;
+  pendKind = k;
+  const tm0 = timesOf(ds);
+  pendTimes = tm0 && tm0.mine ? { s: tm0.s, e: tm0.e } : null;
+  $("shSave").hidden = !deferred;
+  $("shClose").classList.toggle("pri", !deferred);
+  $("shClose").textContent = deferred ? "취소" : "닫기";
   drawSheetBal(k, ds);
   drawSheetEvents(ds);
   const box = $("shOpts"); box.textContent = "";
@@ -1127,7 +1158,9 @@ function drawSheetEvents(ds){
   const box = $("shEvents"); box.textContent = "";
   const list = gcEvents.get(ds);
   box.hidden = !(list && list.length);
+  $("shEvHead").hidden = box.hidden;
   if (box.hidden) return;
+  $("shEvHead").textContent = "이 날 일정 " + list.length + "개";
   for (const e of list){
     const r = document.createElement("div"); r.className = "shev";
     const i = document.createElement("i"); i.style.background = e.color || "var(--muted)";
@@ -1174,10 +1207,23 @@ function saveTimes(){
   if (!a || !b) return;
   // 8시간에 못 미치면 지각으로 본다
   const k = hoursBetween(a, b) < 7.99 ? "short" : "work";
-  setKind(picked, k, { s: a, e: b });
+  if (deferred){ pendKind = k; pendTimes = { s: a, e: b }; }
+  else setKind(picked, k, { s: a, e: b });
+  markOpt(k);
+  $("shSub").textContent = a + " ~ " + b + " · " + hoursBetween(a, b) + "시간 (직접 적음)";
+}
+
+/* 일정이 있는 날은 곧바로 저장하지 않고 '저장하기' 를 누를 때 확정한다.
+   일정을 읽다가 잘못 눌러 기록이 바뀌는 일을 막기 위해서다. */
+let deferred = false, pendKind = null, pendTimes = null;
+
+function markOpt(k){
   for (const el of $("shOpts").querySelectorAll(".opt"))
     el.setAttribute("aria-pressed", String(el.dataset.kind === k));
-  $("shSub").textContent = a + " ~ " + b + " · " + hoursBetween(a, b) + "시간 (직접 적음)";
+}
+function commitSheet(){
+  if (picked && pendKind) setKind(picked, pendKind, pendTimes);
+  closeSheet();
 }
 
 function closeSheet(){ $("scrim").classList.remove("on"); $("sheet").classList.remove("on"); picked = null; }
@@ -1312,16 +1358,22 @@ for (const id of ["plFrom","plTo"]) $(id).addEventListener("change", () => { syn
 $("shOpts").addEventListener("click", e => {
   const b = e.target.closest(".opt"); if (!b || !picked) return;
   const k = b.dataset.kind;
+  markOpt(k);
+  if (deferred){                          // 일정이 있는 날 — 저장 단추로 확정한다
+    pendKind = k;
+    if (!WORK_KINDS.has(k)) pendTimes = null;
+    syncTimes(picked, k);
+    return;
+  }
   if (WORK_KINDS.has(k)){                 // 출근이면 시각을 적을 수 있게 열어 둔다
     const tm = timesOf(picked);
     setKind(picked, k, tm && tm.mine ? tm : null);
-    for (const el of $("shOpts").querySelectorAll(".opt"))
-      el.setAttribute("aria-pressed", String(el.dataset.kind === k));
     syncTimes(picked, k);
     return;
   }
   setKind(picked, k); closeSheet();
 });
+$("shSave").addEventListener("click", commitSheet);
 for (const id of ["shStart", "shEnd"]) $(id).addEventListener("change", saveTimes);
 $("shClose").addEventListener("click", closeSheet);
 $("scrim").addEventListener("click", closeSheet);
