@@ -435,8 +435,8 @@ function drawMonths(){
                 + "  (−" + p.deductedHours + "시간, −" + WON(p.deductedHours*B.hourly) + "원)");
     }
     if (off) bits.push("쉰 날 " + (Math.round(off*10)/10) + "일" + (half?" (반차 "+half+")":""));
-    if (p && p.deductedHours && p.deductedHours % 4 !== 0)
-      bits.push("차감이 4시간 단위가 아님 — 지각·조퇴가 반영된 것으로 보임");
+    if (p && p.deductedHours && p.deductedHours % (B.dailyHours / 2) !== 0)
+      bits.push("차감이 " + (B.dailyHours / 2) + "시간 단위가 아님 — 지각·조퇴가 반영된 것으로 보임");
     const rw = restWorkOf(mo);
     if (rw.n){
       const when = rw.list.map(x => x.ds.slice(5).replace("-", ".") + " " + x.hours + "시간").join(", ");
@@ -555,6 +555,9 @@ function accrualEvents(){
   }
   return out.filter(e => e.ds <= B.serviceEnd);
 }
+const accDay = () => Number(B.hireDate.slice(8));                           // 매달 연차가 생기는 날(입사일의 일)
+const annualDays = () => (accrualEvents().find(e => e.kind === "annual") || { days: 0 }).days;   // 1년이 차면 한꺼번에 생기는 일수
+const monthlyMax = () => accrualEvents().filter(e => e.kind === "monthly").length;               // 1년 미만 최대 일수
 /* "09.03~10.02" 처럼 짧게 */
 const spanText = e => e.from.slice(5).replace("-", ".") + "~" + e.to.slice(5).replace("-", ".");
 /* 1년 미만 연차가 사라지는 날 — 입사 1주년 하루 전 */
@@ -631,7 +634,7 @@ function drawPlan(){
   const skipped = span - days.length;
   line("실제로 쉬는 날", days.length + "일");
   if (skipped) line("주말·공휴일이라 뺀 날", skipped + "일", "sub");
-  line("그 달에 생기는 연차 (매달 3일 발생)", "+" + freeDays + "일", "keep");
+  line("그 달에 생기는 연차 (매달 " + accDay() + "일 발생)", "+" + freeDays + "일", "keep");
   line("그때까지 모아둘 연차", (Math.round(stock*10)/10) + "일", "keep");
   line("급여에서 빠지는 날", cutDays ? cutDays + "일  −" + WON(cutDays * B.dayPay) + "원" : "없음", cutDays ? "cut" : "keep");
   if (covered) line("이미 수당으로 받아 둔 몫", (Math.round(covered*10)/10) + "일  실손실 아님", "sub");
@@ -684,15 +687,15 @@ function drawPlan(){
   if (advance)
     note("warn", "아직 생기지 않은 연차를 미리 씁니다",
          "그 날 실제로 쓸 수 있는 연차는 " + (Math.round(Math.max(0, stock - cutDays) * 10) / 10) + "일뿐이고, 모자란 "
-         + (Math.round(advance * 10) / 10) + "일은 그 달 3일에 생기는 연차로 메웁니다. 급여는 한 달 단위로 합산하지만, "
-         + "회사가 미리 쓰게 해 주는지는 확인이 필요합니다. 3일 이후로 잡으면 이 걱정이 없습니다.");
+         + (Math.round(advance * 10) / 10) + "일은 그 달 " + accDay() + "일에 생기는 연차로 메웁니다. 급여는 한 달 단위로 합산하지만, "
+         + "회사가 미리 쓰게 해 주는지는 확인이 필요합니다. " + accDay() + "일 이후로 잡으면 이 걱정이 없습니다.");
   if (from <= exp && to > exp)
     note("warn", "소멸일을 걸쳐 있습니다",
-         exp.replace(/-/g,".") + " 에 1년 미만 연차가 사라지고 다음 날 15일이 새로 생깁니다. "
+         exp.replace(/-/g,".") + " 에 1년 미만 연차가 사라지고 다음 날 " + annualDays() + "일이 새로 생깁니다. "
          + "걸쳐서 쉬면 계산이 달라지니 앞뒤로 나눠 잡는 편이 낫습니다.");
   else if (from > exp)
     note("", "1년차 이후 구간입니다",
-         "15일이 한꺼번에 생긴 뒤라, 회사가 그것도 매달 수당으로 정산하는지는 아직 "
+         annualDays() + "일이 한꺼번에 생긴 뒤라, 회사가 그것도 매달 수당으로 정산하는지는 아직 "
          + "확인되지 않았습니다. 아래 숫자는 지금 규칙을 그대로 적용한 추정입니다.");
 }
 
@@ -840,7 +843,7 @@ function drawLeave(){
         + "무급이 결근으로 잡히면 개근수당과 그 기간의 다음 연차 발생에 영향이 있을 수 있는데, 회사 처리는 아직 확인되지 않았습니다.");
 
   $("lvNote").textContent =
-    "연차는 1개월 개근할 때마다 1일씩 생깁니다(근로기준법, 1년 미만 최대 11일). "
+    "연차는 1개월 개근할 때마다 1일씩 생깁니다(근로기준법, 1년 미만 최대 " + monthlyMax() + "일). "
     + "그 달에 쓰지 않은 연차는 회사가 수당으로 미리 지급하지만, 쉴 권리는 그대로 남아 쌓입니다. "
     + "나중에 그 재고를 쓰면 돈은 이미 받았으므로 기본급에서 하루치가 빠집니다. "
     + "오른쪽 숫자가 그 시점에 남아 있는 연차입니다.";
@@ -1229,7 +1232,7 @@ function drawExpiry(rest){
   if (grant){
     const g = document.createElement("div"); g.className = "exp-s";
     g.textContent = grant.from.replace(/-/g, ".") + " ~ " + grant.to.replace(/-/g, ".")
-      + " 1년을 채우면, 그 다음 날 " + grant.ds.replace(/-/g, ".") + " 에 15일이 새로 생깁니다.";
+      + " 1년을 채우면, 그 다음 날 " + grant.ds.replace(/-/g, ".") + " 에 " + grant.days + "일이 새로 생깁니다.";
     box.appendChild(g);
   }
 }
@@ -1488,7 +1491,11 @@ function drawForecast(){
 
   const ded = {};
   for (const [k, v] of Object.entries(last.deductions)) ded[k] = v;
-  ded["고용보험"] = Math.floor(gross * 0.009 / 10) * 10;
+  // 고용보험은 소득에 비례한다 — 최근 명세서의 비율(반올림해 소수 넷째 자리)을 그대로 쓴다
+  if (last.deductions["고용보험"] && last.gross){
+    const rate = Math.round(last.deductions["고용보험"] / last.gross * 1e4) / 1e4;
+    ded["고용보험"] = Math.floor(gross * rate / 10) * 10;
+  }
   const dedTotal = Object.values(ded).reduce((a, b) => a + b, 0);
 
   const t = $("fcTable"); t.textContent = "";
@@ -1516,7 +1523,7 @@ function drawForecast(){
   const pay = B.payslips.find(p => p.period === target);
   const why = [];
   const stock = stockUseOf(target);
-  if (stock) why.push("그 달에 생긴 1일을 " + stock + "일 넘겨 써서, 모아둔 연차에서 " + (stock * B.dailyHours) + "시간 차감");
+  if (stock) why.push("그 달에 생긴 " + accOf(target) + "일을 " + stock + "일 넘겨 써서, 모아둔 연차에서 " + (stock * B.dailyHours) + "시간 차감");
   else if (deductH) why.push("무급 " + (deductH / B.dailyHours) + "일 차감 반영");
   if (cash) why.push("그 달 발생분을 안 써서 연차수당이 붙는 것으로 봄");
   else why.push("그 달 발생분을 써서 연차수당은 없는 것으로 봄");
