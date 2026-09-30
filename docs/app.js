@@ -186,14 +186,59 @@ function drawCal(skipLayout){
   const first = new Date(y, m-1, 1), last = new Date(y, m, 0);
   const lanes = gcLanes(view);
   const g = $("grid"); g.textContent = "";
-  // 앞뒤 빈 칸에는 이웃 달의 날짜를 흐리게 적는다 — 구글 캘린더와 같다.
-  // 달마다 4~6주로 줄 수가 달라지면 칸 크기가 바뀌므로, 늘 여섯 줄로 그린다.
-  const padCell = d => {
+  /* 칸 안에 일정 줄을 그린다. 이웃 달 칸(흐린 날짜)에도 그려야 달을 건너는 일정이 이어진다.
+
+     한 주는 모두 같은 줄 수를 쓴다. 어느 칸이든 일정이 칸을 넘는 주라면 그 주 전체가 한 줄을
+     +N 에 내어 주고, 그 줄 이후의 일정은 그 주의 모든 날에서 함께 가려진다. 예전에는 넘치는
+     '그 날'만 아래 줄을 가려서, 며칠짜리 일정이 중간만 사라져 선이 끊겨 보였다. */
+  const addLanes = (cell, ds, wi, w0) => {
+    const wk = lanes.weeks[wi], cap = Math.max(2, laneCaps[wi]);      // 최소 두 줄: 막대 하나 + '+N'
+    const here = wk.here.filter(s => s.from <= ds && ds <= s.to);
+    if (!here.length) return;
+    if (!gcTitles()){ cell.classList.add("hasev"); return; }          // 제목을 끈 경우에만 점을 찍는다
+    const K = wk.need > cap ? cap - 1 : cap;                          // 이 주가 그리는 줄 수
+    const box = document.createElement("span"); box.className = "evs";
+    const slot = [];
+    for (const s of here) slot[wk.lane.get(s)] = s;
+    const bar = (s, head, tail) => {
+      const v = document.createElement("span");
+      v.className = "ev bar" + (s.plan ? " plan" : "") + (head ? " s" : "") + (tail ? " e" : "");
+      v.style.background = s.color; v.style.color = gcInk(s.color);
+      if (head){                              // 시각은 좁아서 못 넣는다. 시트에 있다.
+        // 제목은 이 주 안에서 막대가 이어지는 칸 수만큼 펼친다 — 구글 캘린더처럼
+        const days = Math.round((new Date(s.to + "T00:00:00") - new Date(ds + "T00:00:00")) / 864e5);
+        v.style.setProperty("--n", Math.min(6 - w0, Math.max(0, days)) + 1);
+        const l = document.createElement("span"); l.className = "lbl"; l.textContent = s.title;
+        v.appendChild(l);
+      }
+      return v;
+    };
+    // 줄 수는 늘 같아야 막대가 칸을 건너 나란히 놓인다
+    for (let i = 0; i < K; i++){
+      const s = slot[i];
+      if (!s){ const v = document.createElement("span"); v.className = "ev blank"; box.appendChild(v); continue; }
+      box.appendChild(bar(s, s.from === ds || w0 === 0, s.to === ds || w0 === 6));   // 한 주의 시작·끝에서 끊는다
+    }
+    const hid = here.filter(s => wk.lane.get(s) >= K);
+    if (hid.length){
+      // 가려진 것이 하루짜리 하나뿐이면 '+1' 대신 그 일정을 적는다 (이어질 막대가 없으니 줄이 어긋나지 않는다)
+      if (hid.length === 1 && hid[0].from === hid[0].to) box.appendChild(bar(hid[0], true, true));
+      else {
+        const more = document.createElement("span"); more.className = "ev more";
+        more.textContent = "+" + hid.length; box.appendChild(more);
+      }
+    }
+    cell.appendChild(box);
+  };
+
+  const padCell = (d, idx) => {
     const c = document.createElement("div"); c.className = "cell pad";
     const dd = document.createElement("span"); dd.className = "d"; dd.textContent = d.getDate();
-    c.appendChild(dd); g.appendChild(c);
+    c.appendChild(dd);
+    addLanes(c, iso(d), Math.floor(idx / 7), idx % 7);
+    g.appendChild(c);
   };
-  for (let i = first.getDay(); i > 0; i--) padCell(new Date(y, m-1, 1 - i));
+  for (let i = first.getDay(); i > 0; i--) padCell(new Date(y, m-1, 1 - i), first.getDay() - i);
   const WEEKS = 6;
   for (let day=1; day<=last.getDate(); day++){
     const ds = y+"-"+String(m).padStart(2,"0")+"-"+String(day).padStart(2,"0");
@@ -207,12 +252,9 @@ function drawCal(skipLayout){
     if (B.holidays && B.holidays[ds]) b.classList.add("hol");   // 출근했어도 빨간날임을 남긴다
     const w0 = new Date(ds + "T00:00:00").getDay();
     if (w0 === 0) b.classList.add("sun");
+    const drow = document.createElement("span"); drow.className = "drow";
     const dd = document.createElement("span"); dd.className = "d"; dd.textContent = day;
-    b.appendChild(dd);
-    const pf = $("plFrom").value, pt = $("plTo").value;
-    if (pf && (ds === pf || ds === pt)) b.classList.add("rend");
-    if (planPick === 2 && ds === pf) b.classList.add("rpick");   // 끝날 날을 고르는 중
-    if (pf && pt && ds >= pf && ds <= pt) b.classList.add("inrange");
+    drow.appendChild(dd); b.appendChild(drow);
     const hn = holName(ds);
     if (K && k !== "weekend" && k !== "holiday"){
       const t = document.createElement("span"); t.className = "t"; t.textContent = K.tag;
@@ -225,61 +267,20 @@ function drawCal(skipLayout){
     const acc = accrualEvents().find(e => e.ds === ds);
     if (acc){
       b.classList.add("accday");
-      b.dataset.acc = "연차 +" + acc.days;
-      b.dataset.accShort = "+" + acc.days;        // 좁은 화면에서는 날짜를 가리지 않게
-      b.title = acc.from.replace(/-/g,".") + " ~ " + acc.to.replace(/-/g,".")
-              + " 만근 시 연차 " + acc.days + "일 발생";
+      const ab = document.createElement("span"); ab.className = "acc";
+      const f = document.createElement("span"); f.className = "f"; f.textContent = "연차 +" + acc.days;
+      const sh = document.createElement("span"); sh.className = "s"; sh.textContent = "+" + acc.days;   // 좁은 화면
+      ab.append(f, sh);
+      ab.title = acc.from.replace(/-/g,".") + " ~ " + acc.to.replace(/-/g,".") + " 만근 시 연차 " + acc.days + "일 발생";
+      drow.appendChild(ab);                        // 날짜와 같은 줄의 세로 가운데에 놓인다
     }
-    const gev = gcEvents.get(ds);
-    if (gev && gev.length){
-      const wi = Math.floor((lanes.pad + day - 1) / 7);
-      const wk = lanes.weeks[wi], cap = Math.max(2, laneCaps[wi]);      // 최소 두 줄: 막대 하나 + '+N'
-      const here = wk.here.filter(s => s.from <= ds && ds <= s.to);
-      if (!gcTitles() || !here.length){
-        b.classList.add("hasev");                 // 제목을 끈 경우에만 점을 찍는다
-      } else {
-        const box = document.createElement("span"); box.className = "evs";
-        const slot = [];
-        for (const s of here) slot[wk.lane.get(s)] = s;
-        const need = Math.max(...here.map(s => wk.lane.get(s))) + 1;   // 이 칸이 쓰는 줄 수
-        const overflow = need > cap;                                    // 칸을 넘을 때만 +N
-        const shown = overflow ? cap - 1 : cap;                         // +N 이 한 줄을 쓴다
-        // 줄 수는 늘 같아야 막대가 칸을 건너 나란히 놓인다
-        for (let i = 0; i < shown; i++){
-          const s = slot[i];
-          const v = document.createElement("span");
-          if (!s){ v.className = "ev blank"; box.appendChild(v); continue; }
-          // 한 주의 시작·끝에서도 막대를 끊어 준다
-          const head = s.from === ds || w0 === 0 || day === 1;
-          const tailEnd = s.to === ds || w0 === 6 || day === last.getDate();
-          v.className = "ev bar" + (head ? " s" : "") + (tailEnd ? " e" : "");
-          v.style.background = s.color;
-          v.style.color = gcInk(s.color);
-          if (head) v.textContent = s.title;      // 시각은 좁아서 못 넣는다. 시트에 있다.
-          box.appendChild(v);
-        }
-        if (overflow){
-          const hid = here.filter(s => wk.lane.get(s) >= shown);
-          // 가려진 것이 하루짜리 하나뿐이면 '+1' 자리에 그 일정을 적는다 (이어질 막대가 없으니 줄이 어긋나지 않는다)
-          if (hid.length === 1 && hid[0].from === hid[0].to){
-            const v = document.createElement("span");
-            v.className = "ev bar s e"; v.style.background = hid[0].color; v.style.color = gcInk(hid[0].color);
-            v.textContent = hid[0].title; box.appendChild(v);
-          } else {
-            const more = document.createElement("span"); more.className = "ev more";
-            more.textContent = "+" + hid.length;
-            box.appendChild(more);
-          }
-        }
-        b.appendChild(box);
-      }
-    }
+    addLanes(b, ds, Math.floor((lanes.pad + day - 1) / 7), w0);
     const a = ATT.get(ds);
     b.setAttribute("aria-label", ds + " " + (K?K.label:"기록 없음")
       + (hn ? " · " + hn : "") + (a&&a.start ? " "+a.start+"~"+a.end : ""));
     g.appendChild(b);
   }
-  for (let i = first.getDay() + last.getDate(), k = 1; i < WEEKS * 7; i++, k++) padCell(new Date(y, m, k));
+  for (let i = first.getDay() + last.getDate(), k = 1; i < WEEKS * 7; i++, k++) padCell(new Date(y, m, k), i);
   gcOnView();
   $("prev").disabled = view <= B.calendarFrom;
   $("next").disabled = view >= B.calendarTo;
@@ -582,8 +583,9 @@ function drawPlan(){
   $("plHint").textContent = "모아둔 연차 " + (Math.round(curBal*10)/10) + "일";
   if (!from || !to || from > to){
     const e = document.createElement("div"); e.className = "pempty";
-    e.textContent = planPick ? "달력에서 날짜를 눌러 주세요."
-                             : "쉬려는 구간의 시작과 끝을 정해 주세요.";
+    e.textContent = planPick === 1 ? "근태 달력에서 시작하는 날을 눌러 주세요."
+                  : planPick === 2 ? "근태 달력에서 끝나는 날을 눌러 주세요."
+                  : "쉬려는 구간의 시작과 끝을 정해 주세요.";
     out.appendChild(e); return;
   }
 
@@ -1004,10 +1006,22 @@ function gcInk(hex){
 
 /* 이 달에 걸치는 일정에 줄 번호를 매긴다. 같은 일정이 여러 칸에 걸쳐도
    늘 같은 줄에 오게 해야 막대가 이어져 보인다. */
+/* 연차 계획으로 고른 구간을 일정 막대 하나로 만든다. 구글 캘린더의 일정 줄과 같은 모양이다.
+   끝을 아직 안 골랐으면 시작하는 날만 표시한다. */
+function planSpan(){
+  const f = $("plFrom").value, t = $("plTo").value;
+  if (!f) return null;
+  const ok = t && t >= f;
+  const acc = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#217346";
+  return { calId: "__plan", plan: true, from: f, to: ok ? t : f, allDay: true, t: "",
+           title: ok ? "휴가 계획 " + planWorkdays(f, t).length + "일" : "시작", color: acc };
+}
+
 function gcLanes(mo){
   const [y, m] = mo.split("-").map(Number);
   const pad = new Date(y, m-1, 1).getDay();          // 첫 주에 비는 칸 수
   const all = gcSpans.filter(s => gcUses(s.calId));
+  const plan = planSpan(); if (plan) all.push(plan);
   const weeks = [];
   for (let w = 0; w < 6; w++){
     const ws = iso(new Date(y, m-1, 1 - pad + w*7));
@@ -1017,7 +1031,8 @@ function gcLanes(mo){
     const from = s => s.from > ws ? s.from : ws, to = s => s.to < we ? s.to : we;
     const days = s => (new Date(to(s)) - new Date(from(s))) / 864e5;
     const here = all.filter(s => s.to >= ws && s.from <= we)
-      .sort((a, b) => days(b) - days(a)               // 이번 주에 더 길게 보이는 것을 위로
+      .sort((a, b) => (b.plan ? 1 : 0) - (a.plan ? 1 : 0)      // 계획은 늘 맨 위 줄
+                   || days(b) - days(a)                         // 이번 주에 더 길게 보이는 것을 위로
                    || (a.allDay === b.allDay ? 0 : (a.allDay ? -1 : 1))
                    || from(a).localeCompare(from(b))
                    || a.t.localeCompare(b.t));
@@ -1027,7 +1042,7 @@ function gcLanes(mo){
       while (lanesUsed[i] && lanesUsed[i].some(o => o.from <= s.to && s.from <= o.to)) i++;
       (lanesUsed[i] = lanesUsed[i] || []).push(s); lane.set(s, i);
     }
-    weeks.push({ here, lane });
+    weeks.push({ here, lane, need: lanesUsed.length });   // need = 이 주가 쓰는 줄 수
   }
   return { pad, weeks };
 }
@@ -1481,51 +1496,67 @@ function redraw(){ drawCal(); drawMonths(); drawLeave(); drawForecast(); tiles()
 
 /* ── 이벤트 ── */
 $("grid").addEventListener("click", e => {
-  const b = e.target.closest(".cell"); if (!b || b.disabled) return;
-  if (planPick){
-    const ds = b.dataset.date;
-    if (planPick === 1){ $("plFrom").value = ds; $("plTo").value = ""; planPick = 2; }
-    else {
-      // 나중 날을 먼저 골랐으면 둘을 뒤집는다
-      const first = $("plFrom").value;
-      if (ds < first){ $("plFrom").value = ds; $("plTo").value = first; }
+  const b = e.target.closest(".cell"); if (!b || b.disabled || !b.dataset.date) return;
+  if (planPick){                                   // 연차 계획의 날짜를 고르는 중
+    const ds = b.dataset.date, from = $("plFrom").value, to = $("plTo").value;
+    if (planPick === 1){
+      $("plFrom").value = ds;
+      if (to && ds > to) $("plTo").value = "";     // 새 시작이 끝보다 뒤면 끝을 비운다
+      planPick = $("plTo").value ? 0 : 2;          // 끝이 이미 있으면 여기서 끝난다
+    } else {
+      if (ds < from){ $("plTo").value = from; $("plFrom").value = ds; }   // 나중 날을 먼저 골랐으면 뒤집는다
       else $("plTo").value = ds;
-      planPick = 0; planSaved = null;
+      planPick = 0;
     }
-    syncPick(); drawCal(); drawPlan(); return;
+    if (!planPick) planSaved = null;
+    syncPick(); drawCal(); drawPlan();
+    if (!planPick) ensureVisible($("plan"), "nearest");   // 다 골랐으면 계획 칸으로 돌아온다 (폰)
+    return;
   }
   openSheet(b.dataset.date);
 });
 
+/* ── 연차 계획: 시작·끝 고르기 ──
+   브라우저 기본 날짜 입력은 구글 스타일 달력이 뜨므로 쓰지 않는다. '시작' 이나 '끝' 을 누르면
+   근태 달력이 고르는 모드가 되고, 고른 범위는 달력에 막대 한 줄로 그려진다. */
 let planSaved = null;                    // 고르기를 시작할 때의 값 — 취소하면 되돌린다
+const dotDate = ds => ds ? ds.slice(0, 4) + "." + ds.slice(5, 7) + "." + ds.slice(8) : "";
 
 function syncPick(){
-  const b = $("plPick");
-  b.classList.toggle("on", !!planPick);
-  b.textContent = planPick === 1 ? "시작할 날을 누르세요 (취소)"
-                : planPick === 2 ? "끝날 날을 누르세요 (취소)"
-                : "달력에서 고르기";
-  $("plClear").hidden = !!planPick || !($("plFrom").value || $("plTo").value);
-}
-$("plPick").addEventListener("click", () => {
-  if (planPick){                         // 고르는 중이었다면 취소 — 원래대로 되돌린다
-    planPick = 0;
-    $("plFrom").value = planSaved ? planSaved.from : "";
-    $("plTo").value   = planSaved ? planSaved.to   : "";
-  } else {
-    planSaved = { from: $("plFrom").value, to: $("plTo").value };
-    planPick = 1;
-    $("plFrom").value = ""; $("plTo").value = "";
+  const f = $("plFrom").value, t = $("plTo").value;
+  for (const [id, v] of [["plFromTxt", f], ["plToTxt", t]]){
+    $(id).textContent = v ? dotDate(v) : "날짜 선택";
+    $(id).classList.toggle("empty", !v);
   }
+  $("plFromBtn").classList.toggle("on", planPick === 1);
+  $("plToBtn").classList.toggle("on", planPick === 2);
+  $("plClear").hidden = !(f || t || planPick);
+  $("plClear").textContent = planPick ? "취소" : "지우기";
+}
+function ensureVisible(el, block){
+  const r = el.getBoundingClientRect();
+  if (r.top < 0 || r.bottom > innerHeight) el.scrollIntoView({ behavior: "smooth", block });
+}
+function startPick(mode){                // 1 = 시작, 2 = 끝
+  if (planPick === mode){ cancelPick(); return; }          // 같은 칸을 다시 누르면 취소
+  if (!planPick) planSaved = { from: $("plFrom").value, to: $("plTo").value };
+  planPick = (mode === 2 && !$("plFrom").value) ? 1 : mode;    // 시작이 없으면 시작부터
   syncPick(); drawCal(); drawPlan();
-  if (planPick) $("calSec").scrollIntoView({ behavior:"smooth", block:"start" });
-});
+  ensureVisible($("calSec"), "start");                     // 폰은 달력이 위에 있으니 올려 보여 준다
+}
+function cancelPick(){
+  planPick = 0;
+  if (planSaved){ $("plFrom").value = planSaved.from; $("plTo").value = planSaved.to; }
+  planSaved = null;
+  syncPick(); drawCal(); drawPlan();
+}
+$("plFromBtn").addEventListener("click", () => startPick(1));
+$("plToBtn").addEventListener("click", () => startPick(2));
 $("plClear").addEventListener("click", () => {
-  planPick = 0; planSaved = null;
-  $("plFrom").value = ""; $("plTo").value = "";
+  if (planPick){ cancelPick(); return; }
+  planSaved = null; $("plFrom").value = ""; $("plTo").value = "";
   syncPick(); drawCal(); drawPlan();
 });
-for (const id of ["plFrom","plTo"]) $(id).addEventListener("change", () => { syncPick(); drawCal(); drawPlan(); });
 $("shOpts").addEventListener("click", e => {
   const b = e.target.closest(".opt"); if (!b || !picked) return;
   const k = b.dataset.kind;
@@ -1737,30 +1768,11 @@ async function loadRemote(){
   overrides = new Map(Object.entries(lv || {}).filter(([, v]) => kindName(v)));
 }
 
-/* ── 시안 고르는 줄 ──
-   주소에 ?look= 가 있을 때만 나온다. 고른 것은 주소와 이 기기에 남는다.
-   글꼴이 늦게 도착하면 글자 높이가 달라져 칸에 들어가는 줄 수가 바뀌므로, 그때 다시 잰다. */
-function initPalettePicker(){
-  if (document.fonts){
-    document.fonts.ready.then(relayout);
-    document.fonts.addEventListener("loadingdone", relayout);
-  }
-  if (new URLSearchParams(location.search).get("look") === null) return;
-  const bar = document.createElement("div"); bar.className = "palpick";
-  const cur = () => document.documentElement.dataset.look || "";
-  const set = v => {
-    window.applyLook(v);
-    try { localStorage.setItem("salary.look", v); } catch {}
-    const u = new URL(location.href); u.searchParams.set("look", v); history.replaceState(null, "", u);
-    for (const b of bar.children) b.setAttribute("aria-pressed", String(b.dataset.v === v));
-    relayout();
-  };
-  for (const [v, t] of [["", "기본"], ["1", "1 소프트"], ["2", "2 에디토리얼"], ["3", "3 나이트"]]){
-    const b = document.createElement("button"); b.type = "button"; b.dataset.v = v; b.textContent = t;
-    b.setAttribute("aria-pressed", String(cur() === v));
-    b.addEventListener("click", () => set(v)); bar.appendChild(b);
-  }
-  document.body.appendChild(bar);
+/* ── 글꼴이 늦게 도착하면 글자 높이가 달라져 칸에 들어가는 줄 수가 바뀐다. 그때 다시 잰다. ── */
+function initFontRelayout(){
+  if (!document.fonts) return;
+  document.fonts.ready.then(relayout);
+  document.fonts.addEventListener("loadingdone", relayout);
 }
 
 /* ── 시작 ── */
@@ -1777,7 +1789,8 @@ function start(){
   $("refreshBtn").hidden = !api;
   if (api) metaAt().catch(() => {});
   gcInit();
-  initPalettePicker();
+  initFontRelayout();
+  syncPick();
 }
 
 (async function boot(){

@@ -1,50 +1,58 @@
 /* 급여·연차 기록부 — 화면
  *
+ * 엑셀 같은 표 화면이다: 흰 칸, 회색 격자선, 엑셀 초록. 분류 색은 엑셀의
+ * '좋음(초록) / 나쁨(분홍) / 보통(노랑)' 채움색을 따른다.
+ *
  * 색은 :root 에 이름으로 모아 두고 어디서도 색 코드를 직접 쓰지 않는다.
  * 어두운 화면은 같은 이름을 다시 정의하는 것으로 끝난다.
  */
 :root{
-  --ground:#fdf7f8; --surface:#ffffff; --surface2:#faeef1;
-  --ink:#150508; --ink2:#53131f; --muted:#96707a; --line:#f0dde2; --line2:#f8eef0;
-  --accent:#2ea22a; --accent-soft:#e6f7e5; --accent-bright:#39cb34;
-  --paid:#2ea22a; --paid-soft:#e6f7e5;
-  --half:#6ea22a; --half-soft:#eff7e3;
-  --unpaid:#cb344d; --unpaid-soft:#fbe4e8;
-  --company:#96707a; --company-soft:#f6eef0;
-  --warn:#a5273e; --warn-soft:#fbe4e8;
-  --hol:#a3102c; --hol-soft:#f7d3da;
-  --shadow:0 1px 2px rgba(21,5,8,.05);
-  /* 모양 — 시안마다 다르게 할 수 있게 변수로 둔다 */
-  --font:"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
-  --font-head:var(--font);
-  --font-num:Inter,"Noto Sans KR",-apple-system,sans-serif;
-  --r-card:16px; --r-cell:10px; --r-ctl:13px; --r-btn:13px; --r-sm:8px; --r-sheet:22px;
-  --card-line:var(--line);
-  --cell-work:var(--surface2); --cell-rest:transparent; --cell-future:transparent;
+  --ground:#f0f0f0; --surface:#ffffff; --surface2:#f7f7f7;
+  --ink:#1f1f1f; --ink2:#404040; --muted:#767676; --line:#d0d0d0; --line2:#e6e6e6;
+  --accent:#217346; --accent-soft:#e2efda; --accent-bright:#2e9b5b;
+  --paid:#006100; --paid-soft:#c6efce;
+  --half:#9c5700; --half-soft:#ffeb9c;
+  --unpaid:#9c0006; --unpaid-soft:#ffc7ce;
+  --company:#595959; --company-soft:#e7e6e6;
+  --warn:#9c5700; --warn-soft:#ffeb9c;
+  --hol:#c00000; --hol-soft:#fde4e4;
+  --shadow:none;
+  /* 글꼴 — 본문 IBM Plex Sans KR, 제목 명조, 숫자 IBM Plex Sans */
+  --font:"IBM Plex Sans KR","Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+  --font-head:"Noto Serif KR","IBM Plex Sans KR",serif;
+  --font-num:"IBM Plex Sans","IBM Plex Sans KR",-apple-system,sans-serif;
+  /* 모서리는 거의 직각 — 표처럼 */
+  --r-card:2px; --r-cell:0px; --r-ctl:2px; --r-btn:2px; --r-sm:2px; --r-sheet:4px;
+  --card-line:#a6a6a6;
+  --cell-work:#ffffff; --cell-rest:#f2f2f2; --cell-future:#ffffff;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --ground:#14050a; --surface:#210a11; --surface2:#2d0f18;
-  --ink:#faebf0; --ink2:#ebadc2; --muted:#c98da0; --line:#4a1d2b; --line2:#320f1a;
-  --accent:#61d55d; --accent-soft:#0f2a0e; --accent-bright:#88e085;
-  --paid:#61d55d; --paid-soft:#0f2a0e;
-  --half:#a1d55d; --half-soft:#1c290a;
-  --unpaid:#e085a3; --unpaid-soft:#3d1424;
-  --company:#c98da0; --company-soft:#2d0f18;
-  --warn:#d8a860; --warn-soft:#33270f;
-  --hol:#e085a3; --hol-soft:#3d1424;
-  --shadow:0 1px 2px rgba(0,0,0,.4);
+  color-scheme:dark;
+  --ground:#1e1e1e; --surface:#262626; --surface2:#2d2d2d;
+  --ink:#ececec; --ink2:#c4c4c4; --muted:#8f8f8f; --line:#454545; --line2:#353535;
+  --accent:#4cc38a; --accent-soft:#1c3a2b; --accent-bright:#7fdfae;
+  --paid:#8fe0a8; --paid-soft:#1c3a2b;
+  --half:#f0c674; --half-soft:#3d3318;
+  --unpaid:#ff9aa5; --unpaid-soft:#4a1f25;
+  --company:#a8a8a8; --company-soft:#333333;
+  --warn:#f0c674; --warn-soft:#3d3318;
+  --hol:#ff6b78; --hol-soft:#3f1d22;
+  --card-line:#5a5a5a;
+  --cell-work:#262626; --cell-rest:#2a2a2a; --cell-future:#262626;
 }}
 :root[data-theme="dark"]{
-  --ground:#14050a; --surface:#210a11; --surface2:#2d0f18;
-  --ink:#faebf0; --ink2:#ebadc2; --muted:#c98da0; --line:#4a1d2b; --line2:#320f1a;
-  --accent:#61d55d; --accent-soft:#0f2a0e; --accent-bright:#88e085;
-  --paid:#61d55d; --paid-soft:#0f2a0e;
-  --half:#a1d55d; --half-soft:#1c290a;
-  --unpaid:#e085a3; --unpaid-soft:#3d1424;
-  --company:#c98da0; --company-soft:#2d0f18;
-  --warn:#d8a860; --warn-soft:#33270f;
-  --hol:#e085a3; --hol-soft:#3d1424;
-  --shadow:0 1px 2px rgba(0,0,0,.4);
+  color-scheme:dark;
+  --ground:#1e1e1e; --surface:#262626; --surface2:#2d2d2d;
+  --ink:#ececec; --ink2:#c4c4c4; --muted:#8f8f8f; --line:#454545; --line2:#353535;
+  --accent:#4cc38a; --accent-soft:#1c3a2b; --accent-bright:#7fdfae;
+  --paid:#8fe0a8; --paid-soft:#1c3a2b;
+  --half:#f0c674; --half-soft:#3d3318;
+  --unpaid:#ff9aa5; --unpaid-soft:#4a1f25;
+  --company:#a8a8a8; --company-soft:#333333;
+  --warn:#f0c674; --warn-soft:#3d3318;
+  --hol:#ff6b78; --hol-soft:#3f1d22;
+  --card-line:#5a5a5a;
+  --cell-work:#262626; --cell-rest:#2a2a2a; --cell-future:#262626;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}   /* .app 의 display:contents 보다 우선해야 한다 */
@@ -60,12 +68,12 @@ h1,.sec-hd h2,.sheet h3{font-family:var(--font-head)}
 
 /* ── header ── */
 /* 머리글은 한 줄이다: 제목 | 복무 그래프 | 구글 캘린더 연동 */
-.hd{display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap}
+.hd{display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;padding:6px 0 10px;border-bottom:1px solid var(--card-line)}
 .hd-title{flex:none;min-width:0}
 .hd .svc{flex:1 1 340px;min-width:0;max-width:none;margin:0}
 .hd .gcwrap{flex:none;margin-left:auto}
 .eyebrow{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
-h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balance;line-height:1.25}
+h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balance;line-height:1.2}
 .svc{display:flex;flex-direction:column;gap:4px}
 .hd,#calSec{-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
 #calSec *{-webkit-user-drag:none}
@@ -123,7 +131,6 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .sec-body{padding:16px}
 #calSec .sec-hd{padding:9px 14px}
 #calSec .sec-body{padding:9px 12px 8px}
-#calSec .legend{margin-top:8px}
 .fold{appearance:none;background:none;border:0;padding:0;margin:0;font-family:inherit;color:inherit;
   display:flex;align-items:center;gap:7px;cursor:pointer;min-width:0;flex:1;text-align:left}
 .fold .chev{width:14px;height:14px;flex:none;position:relative;transition:transform .18s ease}
@@ -134,14 +141,7 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .fold:hover h2{color:var(--accent)}
 .fold:hover .chev::before{border-color:var(--accent)}
 .sec.folded>*:not(.sec-hd){display:none}
-.prow{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
-.pfield{display:flex;flex-direction:column;gap:4px;flex:1;min-width:118px}
-.pfield span{font-size:11.5px;font-weight:600;color:var(--muted)}
-.pfield input{font-family:var(--font-num);font-size:14px;padding:9px 10px;
-  border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);width:100%}
-.pfield input:focus{outline:2px solid var(--accent);outline-offset:-1px}
-.prow .btn{flex:1 0 100%;padding:10px}
-.prow .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.prow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}
 .psum{margin-top:14px;border:1px solid var(--line);border-radius:var(--r-ctl);overflow:hidden}
 .psum .ph+.pline{border-top:0}
 .psum .ph{padding:11px 14px;background:var(--surface2);border-bottom:1px solid var(--line2);
@@ -159,10 +159,6 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .ptip b{display:block;margin-bottom:2px}
 .slip td small{display:block;font-size:11px;font-weight:500;color:var(--muted);
   margin-top:2px;letter-spacing:-.01em;font-family:var(--font-num)}
-/* 연차가 생기는 날 — 오른쪽 위에 조용히 표시한다 */
-.cell.accday::before{content:attr(data-acc);position:absolute;top:3px;right:4px;
-  font-size:7.5px;font-weight:700;color:var(--accent);letter-spacing:-.04em;
-  background:var(--accent-soft);border-radius:4px;padding:1px 3px;line-height:1.3}
 .cell.hasev::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   width:4px;height:4px;border-radius:50%;background:var(--company)}
 .evs{display:flex;flex-direction:column;gap:var(--lane-gap);margin-top:auto;padding-top:2px}
@@ -205,7 +201,6 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .shev-t{font-size:11.5px;font-weight:600;color:var(--muted);flex:none;min-width:34px}
 .shev-s{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pempty{margin-top:12px;font-size:12.5px;color:var(--muted)}
-.prow #plClear{flex:1 0 100%}
 .expiry{margin-bottom:12px;padding:13px 15px;border-radius:var(--r-ctl);
   background:var(--surface2);border:1px solid var(--line)}
 .exp-t{font-size:11.5px;font-weight:600;color:var(--muted)}
@@ -216,7 +211,6 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   background:var(--accent-soft);border-radius:10px;padding:8px 11px;margin-bottom:12px}
 .shbal.warn{color:var(--unpaid);background:var(--unpaid-soft)}
 .shbal.calm{color:var(--ink2);background:var(--surface2);font-weight:500}
-.cell.rpick .d{color:var(--accent);font-weight:700}
 .sec.folded .sec-hd{border-bottom:0}
 
 /* ── calendar ── */
@@ -278,17 +272,12 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .cell.k-weekend{background:var(--cell-rest);color:var(--muted)}
 .cell.k-future{background:var(--cell-future);color:var(--ink2)}
 .cell.k-blank{background:transparent;color:var(--muted);opacity:.3}
-/* 오늘·고른 구간은 칸 자신의 테두리 색을 바꿔서 나타낸다. 바깥에 선을 하나 더
-   두르면 분류 색 테두리와 겹쳐 이중선이 되어 어색하다. 굵기는 안쪽으로 채운다. */
-.cell.today,.cell.inrange,.cell.rend,.cell.rpick{border-color:var(--accent)}
-.cell.today,.cell.rend,.cell.rpick{box-shadow:inset 0 0 0 1px var(--accent)}
-.cell.rend,.cell.rpick{background:var(--accent-soft)}
 .cell.today .d{color:var(--accent);font-weight:700}
 .cell.hol .d,.cell.sun .d{color:var(--hol)}
 .cell.today.hol .d,.cell.today.sun .d{color:var(--accent)}
 .cell:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
-.legend{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:13px;font-size:11px;color:var(--muted)}
-.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:3px 12px;font-size:11px;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:0;margin-right:4px;vertical-align:-1px;border:1px solid}
 
 .app{display:contents}
 .smsg{margin:0 0 14px;font-size:13px;color:var(--muted);line-height:1.6}
@@ -451,7 +440,7 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .hd-title{order:1;flex:1 1 0}
   .hd .gcwrap{order:2;margin-left:0}
   .hd .svc{order:3;flex:1 0 100%;max-width:none;margin-inline:0}
-  h1{font-size:19px}
+  h1{font-size:22px}
   .tiles{grid-template-columns:1fr 1fr;gap:8px}
   .hero-main b{font-size:30px}
   .hero-grid span{font-size:10px;letter-spacing:-.02em}
@@ -463,7 +452,6 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .dow{gap:2px}
   .cell{border-radius:calc(var(--r-cell) - 1px);padding:4px var(--cpx) 3px}
   .cell .d{font-size:14px}
-  .cell.accday::before{content:attr(data-acc-short);font-size:8px;padding:1px 3px}
   .cell .t{font-size:8.5px}
   .cell .h{font-size:8px}
   .grid{--lane:14px}
@@ -500,7 +488,7 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .ev{font-size:10px;border-radius:5px;padding:0 5px}
   .evs{gap:3px}
   .ev.more{font-size:10px}
-  .legend{font-size:12px;gap:6px 16px}
+  .legend{font-size:11.5px;gap:3px 14px}
 }
 
 @media (min-width:1400px){
@@ -516,7 +504,7 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
   .wrap>*,.app>*{margin-bottom:20px}
   /* 제목줄은 스크롤해도 제자리에 있다. 흘러가는 것은 오른쪽 칸뿐이다. */
   .hd{grid-column:1/-1;position:sticky;top:0;z-index:15;background:var(--ground);
-    padding:12px 0 10px;margin-bottom:14px;box-shadow:0 1px 0 var(--line2)}
+    padding:12px 0 10px;margin-bottom:14px}
   /* 오른쪽을 훑는 동안에도 달력이 보이도록 화면에 붙여 둔다.
      붙여 두려면 달력이 화면 안에 들어와야 한다 — 화면보다 높으면
      더 밀리지 않아 아래쪽 줄에 닿을 수 없기 때문이다. 그래서 칸
@@ -557,98 +545,60 @@ h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 }
 
 
-/* ══════════ 시안 ══════════
-   주소 뒤에 ?look=1 | 2 | 3 을 붙이면 바뀐다. 색만이 아니라 글씨체·모서리·카드 표현·
-   달력 격자 모양까지 다르다. 시안은 OS 밝기와 상관없이 그 시안의 색으로 나온다. */
+/* ══════════ 표 모양 (엑셀처럼) ══════════
+   칸 사이 간격 없이 격자선으로 이어 붙인다. 분류는 색 채움 + 위쪽 띠. */
+.grid{--gap:0px;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.cell{border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0}
+.cell[class]{border-color:var(--line)}            /* 분류 색이 이웃과 공유하는 선을 물들이지 않게 */
+.cell.k-personal,.cell.k-half,.cell.k-unpaid,.cell.k-company,.cell.k-holiday{box-shadow:inset 0 3px 0 currentColor}
+.cell.today{box-shadow:inset 0 0 0 2px var(--accent)}        /* 엑셀의 활성 셀처럼 초록 테두리 */
+.cell.pad{opacity:1;background:var(--surface2)}
+.cell.pad .d{color:var(--muted);opacity:.75;font-weight:500}
+.ev{border-radius:0}
+.svc .bar,.svc .bar i{border-radius:0}
 
-/* ── 1 · 소프트 ── 둥근 글씨체, 큼직한 모서리, 알약 버튼, 선 없이 떠 있는 카드 */
-:root[data-look="1"]{
-  --font:"Gowun Dodum","Noto Sans KR",sans-serif; --font-head:"Gowun Dodum","Noto Sans KR",sans-serif;
-  --font-num:"Nunito","Gowun Dodum",sans-serif;
-  --ground:#fff7f1; --surface:#ffffff; --surface2:#fff0e6;
-  --ink:#3b2a2e; --ink2:#6c5459; --muted:#a88d92; --line:#f4ddd0; --line2:#faece3;
-  --accent:#2fa36b; --accent-soft:#dff5e9; --accent-bright:#4bc48a;
-  --paid:#2fa36b; --paid-soft:#dff5e9; --half:#86b02e; --half-soft:#edf5d3;
-  --unpaid:#ea4c62; --unpaid-soft:#ffe0e5; --company:#a88d92; --company-soft:#f8e9df;
-  --warn:#c4740f; --warn-soft:#fdefcf; --hol:#a3102c; --hol-soft:#fbd8de;
-  --shadow:0 10px 30px rgba(196,110,88,.13); --card-line:transparent;
-  --r-card:28px; --r-cell:20px; --r-ctl:20px; --r-btn:999px; --r-sm:14px; --r-sheet:34px;
-  --cell-work:#ffffff; --cell-rest:transparent; --cell-future:transparent;
-}
-:root[data-look="1"] .grid{--gap:7px}
-@media (max-width:520px){
-  :root[data-look="1"] .grid{--gap:4px}
-  :root[data-look="1"]{--r-cell:12px}
-  :root[data-look="1"] .cell{border-width:1.5px}
-}
-:root[data-look="1"] .cell{border-width:1.5px}
-:root[data-look="1"] .ev{border-radius:999px}
-:root[data-look="1"] .cell.today .d{background:var(--accent);color:#fff;border-radius:999px;
-  min-width:1.75em;padding:0 .4em;align-self:center;line-height:1.5}
-:root[data-look="1"] h1{font-size:24px;font-weight:400;letter-spacing:-.03em}
-:root[data-look="1"] .svc .bar{height:9px;border-radius:999px}
-:root[data-look="1"] .svc .bar i{border-radius:999px}
-:root[data-look="1"] .hero-main b{font-weight:800}
+/* 요일 줄 — 엑셀의 열 머리글처럼 */
+.dow{gap:0;margin-bottom:0;background:var(--surface2);border-left:1px solid var(--line);border-top:1px solid var(--line)}
+.dow span{padding:4px 0;border-right:1px solid var(--line)}
 
-/* ── 2 · 에디토리얼 ── 세리프 제목·숫자, 각진 모서리, 표처럼 이어진 달력 */
-:root[data-look="2"]{
-  --font:"IBM Plex Sans KR","Noto Sans KR",sans-serif; --font-head:"Noto Serif KR","Noto Sans KR",serif;
-  --font-num:"Noto Serif KR",Georgia,serif;
-  --ground:#f2efe6; --surface:#fffefa; --surface2:#f8f5ec;
-  --ink:#1c1b17; --ink2:#4a473c; --muted:#7d7869; --line:#d2ccb9; --line2:#e7e2d3;
-  --accent:#1d5b3d; --accent-soft:#dfece4; --accent-bright:#2b7a54;
-  --paid:#1d5b3d; --paid-soft:#e0ede6; --half:#67781a; --half-soft:#eaedd0;
-  --unpaid:#b8321f; --unpaid-soft:#f7e0da; --company:#7d7869; --company-soft:#ece8db;
-  --warn:#8a5a0a; --warn-soft:#f5e7c5; --hol:#8c0b22; --hol-soft:#f0ced4;
-  --shadow:none; --card-line:#8a8572;
-  --r-card:2px; --r-cell:0px; --r-ctl:2px; --r-btn:2px; --r-sm:2px; --r-sheet:4px;
-  --cell-work:#fffefa; --cell-rest:#f4f0e5; --cell-future:#fffefa;
-}
-:root[data-look="2"] .grid{--gap:0px;border-top:1px solid var(--line);border-left:1px solid var(--line)}
-:root[data-look="2"] .cell{border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0}
-:root[data-look="2"] .cell[class]{border-color:var(--line)}
-:root[data-look="2"] .cell.k-personal,:root[data-look="2"] .cell.k-half,:root[data-look="2"] .cell.k-unpaid,
-:root[data-look="2"] .cell.k-company,:root[data-look="2"] .cell.k-holiday{box-shadow:inset 0 3px 0 currentColor}
-:root[data-look="2"] .cell.inrange{box-shadow:inset 0 0 0 1px var(--accent)}
-:root[data-look="2"] .cell.today,:root[data-look="2"] .cell.rend,:root[data-look="2"] .cell.rpick{box-shadow:inset 0 0 0 2px var(--accent)}
-:root[data-look="2"] .ev{border-radius:0}
-:root[data-look="2"] h1{font-size:23px;font-weight:700;letter-spacing:-.01em}
-:root[data-look="2"] .sec-hd{border-bottom-color:var(--ink)}
-:root[data-look="2"] .svc .bar,:root[data-look="2"] .svc .bar i{border-radius:0}
+/* 카드 제목줄 — 엑셀의 머리글 띠 */
+.sec-hd{background:var(--surface2);border-bottom:1px solid var(--line)}
 
-/* ── 3 · 나이트 ── 어두운 바탕, 고정폭 숫자, 분류를 왼쪽 띠로 */
-:root[data-look="3"]{
-  color-scheme:dark;
-  --font:"Noto Sans KR",-apple-system,"Segoe UI",sans-serif; --font-head:"Noto Sans KR",-apple-system,sans-serif;
-  --font-num:"JetBrains Mono","Noto Sans KR",ui-monospace,monospace;
-  --ground:#0d1015; --surface:#151921; --surface2:#1b2029;
-  --ink:#e9edf4; --ink2:#b6bfce; --muted:#7e8a9d; --line:#2b3240; --line2:#222833;
-  --accent:#4ade80; --accent-soft:#11301f; --accent-bright:#86efac;
-  --paid:#4ade80; --paid-soft:#11301f; --half:#bef264; --half-soft:#26310f;
-  --unpaid:#fb7185; --unpaid-soft:#3b1821; --company:#94a3b8; --company-soft:#232a36;
-  --warn:#fbbf24; --warn-soft:#33270a; --hol:#ff3b57; --hol-soft:#4a1420;
-  --shadow:0 0 0 1px rgba(255,255,255,.03); --card-line:#2b3240;
-  --r-card:12px; --r-cell:8px; --r-ctl:10px; --r-btn:8px; --r-sm:6px; --r-sheet:16px;
-  --cell-work:#181d26; --cell-rest:transparent; --cell-future:transparent;
-}
-:root[data-look="3"] .grid{--gap:3px}
-:root[data-look="3"] .cell[class]{border-color:var(--line)}
-:root[data-look="3"] .cell.k-personal,:root[data-look="3"] .cell.k-half,:root[data-look="3"] .cell.k-unpaid,
-:root[data-look="3"] .cell.k-company,:root[data-look="3"] .cell.k-holiday{box-shadow:inset 3px 0 0 currentColor}
-:root[data-look="3"] .cell.today,:root[data-look="3"] .cell.inrange,:root[data-look="3"] .cell.rend,
-:root[data-look="3"] .cell.rpick{border-color:var(--accent)}
-:root[data-look="3"] .ev{border-radius:3px}
-:root[data-look="3"] h1{font-weight:700;letter-spacing:-.03em}
-:root[data-look="3"] .svc .bar{height:4px}
-:root[data-look="3"] .btn.pri,:root[data-look="3"] .rbtn,:root[data-look="3"] .gcbtn.on,
-:root[data-look="3"] .prow .btn.on,:root[data-look="3"] .pk-grid button[aria-current="true"],
-:root[data-look="3"] .palpick button[aria-pressed="true"]{color:#04200f}
+/* 날짜 줄과 연차 배지 — 배지는 날짜와 같은 줄의 세로 가운데에 놓인다 */
+.cell .drow{position:relative;display:block}
+.cell .drow .d{display:block}
+.acc{position:absolute;right:2px;top:50%;transform:translateY(-50%);white-space:nowrap;
+  font-size:8px;font-weight:700;line-height:1.35;letter-spacing:-.02em;
+  color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:0 6px}
+.acc .s{display:none}
+@media (max-width:520px){.acc .f{display:none}.acc .s{display:inline}.acc{padding:0 5px;right:1px}}
 
-/* 시안 고르는 줄 (주소에 ?palette= 가 있을 때만 나온다) */
-body:has(.palpick){padding-bottom:72px}
-.palpick{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:40;display:flex;gap:2px;width:max-content;max-width:calc(100vw - 20px);
-  padding:4px;border-radius:999px;background:var(--surface);border:1px solid var(--line);
-  box-shadow:0 6px 24px rgba(0,0,0,.16)}
-.palpick button{appearance:none;border:0;background:none;font-family:inherit;font-size:12.5px;font-weight:600;
-  color:var(--ink2);padding:7px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;flex:none}
-.palpick button[aria-pressed="true"]{background:var(--accent);color:#fff}
+/* 달력 제목줄: 제목 · 범례 · 연월 이동. 범례가 이동 단추와 겹치지 않게 가운데 자리를 쓴다 */
+#calSec .sec-hd{flex-wrap:wrap;row-gap:4px}
+#calSec .fold{flex:none}
+#calSec .sec-hd .legend{flex:1 1 0;min-width:0;margin:0 14px}
+#calSec .nav{margin-left:auto}
+@media (max-width:820px){#calSec .sec-hd .legend{order:3;flex:1 0 100%;margin:0}}
+
+/* 연차 계획 — 시작·끝 상자. 누르면 근태 달력에서 고른다 */
+.pfb{flex:1;min-width:118px;appearance:none;text-align:left;display:flex;flex-direction:column;gap:2px;
+  padding:7px 10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);
+  font-family:inherit;color:var(--ink);cursor:pointer}
+.pfb span{font-size:11.5px;font-weight:600;color:var(--muted)}
+.pfb b{font-size:14px;font-weight:600}
+.pfb b.empty{color:var(--muted);font-weight:500}
+.pfb:hover{border-color:var(--accent)}
+.pfb.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)}
+.pclear{appearance:none;background:none;border:1px solid var(--line);border-radius:var(--r-sm);padding:0 14px;
+  font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink2);cursor:pointer}
+.pclear:hover{border-color:var(--accent);color:var(--accent)}
+/* 고른 범위는 일정 막대 한 줄로 그린다 */
+.ev.bar.plan{font-weight:700;letter-spacing:0}
+
+/* 막대의 제목: 첫 칸 폭에 갇히지 않고, 그 주 안에서 막대가 이어지는 칸 전체에 걸쳐 놓인다.
+   막대가 오른쪽으로 --bleed 만큼 삐져나가 있으므로(100% = 칸 폭 + bleed), 그만큼을 빼서 칸 폭을 얻는다. */
+.ev.bar.s{position:relative;z-index:1;overflow:visible;text-overflow:clip}
+.ev .lbl{position:absolute;left:0;top:0;bottom:0;box-sizing:border-box;padding:0 3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  width:calc(var(--n,1) * (100% - var(--bleed)) + (var(--n,1) - 1) * (2 * var(--cpx) + 1px))}
+.ev.bar.s.e .lbl{width:100%}
