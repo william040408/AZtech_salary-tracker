@@ -672,6 +672,15 @@ function drawPlan(){
     const b = document.createElement("span"); b.textContent = text;
     w.append(a, b); out.appendChild(w);
   };
+  if (loss){
+    const risky = events.filter(e => e.kind === "monthly" && e.ds > TODAY && e.from <= to && e.to >= from);
+    const bonus = (B.payslips.map(x => x.earnings && x.earnings["개근수당"]).filter(Boolean).pop()) || 0;
+    note("warn", "만근이 깨질 수 있습니다",
+         "연차가 모자란 " + (Math.round(loss * 10) / 10) + "일은 무급이라 결근으로 잡힐 수 있습니다. 그러면 "
+         + (bonus ? "개근수당 " + WON(bonus) + "원" : "개근수당")
+         + (risky.length ? "과, 이 기간이 걸린 " + risky.map(e => e.ds.slice(5).replace("-", "/")).join("·") + " 발생 연차가 " : "이 ")
+         + "빠질 수 있습니다. 회사가 무급 휴가를 개근으로 보는지는 아직 확인되지 않았습니다.");
+  }
   if (advance)
     note("warn", "아직 생기지 않은 연차를 미리 씁니다",
          "그 날 실제로 쓸 수 있는 연차는 " + (Math.round(Math.max(0, stock - cutDays) * 10) / 10) + "일뿐이고, 모자란 "
@@ -736,7 +745,7 @@ function drawLeave(){
   /* ── 월별 원장 ── */
   const KO = {personal:"연차", half:"반차", coAnnual:"전사연차", substitute:"대체휴무", company:"전사휴무", official:"공가"};
   const box = $("ledger"); box.textContent = "";
-  let bal = 0, tAcc = 0, tUse = 0, tCash = 0, tMineH = 0, tSlipH = 0;
+  let bal = 0, tAcc = 0, tUse = 0, tCash = 0, tMineH = 0, tSlipH = 0, tOver = 0;
   const mismatch = [], todo = [];
 
   for (const mo of months){
@@ -748,6 +757,9 @@ function drawLeave(){
     if (mo === monthOf(EXPIRY) && bal > 0){ wiped = bal; bal = 0; }
     // 수당은 돈일 뿐 '쉴 권리'는 남는다 (C안). 잔여를 줄이는 것은 실제 사용뿐이다.
     bal += acc - use;
+    // 잔여는 0 밑으로 내려가지 않는다. 모자란 날은 연차가 아니라 무급이다 (급여 차감은 위 stockUseOf 가 이미 센다).
+    let over = 0;
+    if (bal < 0){ over = -bal; bal = 0; tOver += over; }
     tAcc += acc; tUse += use; tCash += cash; tMineH += mineH; tSlipH += slipH;
 
     const hasSlip = havePayslip.has(mo);
@@ -766,6 +778,7 @@ function drawLeave(){
       if (d[k]) tag(k === "coAnnual" || k === "personal" || k === "half" ? "use" : "acc",
                      KO[k] + " " + d[k] + (k === "half" ? "회" : "일"));
     const stock = stockUseOf(mo);
+    if (over) tag("un", "잔여 초과 " + fmt(over) + "일 → 무급");
     if (stock) tag("un", "모아둔 연차 " + fmt(stock) + "일 사용 → " + (stock * B.dailyHours) + "시간 차감");
     if (d.unpaid)   tag("un", "무급 " + d.unpaid + "일");
     if (d.coUnpaid) tag("un", "전사무급 " + d.coUnpaid + "일");
@@ -796,16 +809,16 @@ function drawLeave(){
   chk.append(h, l1, l2, foot);
   tb.appendChild(chk);
 
-  const rest = fmt(tAcc - tUse);
+  const rest = fmt(bal);
   curBal = rest;
   $("heroBal").textContent = rest + "일";
   $("heroAcc").textContent = tAcc + "일";
   $("heroMine").textContent = fmt(byMe) + "일";
   $("heroCo").textContent = fmt(byCompany) + "일";
   drawDetail();
-  document.querySelector(".hero").classList.toggle("neg", rest < 0);
+  document.querySelector(".hero").classList.toggle("neg", tOver > 0);
   $("lvBal").textContent = rest + "일";
-  $("lvBal").closest(".bal").classList.toggle("neg", rest < 0);
+  $("lvBal").closest(".bal").classList.toggle("neg", tOver > 0);
   $("lvAsOf").textContent = "오늘까지";
   drawExpiry(rest);
 
@@ -821,11 +834,10 @@ function drawLeave(){
     add("todo", "아직 기록하지 않은 휴무일이 " + todo.reduce((a,x)=>a+x.n,0) + "일 있습니다",
         todo.map(x => x.mo.replace("-",".") + " " + x.n + "일").join(", ")
         + " — 달력에서 눌러 성격을 정해 주세요.");
-  if (rest < 0)
-    add("bad", "생긴 것보다 " + fmt(-rest) + "일 더 나갔습니다",
-        tAcc + "일이 생겼는데, 쉰 날로 " + fmt(tUse) + "일 · 수당으로 " + tCash + "일분이 나갔습니다. "
-        + "회사가 법정보다 연차를 더 준 경우이거나, 연차로 찍은 날 중 일부가 실제로는 "
-        + "대체휴무·회사 부담 휴무일 수 있습니다.");
+  if (tOver > 0)
+    add("bad", "생긴 연차보다 " + fmt(tOver) + "일 더 쉬었습니다",
+        "잔여는 0일로 두고, 넘긴 날은 무급으로 봅니다 (기본급 −" + WON(Math.round(tOver * B.dayPay)) + "원 안팎). "
+        + "무급이 결근으로 잡히면 개근수당과 그 기간의 다음 연차 발생에 영향이 있을 수 있는데, 회사 처리는 아직 확인되지 않았습니다.");
 
   $("lvNote").textContent =
     "연차는 1개월 개근할 때마다 1일씩 생깁니다(근로기준법, 1년 미만 최대 11일). "
