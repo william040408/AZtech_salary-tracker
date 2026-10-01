@@ -636,3 +636,13 @@ h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .lgbal .rem{font-weight:700;color:var(--ink)}
 @media (max-width:520px){.lg .lgbal{justify-content:start;text-align:left}}
 .lg .tag{white-space:normal}
+
+/* 연차 대조: 날짜별 한 줄씩 */
+.lg .ev{flex-direction:column;flex-wrap:nowrap;gap:3px}
+.li{font-size:12.5px;line-height:1.45;color:var(--ink2)}
+.li b{font-weight:700;margin-right:1px}
+.li.use{color:var(--paid)}
+.li.un{color:var(--unpaid)}
+.li.cash{color:var(--half)}
+.li.acc{color:var(--ink2)}
+.li{font-weight:500}.li b{font-weight:700}

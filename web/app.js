@@ -787,7 +787,7 @@ function drawLeave(){
   const havePayslip = new Set(B.payslips.filter(pp => !pp.derived).map(pp => pp.period));
 
   /* 출처 3 — 내가 달력에 찍은 것. */
-  const useByMonth = {}, mineHByMonth = {}, detail = {}, untouched = {};
+  const useByMonth = {}, mineHByMonth = {}, detail = {}, untouched = {}, dayList = {};
   let byMe = 0, byCompany = 0;      // 내가 신청한 것 / 회사가 쓰게 한 것
   detailRows = { acc: [], mine: [], co: [] };
   for (const e of accrualDates())
@@ -800,6 +800,7 @@ function drawLeave(){
     if (!(k in CONSUMES) || isRest(ds)) continue;      // 쉬는 날은 연차도 급여도 건드리지 않는다
     detail[mo] = detail[mo] || {};
     detail[mo][k] = (detail[mo][k] || 0) + 1;
+    (dayList[mo] = dayList[mo] || []).push({ ds, k });
     if (CONSUMES[k]){
       useByMonth[mo] = (useByMonth[mo] || 0) + CONSUMES[k];
       if (k === "coAnnual"){ byCompany += CONSUMES[k]; detailRows.co.push({ ds, k: KINDS[k].label }); }
@@ -843,19 +844,36 @@ function drawLeave(){
     const row = document.createElement("div"); row.className = "lg";
     const m = document.createElement("span"); m.className = "m num"; m.textContent = mo.replace("-", ".");
     const ev = document.createElement("span"); ev.className = "ev";
-    const tag = (cls, txt) => { const e = document.createElement("span"); e.className = "tag " + cls; e.textContent = txt; ev.appendChild(e); };
-    if (wiped) tag("un", "소멸 −" + fmt(wiped) + "일");
-    if (cash) tag("cash", "수당 " + cash + "일분");
-    const d = detail[mo] || {};
-    for (const k of ["personal","half","coAnnual","substitute","official","company"])
-      if (d[k]) tag(k === "coAnnual" || k === "personal" || k === "half" ? "use" : "acc",
-                     KO[k] + " " + d[k] + (k === "half" ? "회" : "일"));
-    const stock = stockUseOf(mo);
-    if (over) tag("un", "잔여 초과 " + fmt(over) + "일 → 무급");
-    if (stock) tag("un", "모아둔 연차 " + fmt(stock) + "일 사용 → " + (stock * B.dailyHours) + "시간 차감");
-    if (d.unpaid)   tag("un", "무급 " + d.unpaid + "일");
-    if (d.coUnpaid) tag("un", "전사무급 " + d.coUnpaid + "일");
-    if (hasSlip && slipH !== mineH) tag("un", "명세서 차감 " + slipH + "시간 ≠ 내 기록 " + mineH + "시간");
+    const md = ds => Number(ds.slice(5, 7)) + "/" + Number(ds.slice(8));
+    const item = (cls, head, txt) => {
+      const e = document.createElement("span"); e.className = "li " + cls;
+      if (head){ const h = document.createElement("b"); h.className = "num"; h.textContent = head; e.appendChild(h); }
+      e.appendChild(document.createTextNode(txt)); ev.appendChild(e);
+    };
+    // 날짜가 있는 것: 연차 발생일과 쉰 날. 이어진 같은 종류의 날은 한 줄로 묶는다 (사이의 주말·공휴일은 건너뜀).
+    const dated = [];
+    for (const e of accrualDates()) if (monthOf(e.ds) === mo) dated.push({ ds: e.ds, cls: "acc", txt: "연차 발생 +" + e.days });
+    const days = (dayList[mo] || []).sort((x, y) => x.ds.localeCompare(y.ds));
+    const nextWork = ds => { const d = new Date(ds + "T00:00:00"); do d.setDate(d.getDate() + 1); while (isRest(iso(d))); return iso(d); };
+    for (let i = 0; i < days.length; i++){
+      let j = i;
+      while (j + 1 < days.length && days[j + 1].k === days[i].k && days[j + 1].ds === nextWork(days[j].ds)) j++;
+      const k = days[i].k, n = j - i + 1, from = subTargets().get(days[i].ds);
+      const label = { personal: "연차", half: "반차", unpaid: "무급휴가", coAnnual: "회사 연차", coUnpaid: "회사 무급휴가",
+                      company: "회사휴가", substitute: "대체휴무", official: "공가" }[k] || KINDS[k].label;
+      dated.push({ ds: days[i].ds, cls: CONSUMES[k] ? "use" : (k in DEDUCTS ? "un" : "acc"),
+                   head: n > 1 ? md(days[i].ds) + "~" + (days[i].ds.slice(0, 7) === days[j].ds.slice(0, 7) ? Number(days[j].ds.slice(8)) : md(days[j].ds)) : md(days[i].ds),
+                   txt: " " + label + (n > 1 ? " " + n + "일" : "") + (k === "substitute" && from ? " (" + md(from) + " 근무 대신)" : "") });
+      i = j;
+    }
+    dated.sort((x, y) => x.ds.localeCompare(y.ds));
+    for (const x of dated) item(x.cls, x.head || md(x.ds), x.txt.startsWith(" ") ? x.txt : " " + x.txt);
+    // 날짜가 없는 것: 수당·차감·소멸
+    if (cash) item("cash", "", "연차수당 " + cash + "일분");
+    if (mineH) item("un", "", "급여 차감 " + mineH + "시간");
+    if (wiped) item("un", "", "1년 미만 연차 소멸 −" + fmt(wiped) + "일");
+    if (over) item("un", "", "잔여 초과 " + fmt(over) + "일 → 무급");
+    if (hasSlip && slipH !== mineH) item("un", "", "명세서 차감 " + slipH + "시간 ≠ 내 기록 " + mineH + "시간");
     if (!ev.childElementCount){ const e = document.createElement("span"); e.className = "m"; e.textContent = "—"; ev.appendChild(e); }
     const b = document.createElement("span"); b.className = "lgbal num";
     const gone = use + wiped;                                   // 그 달에 줄어든 몫 (사용 + 소멸)
