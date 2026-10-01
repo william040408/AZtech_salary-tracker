@@ -657,3 +657,8 @@ h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 /* 시트 선택지: 이름(달력과 같은 말) 옆에 설명을 둔다. 좁으면 아래로 내려간다 */
 .opt{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:1px 8px}
 .opt small{display:inline!important;font-size:10.5px;line-height:1.3}
+
+.gc-row{display:flex;align-items:center;gap:8px}
+.gc-row .gc-cal{flex:1;min-width:0}
+.gc-color{width:26px;height:22px;padding:0;border:1px solid var(--line);background:none;cursor:pointer;flex:none}
+.gc-row .linkbtn{flex:none;padding:0 4px}

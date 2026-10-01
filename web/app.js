@@ -1072,6 +1072,12 @@ const GC_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
 const GC_PICK = "salary.gcal.pick";     // 어떤 캘린더를 볼지 (이 기기에만 저장)
 const GC_ON   = "salary.gcal.on";       // 전에 연결한 적이 있는지
 const GC_TITLES = "salary.gcal.titles"; // 칸에 제목까지 적을지
+const GC_COLORS = "salary.gcal.colors"; // 캘린더마다 내가 고른 색 (구글이 주는 색이 화면의 색과 다를 때)
+/* 구글 캘린더 화면이 지금 쓰는 일정 색 11가지. API 의 colors 는 옛 색(연한 파스텔)을 줘서 화면과 어긋난다. */
+const GC_EVENT_COLORS = { 1:"#7986cb", 2:"#33b679", 3:"#8e24aa", 4:"#e67c73", 5:"#f6bf26", 6:"#f4511e",
+                          7:"#039be5", 8:"#616161", 9:"#3f51b5", 10:"#0b8043", 11:"#d50000" };
+const gcColorPick = () => { try { return JSON.parse(localStorage.getItem(GC_COLORS)) || {}; } catch { return {}; } };
+const gcSaveColors = v => { try { localStorage.setItem(GC_COLORS, JSON.stringify(v)); } catch {} };
 
 let gcToken = null, gcClient = null, gcCals = [], gcQuiet = null;
 let gcEvents = new Map();               // "2026-10-05" -> [{t, title, allDay}]  (시트용)
@@ -1119,11 +1125,12 @@ function gcSpan(ev, cal){
   }
   if (to < from) to = from;
   // 일정에 따로 색을 준 것이 있으면 그것을 먼저 쓴다
-  const own = ev.colorId && gcColors && gcColors.event && gcColors.event[ev.colorId];
-  return { calId: cal.id, from, to, allDay,
+  const own = ev.colorId && (GC_EVENT_COLORS[ev.colorId]
+              || (gcColors && gcColors.event && gcColors.event[ev.colorId] && gcColors.event[ev.colorId].background));
+  return { calId: cal.id, from, to, allDay, own: !!own,
            t: allDay ? "" : ev.start.dateTime.slice(11, 16),
            title: ev.summary || "(제목 없음)",
-           color: (own && own.background) || cal.color || "#8a7d7d" };
+           color: own || cal.color || "#8a7d7d" };
 }
 
 /* 고른 캘린더만 골라 날짜별 목록을 다시 만든다. 받아 둔 일정은 건드리지
@@ -1237,15 +1244,36 @@ async function gcLoadMonth(mo){
 
 function gcDrawCals(){
   const box = $("gcCals"); box.textContent = ""; box.hidden = !gcCals.length;
+  const mine = gcColorPick();
   for (const c of gcCals){
+    const row = document.createElement("div"); row.className = "gc-row";
     const l = document.createElement("label"); l.className = "gc-cal";
     const i = document.createElement("input");
     i.type = "checkbox"; i.value = c.id;
     i.checked = gcUses(c.id);
-    const dot = document.createElement("i"); dot.style.background = c.color || "var(--muted)";
     const t = document.createElement("span"); t.textContent = c.name;
-    l.append(i, dot, t); box.appendChild(l);
+    l.append(i, t);
+    // 구글 화면의 색과 다르면 여기서 직접 고른다
+    const pick = document.createElement("input");
+    pick.type = "color"; pick.className = "gc-color"; pick.dataset.cal = c.id;
+    pick.value = /^#[0-9a-f]{6}$/i.test(c.color || "") ? c.color : "#8a7d7d";
+    pick.title = "이 캘린더의 색 (구글 화면과 다르면 바꾸세요)";
+    row.append(l, pick);
+    if (mine[c.id]){
+      const rs = document.createElement("button"); rs.type = "button"; rs.className = "linkbtn"; rs.dataset.reset = c.id;
+      rs.textContent = "원래 색"; row.appendChild(rs);
+    }
+    box.appendChild(row);
   }
+}
+function gcSetColor(id, hex){                       // hex 가 없으면 구글이 준 색으로 되돌린다
+  const mine = gcColorPick();
+  if (hex) mine[id] = hex; else delete mine[id];
+  gcSaveColors(mine);
+  const c = gcCals.find(x => x.id === id); if (!c) return;
+  c.color = hex || c.apiColor;
+  for (const sp of gcSpans) if (sp.calId === id && !sp.own) sp.color = c.color;   // 일정에 따로 준 색은 건드리지 않는다
+  gcRebuild(); gcDrawCals(); drawCal();
 }
 
 async function gcAfterToken(){
@@ -1254,7 +1282,8 @@ async function gcAfterToken(){
       gcApi("users/me/calendarList", { minAccessRole: "reader" }),
       gcApi("colors").catch(() => null)]);
     gcColors = colors;
-    gcCals = (r.items || []).map(c => ({ id: c.id, name: c.summary, color: c.backgroundColor }));
+    const mine = gcColorPick();
+    gcCals = (r.items || []).map(c => ({ id: c.id, name: c.summary, color: mine[c.id] || c.backgroundColor, apiColor: c.backgroundColor }));
     gcDrawCals();
     const sw = $("gcShowTitles");
     sw.checked = gcTitles();
@@ -1297,7 +1326,8 @@ function gcInit(){
   else { let k = 0; const t = setInterval(() => { if (ready() || ++k > 40){ clearInterval(t); if (ready()) start(); } }, 150); }
 
   // 체크박스는 다시 그려도 상자 자체는 그대로이므로 여기서 한 번만 단다
-  $("gcCals").addEventListener("change", () => {
+  $("gcCals").addEventListener("change", e => {
+    if (e.target.classList.contains("gc-color")){ gcSetColor(e.target.dataset.cal, e.target.value); return; }
     gcSavePick([...$("gcCals").querySelectorAll("input:checked")].map(i => i.value));
     gcRebuild();                       // 다시 받아오지 않는다 — 거르기만 한다
     gcDrawCals();                      // 빈 목록이면 전부 켜진 모습으로 되돌아간다
@@ -1313,6 +1343,9 @@ function gcInit(){
     if (!gcClient){ gcMsg("구글 로그인 스크립트를 아직 불러오는 중입니다.", true); return; }
     if (gcToken) return openPanel($("gcPanel").hidden);   // 이미 연결됐으면 판을 연다
     gcClient.requestAccessToken({ prompt: wasOn() ? "" : "consent" });   // 전에 연결했으면 동의 화면은 건너뛴다
+  });
+  $("gcCals").addEventListener("click", e => {
+    const r = e.target.closest("[data-reset]"); if (r) gcSetColor(r.dataset.reset, null);
   });
   $("gcAgain").addEventListener("click", () => gcClient.requestAccessToken({ prompt: "consent" }));
   document.addEventListener("click", e => {              // 바깥을 누르면 닫는다
