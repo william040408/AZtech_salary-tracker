@@ -657,6 +657,29 @@ function planWorkdays(from, to){
   return out;
 }
 
+/* 달마다 합산하는 연차 시뮬레이션 — 월별 원장과 같은 규칙.
+   plan(날짜 집합)을 더 쉬었다고 치고, through(날짜) 까지의 달별 잔여·차감·초과를 돌려준다.
+   차감 = 그 달에 생긴 월 발생분을 넘겨 쓴 일수, 초과 = 모아둔 것까지 모자란 일수. */
+function simLeave(through, plan){
+  const ev = accrualEvents(), exp = expiryDate(), last = monthOf(through);
+  const dates = trackedDates();
+  const months = [...new Set(ev.map(e => monthOf(e.ds)).concat(dates.map(monthOf), [...plan].map(monthOf)))].sort();
+  const per = {}; let bal = 0;
+  for (const m of months){
+    if (m > last) break;
+    const isLast = m === last;
+    if (m === monthOf(exp) && bal > 0 && (!isLast || through > exp)) bal = 0;     // 1년 미만 몫은 1주년 전날 사라진다
+    let accM = 0, acc = 0, use = 0;
+    for (const e of ev) if (monthOf(e.ds) === m && (!isLast || e.ds <= through)){ acc += e.days; if (e.kind === "monthly") accM += e.days; }
+    for (const d of dates) if (monthOf(d) === m && (!isLast || d <= through)) use += consumeOn(d, kindOf(d));
+    for (const d of plan) if (monthOf(d) === m && d <= through && !(consumeOn(d, kindOf(d)) > 0)) use += 1;
+    const prev = bal, net = prev + acc - use;
+    bal = Math.max(0, net);
+    per[m] = { prev, acc, accM, use, deduct: Math.max(0, use - accM), over: Math.max(0, -net) };
+  }
+  return { bal, per };
+}
+
 function drawPlan(){
   const out = $("plOut"); out.textContent = "";
   const from = $("plFrom").value, to = $("plTo").value;
@@ -675,21 +698,17 @@ function drawPlan(){
   for (const ds of days) byMonth[monthOf(ds)] = (byMonth[monthOf(ds)] || 0) + 1;
 
   const events = accrualEvents(), exp = expiryDate();
-  let freeDays = 0, cutDays = 0;
+  const withPlan = simLeave(to, new Set(days)), without = simLeave(to, new Set());
+  let cutDays = 0, loss = 0;
   for (const mo of Object.keys(byMonth)){
-    const cnt = byMonth[mo];
-    // 그 달에 생기는 월 1일분까지는 급여가 깎이지 않는다
-    const a = events.filter(e => e.kind === "monthly" && monthOf(e.ds) === mo)
-                    .reduce((x, e) => x + e.days, 0);
-    freeDays += Math.min(cnt, a);
-    cutDays  += Math.max(0, cnt - a);
+    cutDays += withPlan.per[mo].deduct - without.per[mo].deduct;       // 이 계획 때문에 새로 급여에서 빠지는 날
+    loss    += withPlan.per[mo].over   - without.per[mo].over;         // 그중 모아둔 연차로도 못 덮는 날
   }
-  // 계획이 시작되기 전까지 더 쌓이는 몫. 1주년 전날 한 번 비워진다.
-  let stock = from > exp ? 0 : Math.max(0, curBal);
-  for (const e of events)
-    if (e.ds > TODAY && e.ds < from && (from <= exp || e.ds > exp)) stock += e.days;
-  const covered = Math.min(cutDays, stock);      // 이미 수당으로 받아 둔 몫
-  const loss = Math.max(0, cutDays - covered);   // 받은 적 없이 깎이는 몫
+  const freeDays = days.length - cutDays;                              // 그 달에 생기는 연차로 덮이는 날
+  const firstMo = monthOf(days[0] || from);
+  const stock = without.per[firstMo] ? without.per[firstMo].prev : 0;  // 계획 첫 달이 시작되기 전까지 모아둔 연차
+  const covered = cutDays - loss;                                      // 이미 수당으로 받아 둔 몫
+  const remain = withPlan.bal;                                         // 계획이 끝난 날 기준 남는 연차
 
   const box = document.createElement("div"); box.className = "psum";
   const hd = document.createElement("div"); hd.className = "ph";
@@ -704,22 +723,13 @@ function drawPlan(){
   const skipped = span - days.length;
   line("실제로 쉬는 날", days.length + "일");
   if (skipped) line("주말·공휴일이라 뺀 날", skipped + "일", "sub");
-  line("그 달에 생기는 연차 (매달 " + accDay() + "일 발생)", "+" + freeDays + "일", "keep");
-  line("그때까지 모아둘 연차", (Math.round(stock*10)/10) + "일", "keep");
+  line("그 달에 생기는 연차로 덮이는 날 (매달 " + accDay() + "일 발생)", freeDays + "일", "keep");
+  line("계획 달이 시작될 때 모아둔 연차", (Math.round(stock*10)/10) + "일", "keep");
   line("급여에서 빠지는 날", cutDays ? cutDays + "일  −" + WON(cutDays * B.dayPay) + "원" : "없음", cutDays ? "cut" : "keep");
   if (covered) line("이미 수당으로 받아 둔 몫", (Math.round(covered*10)/10) + "일  실손실 아님", "sub");
+  line("이 계획이 끝난 뒤 남는 연차", (Math.round(remain*10)/10) + "일", remain > 0 ? "keep" : "cut");
   line("실제 손해", loss ? "−" + WON(loss * B.dayPay) + "원" : "0원", loss ? "tot cut" : "tot keep");
   out.appendChild(box);
-
-  // 그 달의 발생일(3일)보다 앞선 날을 쉬면, 아직 안 생긴 연차를 미리 쓰는 셈이다
-  let early = 0;
-  for (const mo of Object.keys(byMonth)){
-    const acc = events.find(e => e.kind === "monthly" && monthOf(e.ds) === mo);
-    if (!acc) continue;
-    const before = days.filter(d => monthOf(d) === mo && d < acc.ds).length;
-    early += Math.min(before, acc.days);
-  }
-  const advance = Math.max(0, early - Math.max(0, stock - cutDays));
 
   const tip = document.createElement("div");
   const t = document.createElement("b"), body = document.createElement("span");
@@ -754,11 +764,6 @@ function drawPlan(){
          + (risky.length ? "과, 이 기간이 걸린 " + risky.map(e => e.ds.slice(5).replace("-", "/")).join("·") + " 발생 연차가 " : "이 ")
          + "빠질 수 있습니다. 회사가 무급 휴가를 개근으로 보는지는 아직 확인되지 않았습니다.");
   }
-  if (advance)
-    note("warn", "아직 생기지 않은 연차를 미리 씁니다",
-         "그 날 실제로 쓸 수 있는 연차는 " + (Math.round(Math.max(0, stock - cutDays) * 10) / 10) + "일뿐이고, 모자란 "
-         + (Math.round(advance * 10) / 10) + "일은 그 달 " + accDay() + "일에 생기는 연차로 메웁니다. 급여는 한 달 단위로 합산하지만, "
-         + "회사가 미리 쓰게 해 주는지는 확인이 필요합니다. " + accDay() + "일 이후로 잡으면 이 걱정이 없습니다.");
   if (from <= exp && to > exp)
     note("warn", "소멸일을 걸쳐 있습니다",
          exp.replace(/-/g,".") + " 에 1년 미만 연차가 사라지고 다음 날 " + annualDays() + "일이 새로 생깁니다. "
