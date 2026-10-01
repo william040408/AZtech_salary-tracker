@@ -683,7 +683,7 @@ function simLeave(through, plan){
 function drawPlan(){
   const out = $("plOut"); out.textContent = "";
   const from = $("plFrom").value, to = $("plTo").value;
-  $("plHint").textContent = "모아둔 연차 " + (Math.round(curBal*10)/10) + "일" + (planPick === 3 ? " · 달력에서 다른 날을 누르면 새로 시작" : "");
+  $("plHint").textContent = "모아둔 연차 " + (Math.round(curBal*10)/10) + "일" + (planPick === 3 ? " · 달력에서 다른 날을 누르면 새로 시작 (접으면 끝)" : "");
   if (!from || !to || from > to){
     const e = document.createElement("div"); e.className = "pempty";
     e.textContent = planPick === 1 ? "근태 달력에서 시작하는 날을 눌러 주세요."
@@ -758,11 +758,11 @@ function drawPlan(){
   if (loss){
     const risky = events.filter(e => e.kind === "monthly" && e.ds > TODAY && e.from <= to && e.to >= from);
     const bonus = (B.payslips.map(x => x.earnings && x.earnings["개근수당"]).filter(Boolean).pop()) || 0;
-    note("warn", "만근이 깨질 수 있습니다",
-         "연차가 모자란 " + (Math.round(loss * 10) / 10) + "일은 무급이라 결근으로 잡힐 수 있습니다. 그러면 "
+    note("warn", "만근이 깨질 수 있습니다 (회사 처리 미확인)",
+         "연차가 모자란 " + (Math.round(loss * 10) / 10) + "일이 무급·결근으로 잡히면 "
          + (bonus ? "개근수당 " + WON(bonus) + "원" : "개근수당")
-         + (risky.length ? "과, 이 기간이 걸린 " + risky.map(e => e.ds.slice(5).replace("-", "/")).join("·") + " 발생 연차가 " : "이 ")
-         + "빠질 수 있습니다. 회사가 무급 휴가를 개근으로 보는지는 아직 확인되지 않았습니다.");
+         + (risky.length ? "과 " + risky.map(e => e.ds.slice(5).replace("-", "/")).join("·") + " 발생 연차" : "")
+         + "에 영향이 갈 수 있습니다.");
   }
   if (from <= exp && to > exp)
     note("warn", "소멸일을 걸쳐 있습니다",
@@ -996,6 +996,9 @@ function setupFolds(){
     btn.addEventListener("click", () => {
       const open = sec.classList.contains("folded");
       apply(open);
+      if (!open && sec.id === "plan" && planPick === 3){      // 연차 계획을 접으면 범위는 두고 고르기만 끝낸다
+        planPick = 0; planSaved = null; dropLayer("pick"); syncPick(); drawCal(); drawPlan();
+      }
       const f = readFolds(); f[name] = open; writeFolds(f);
     });
   }
@@ -1863,7 +1866,7 @@ function syncPick(){
   $("plFromBtn").classList.toggle("on", planPick === 1);
   $("plToBtn").classList.toggle("on", planPick === 2);
   $("plClear").hidden = !(f || t || planPick);
-  $("plClear").textContent = planPick === 3 ? "완료" : planPick ? "취소" : "지우기";
+  $("plClear").textContent = (planPick && planPick !== 3) ? "취소" : "지우기";
 }
 function ensureVisible(el, block){
   const r = el.getBoundingClientRect();
@@ -1887,7 +1890,7 @@ function cancelPick(){
 $("plFromBtn").addEventListener("click", () => startPick(1));
 $("plToBtn").addEventListener("click", () => startPick(2));
 $("plClear").addEventListener("click", () => {
-  if (planPick === 3){ planPick = 0; planSaved = null; dropLayer("pick"); syncPick(); drawCal(); drawPlan(); return; }   // 완료
+  if (planPick === 3){ planPick = 0; planSaved = null; dropLayer("pick"); }     // 고른 범위를 지우면 고르기도 끝난다
   if (planPick){ cancelPick(); return; }
   planSaved = null; $("plFrom").value = ""; $("plTo").value = "";
   syncPick(); drawCal(); drawPlan();
