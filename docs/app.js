@@ -416,9 +416,24 @@ const relayout = () => {
 window.addEventListener("resize", relayout);
 if (window.ResizeObserver) new ResizeObserver(relayout).observe($("calSec"));   // 접기·경고 줄 따위로 크기가 바뀔 때
 
+/* ── 긴 목록 접기 ──
+   최근 것을 먼저 보이고, 그보다 오래된 것은 '펼쳐보기' 로 연다. 열어 둔 상태는 다시 그려도 유지한다. */
+const LIST_LIMIT = 6, listOpen = new Set();
+function fillList(box, nodes, key, unit){
+  const old = nodes.slice(LIST_LIMIT);
+  const apply = open => old.forEach(n => { n.hidden = !open; });
+  nodes.forEach(n => box.appendChild(n));
+  if (!old.length) return;
+  const b = document.createElement("button"); b.type = "button"; b.className = "linkbtn more";
+  const paint = () => { const o = listOpen.has(key); apply(o); b.textContent = o ? "접기" : "이전 " + old.length + unit + " 펼쳐보기"; b.setAttribute("aria-expanded", String(o)); };
+  b.addEventListener("click", () => { listOpen.has(key) ? listOpen.delete(key) : listOpen.add(key); paint(); });
+  paint(); box.appendChild(b);
+}
+
 /* ── 월별 대조 ── */
 function drawMonths(){
   const box = $("months"); box.textContent = "";
+  const rowsOut = [];
   const months = [...new Set([].concat(
     B.payslips.map(pp => pp.period), trackedDates().map(monthOf)))].sort().reverse();
   const ref = refNet();
@@ -518,8 +533,9 @@ function drawMonths(){
         row.appendChild(c);
       }
     }
-    box.appendChild(row);
+    rowsOut.push(row);
   }
+  fillList(box, rowsOut, "months", "개월");
 }
 
 /* ── 연차 원장 ──
@@ -802,6 +818,7 @@ function drawLeave(){
   /* ── 월별 원장 ── */
   const KO = {personal:"연차", half:"반차", coAnnual:"전사연차", substitute:"대체휴무", company:"전사휴무", official:"공가"};
   const box = $("ledger"); box.textContent = "";
+  const lgRows = [];
   let bal = 0, tAcc = 0, tUse = 0, tCash = 0, tMineH = 0, tSlipH = 0, tOver = 0;
   const mismatch = [], todo = [];
 
@@ -841,9 +858,16 @@ function drawLeave(){
     if (d.coUnpaid) tag("un", "전사무급 " + d.coUnpaid + "일");
     if (hasSlip && slipH !== mineH) tag("un", "명세서 차감 " + slipH + "시간 ≠ 내 기록 " + mineH + "시간");
     if (!ev.childElementCount){ const e = document.createElement("span"); e.className = "m"; e.textContent = "—"; ev.appendChild(e); }
-    const b = document.createElement("span"); b.className = "lgbal num"; b.textContent = fmt(bal) + "일";
-    row.append(m, ev, b); box.appendChild(row);
+    const b = document.createElement("span"); b.className = "lgbal num";
+    const gone = use + wiped;                                   // 그 달에 줄어든 몫 (사용 + 소멸)
+    for (const [cls, txt] of [["up", acc ? "+" + fmt(acc) : ""], ["dn", gone ? "−" + fmt(gone) : ""]]){
+      if (!txt) continue;
+      const i = document.createElement("i"); i.className = cls; i.textContent = txt; b.appendChild(i);
+    }
+    b.appendChild(document.createTextNode("잔여 " + fmt(bal) + "일"));
+    row.append(m, ev, b); lgRows.push(row);
   }
+  fillList(box, lgRows.reverse(), "ledger", "개월");                // 최근 달이 위로
 
   /* ── 맞춰볼 수 있는 항목만 보여 준다 ──
      명세서에는 며칠 쉬었는지가 없고 금액만 있다. 그래서 양쪽이 모두
@@ -961,6 +985,7 @@ function drawDetail(){
     const e = document.createElement("div"); e.className = "hempty";
     e.textContent = DETAIL_EMPTY[detailOpen]; box.appendChild(e); return;
   }
+  const hrows = [];
   for (const r of rows){
     const isMonth = r.ds.length === 7;
     const b = document.createElement("button");
@@ -978,8 +1003,9 @@ function drawDetail(){
     k.textContent = r.k; b.appendChild(k);
     const go = document.createElement("span"); go.className = "hgo"; go.textContent = "›";
     b.appendChild(go);
-    box.appendChild(b);
+    hrows.push(b);
   }
+  fillList(box, hrows, "detail-" + detailOpen, "건");
 }
 
 document.querySelector(".hero-grid").addEventListener("click", e => {

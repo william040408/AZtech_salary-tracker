@@ -622,3 +622,10 @@ h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .cell > *{flex-shrink:0}
 .cell > .evs{flex-shrink:1;min-height:0}
 .pickbar .btn{flex:none}
+
+/* 접힌 목록 */
+.lg[hidden],.mrow[hidden],.hrow[hidden]{display:none!important}
+.linkbtn.more{display:block;width:100%;padding:9px 0;text-align:center;border-top:1px solid var(--line2);font-weight:600}
+.lgbal i{font-style:normal;font-weight:700;margin-right:7px}
+.lgbal i.up{color:var(--paid)}
+.lgbal i.dn{color:var(--unpaid)}
