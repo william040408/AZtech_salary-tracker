@@ -646,3 +646,14 @@ h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .li.cash{color:var(--half)}
 .li.acc{color:var(--ink2)}
 .li{font-weight:500}.li b{font-weight:700}
+
+/* 명세서 대조 — 달마다 한 줄 */
+.check-row{display:grid;grid-template-columns:62px 1fr 1fr 18px;gap:8px;align-items:baseline;font-size:12.5px;padding:5px 0;border-top:1px solid color-mix(in srgb,currentColor 18%,transparent)}
+.check-row b{font-size:14px;text-align:center}
+.check-row.bad{color:var(--unpaid);font-weight:700}
+.check-row.soon{opacity:.7}
+.check>.check-foot:first-of-type{margin:0 0 8px}
+@media (max-width:520px){.check-row{grid-template-columns:54px 1fr 1fr 16px;font-size:12px}}
+/* 시트 선택지: 이름(달력과 같은 말) 옆에 설명을 둔다. 좁으면 아래로 내려간다 */
+.opt{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:1px 8px}
+.opt small{display:inline!important;font-size:10.5px;line-height:1.3}

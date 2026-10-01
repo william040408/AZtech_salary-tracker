@@ -821,7 +821,7 @@ function drawLeave(){
   const box = $("ledger"); box.textContent = "";
   const lgRows = [];
   let bal = 0, tAcc = 0, tUse = 0, tCash = 0, tMineH = 0, tSlipH = 0, tOver = 0;
-  const mismatch = [], todo = [];
+  const mismatch = [], todo = [], cmpRows = [];
 
   for (const mo of months){
     const acc = accByMonth[mo]||0, use = useByMonth[mo]||0, cash = cashByMonth[mo]||0;
@@ -838,6 +838,7 @@ function drawLeave(){
     tAcc += acc; tUse += use; tCash += cash; tMineH += mineH; tSlipH += slipH;
 
     const hasSlip = havePayslip.has(mo);
+    cmpRows.push({ mo, hasSlip, slipH, mineH });
     if (hasSlip && slipH !== mineH) mismatch.push({ mo, slipH, mineH });
     if (hasSlip && untouched[mo])   todo.push({ mo, n: untouched[mo] });
 
@@ -889,21 +890,39 @@ function drawLeave(){
      명세서에는 며칠 쉬었는지가 없고 금액만 있다. 그래서 양쪽이 모두
      말해 주는 것은 '급여에서 깎인 시간' 하나뿐이다. */
   const tb = $("cmpBody"); tb.textContent = "";
+  const slipMonths = cmpRows.filter(r => r.hasSlip);
   const ok = mismatch.length === 0;
   const chk = document.createElement("div");
   chk.className = "check " + (ok ? "ok" : "bad");
   const h = document.createElement("b");
-  h.textContent = ok ? "명세서와 기록이 맞습니다" : "명세서와 기록이 다릅니다";
-  const l1 = document.createElement("div"); l1.className = "check-row";
-  l1.innerHTML = "<span>급여명세서에서 깎인 시간</span><b class='num'>" + tSlipH + "시간</b>";
-  const l2 = document.createElement("div"); l2.className = "check-row";
-  l2.innerHTML = "<span>달력에 무급으로 적은 시간</span><b class='num'>" + tMineH + "시간</b>";
-  const foot = document.createElement("div"); foot.className = "check-foot";
-  foot.textContent = ok
-    ? "명세서 " + B.payslips.length + "장이 달력 기록과 맞습니다."
-    : mismatch.map(x => x.mo.replace("-",".") + " 명세서 " + x.slipH + "시간 · 기록 " + x.mineH + "시간").join(", ")
-      + " — 달력에서 그 달을 확인해 주세요.";
-  chk.append(h, l1, l2, foot);
+  h.textContent = ok ? "✓ 명세서 " + slipMonths.length + "개월 모두 달력과 일치합니다"
+                     : "⚠ " + mismatch.length + "개월이 달력과 다릅니다";
+  const sub = document.createElement("div"); sub.className = "check-foot";
+  sub.textContent = "명세서에서 깎인 시간과, 달력에 무급·차감으로 적은 시간을 달마다 비교합니다.";
+  chk.append(h, sub);
+  // 차감이 있었거나 다른 달만 줄로 보이고, 둘 다 0시간인 달은 한 줄로 묶는다
+  const shown = cmpRows.filter(r => r.slipH || r.mineH || (r.hasSlip && r.slipH !== r.mineH)).reverse();
+  for (const r of shown){
+    const row = document.createElement("div");
+    const bad = r.hasSlip && r.slipH !== r.mineH;
+    row.className = "check-row" + (bad ? " bad" : "") + (r.hasSlip ? "" : " soon");
+    const m = document.createElement("span"); m.className = "num"; m.textContent = r.mo.replace("-", ".");
+    const a1 = document.createElement("span"); a1.textContent = r.hasSlip ? "명세서 " + r.slipH + "시간" : "명세서 아직 없음";
+    const a2 = document.createElement("span"); a2.textContent = "달력 " + r.mineH + "시간" + (r.hasSlip ? "" : " (예상)");
+    const mk = document.createElement("b"); mk.textContent = !r.hasSlip ? "" : bad ? "≠" : "✓";
+    row.append(m, a1, a2, mk); chk.appendChild(row);
+  }
+  const zero = cmpRows.filter(r => r.hasSlip && !r.slipH && !r.mineH).length;
+  if (zero){
+    const z = document.createElement("div"); z.className = "check-foot";
+    z.textContent = "나머지 " + zero + "개월은 명세서·달력 모두 차감 0시간으로 일치합니다.";
+    chk.appendChild(z);
+  }
+  if (!ok){
+    const f = document.createElement("div"); f.className = "check-foot";
+    f.textContent = "달력에서 해당 달의 무급·차감 날을 확인해 주세요. 명세서가 맞다면 달력 기록을 고쳐야 합니다.";
+    chk.appendChild(f);
+  }
   tb.appendChild(chk);
 
   const rest = fmt(bal);
@@ -1445,8 +1464,10 @@ function openSheet(ds){
       const b = document.createElement("button");
       b.type = "button"; b.className = "opt"; b.dataset.kind = key;
       b.setAttribute("aria-pressed", String(shown === key));
-      const t = document.createElement("span"); t.textContent = K.label;
-      const sm = document.createElement("small"); sm.textContent = K.desc;
+      const name = rest ? K.label : (K.tag || K.label);          // 달력 칸에 적히는 이름과 같게
+      const t = document.createElement("span"); t.textContent = name;
+      const sm = document.createElement("small");
+      sm.textContent = [(!rest && K.label !== name) ? K.label : "", K.desc].filter(Boolean).join(" · ");
       b.append(t, sm); row.appendChild(b);
     }
     if (g.kinds.includes("work")) row.appendChild($("shTimes"));  // 출근 줄 오른쪽 칸
