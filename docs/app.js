@@ -845,7 +845,6 @@ function drawLeave(){
     const ev = document.createElement("span"); ev.className = "ev";
     const tag = (cls, txt) => { const e = document.createElement("span"); e.className = "tag " + cls; e.textContent = txt; ev.appendChild(e); };
     if (wiped) tag("un", "소멸 −" + fmt(wiped) + "일");
-    if (acc)  tag("acc",  "발생 +" + acc);
     if (cash) tag("cash", "수당 " + cash + "일분");
     const d = detail[mo] || {};
     for (const k of ["personal","half","coAnnual","substitute","official","company"])
@@ -861,10 +860,9 @@ function drawLeave(){
     const b = document.createElement("span"); b.className = "lgbal num";
     const gone = use + wiped;                                   // 그 달에 줄어든 몫 (사용 + 소멸)
     for (const [cls, txt] of [["up", acc ? "+" + fmt(acc) : ""], ["dn", gone ? "−" + fmt(gone) : ""]]){
-      if (!txt) continue;
-      const i = document.createElement("i"); i.className = cls; i.textContent = txt; b.appendChild(i);
+      const i = document.createElement("i"); i.className = cls; i.textContent = txt; b.appendChild(i);   // 비어도 칸은 둔다 — 줄이 맞는다
     }
-    b.appendChild(document.createTextNode("잔여 " + fmt(bal) + "일"));
+    const rem = document.createElement("span"); rem.className = "rem"; rem.textContent = "잔여 " + fmt(bal) + "일"; b.appendChild(rem);
     row.append(m, ev, b); lgRows.push(row);
   }
   fillList(box, lgRows.reverse(), "ledger", "개월");                // 최근 달이 위로

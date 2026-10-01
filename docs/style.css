@@ -567,10 +567,10 @@ h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 /* 날짜 줄과 연차 배지 — 배지는 날짜와 같은 줄의 세로 가운데에 놓인다 */
 .cell .drow{position:relative;display:block}
 .cell .drow .d{display:block}
-.acc{position:absolute;right:2px;top:1px;white-space:nowrap;font-size:9px;font-weight:700;line-height:1;
+.drow > .acc{position:absolute;right:2px;top:1px;white-space:nowrap;font-size:9px;font-weight:700;line-height:1;
   letter-spacing:-.02em;color:var(--accent)}
-.acc .s{display:none}
-@media (max-width:520px){.acc .f{display:none}.acc .s{display:inline}.acc{font-size:8.5px;right:1px}}
+.drow > .acc .s{display:none}
+@media (max-width:520px){.drow > .acc .f{display:none}.drow > .acc .s{display:inline}.drow > .acc{font-size:8.5px;right:1px}}
 .cell.pad{cursor:pointer}
 
 /* 달력 제목줄: 제목 · 범례 · 연월 이동. 범례가 이동 단추와 겹치지 않게 가운데 자리를 쓴다 */
@@ -629,3 +629,10 @@ h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .lgbal i{font-style:normal;font-weight:700;margin-right:7px}
 .lgbal i.up{color:var(--paid)}
 .lgbal i.dn{color:var(--unpaid)}
+
+/* 월별 잔여: + · − · 잔여를 세 칸으로 나눠 위아래 줄을 맞춘다 */
+.lg .lgbal{display:grid;grid-template-columns:2.8em 3.2em 5.8em;justify-content:end;align-items:baseline;text-align:right;white-space:nowrap}
+.lgbal i{margin-right:0}
+.lgbal .rem{font-weight:700;color:var(--ink)}
+@media (max-width:520px){.lg .lgbal{justify-content:start;text-align:left}}
+.lg .tag{white-space:normal}
