@@ -1506,6 +1506,24 @@ function drawSheetEvents(ds){
   }
 }
 
+/* 그 날 아침 기준으로 쓸 수 있는 연차. 월별 원장과 같은 방식으로 그 날 전까지만 센다. */
+function balanceAt(ds){
+  const ev = accrualEvents(), exp = expiryDate(), mo = monthOf(ds);
+  const dates = trackedDates();
+  const months = [...new Set(ev.map(e => monthOf(e.ds)).concat(dates.map(monthOf)))].sort();
+  let bal = 0;
+  for (const m of months){
+    if (m > mo) break;
+    const last = m === mo;
+    if (m === monthOf(exp) && bal > 0 && (!last || ds > exp)) bal = 0;      // 1년 미만 몫은 1주년 전날 사라진다
+    let acc = 0, use = 0;
+    for (const e of ev) if (monthOf(e.ds) === m && (!last || e.ds <= ds)) acc += e.days;
+    for (const d of dates) if (monthOf(d) === m && (!last || d < ds)) use += consumeOn(d, kindOf(d));
+    bal = Math.max(0, bal + acc - use);
+  }
+  return bal;
+}
+
 /* 이 날을 연차로 잡으면 얼마가 깎이는지 미리 알려 준다. */
 function drawSheetBal(k, ds){
   const acc = ds && accrualEvents().find(e => e.ds === ds);
@@ -1524,13 +1542,13 @@ function drawSheetBal(k, ds){
     box.hidden = false;
     return;
   }
-  const already = CONSUMES[k] || 0;        // 이미 연차로 잡혀 있던 몫은 되돌려 센다
-  const free = Math.round((curBal + already) * 10) / 10;
+  const free = Math.round(balanceAt(ds) * 10) / 10;       // 그 날 기준 (이 날 자신은 빼고 센다)
+  const asof = ds === TODAY ? "" : dotMD(ds) + " 기준 ";
   box.className = "shbal" + (free >= 1 ? "" : " warn");
   const grew = acc ? spanText(acc) + " 만근으로 이 날 연차 " + acc.days + "일 생김 · " : "";
   box.textContent = grew + (free >= 1
-    ? "쓸 수 있는 연차 " + free + "일"
-    : "쓸 수 있는 연차 " + free + "일 — 하루를 연차로 잡으면 "
+    ? asof + "쓸 수 있는 연차 " + free + "일"
+    : asof + "쓸 수 있는 연차 " + free + "일 — 하루를 연차로 잡으면 "
       + (Math.round((1 - free) * 10) / 10) + "일이 모자라 약 "
       + WON((1 - free) * B.dayPay) + "원이 깎입니다");
   box.hidden = false;
@@ -1589,10 +1607,17 @@ function commitSheet(){
 
 function closeSheet(){ $("scrim").classList.remove("on"); $("sheet").classList.remove("on"); picked = null; dropLayer("sheet"); }
 
+function clearOv(d){
+  overrides.delete(d); subMap = null;
+  if (dbRef) dbRef.collection("leave").doc(d).delete().catch(() => { $("dbWarn").hidden = false; });
+}
 async function setKind(ds, kind, times, sub){
   // 대체휴무일은 일한 날(쉬는 날에 출근)에만 붙는다. 넘기지 않으면 기존 것을 유지한다.
-  const keep = sub === undefined ? subOf(ds) : sub;
+  const prevSub = subOf(ds);
+  const keep = sub === undefined ? prevSub : sub;
   sub = (kind && WORK_KINDS.has(kind) && isRest(ds)) ? keep : null;
+  // 대체휴무로 묶여 있던 동안 그 날의 옛 기록은 가려져 있었다. 묶임이 바뀌면 그 옛 기록을 지워 원래 모습(엑셀 기본값)으로 돌린다.
+  for (const t of new Set([prevSub, sub])) if (t && overrides.has(t)) clearOv(t);
   const val = (times && times.s) || sub
     ? { k: kind, ...(times && times.s ? { s: times.s, e: times.e } : {}), ...(sub ? { sub } : {}) } : kind;
   if (kind) overrides.set(ds, val); else overrides.delete(ds);
