@@ -229,8 +229,6 @@ function drawCal(skipLayout){
       const v = document.createElement("span");
       v.className = "ev bar" + (s.plan ? " plan" : "") + (head ? " s" : "") + (tail ? " e" : "");
       v.style.background = s.color; v.style.color = gcInk(s.color);
-      if (head && s.calColor && s.calColor.toLowerCase() !== String(s.color).toLowerCase())
-        v.style.boxShadow = "inset 4px 0 0 " + s.calColor;                   // 구글 캘린더처럼 두 색을 모두 보인다
       if (head){                              // 시각은 좁아서 못 넣는다. 시트에 있다.
         // 제목은 이 주 안에서 막대가 이어지는 칸 수만큼 펼친다 — 구글 캘린더처럼
         const days = Math.round((new Date(s.to + "T00:00:00") - new Date(ds + "T00:00:00")) / 864e5);
@@ -1125,8 +1123,7 @@ function gcSpan(ev, cal){
   return { calId: cal.id, from, to, allDay,
            t: allDay ? "" : ev.start.dateTime.slice(11, 16),
            title: ev.summary || "(제목 없음)",
-           color: (own && own.background) || cal.color || "#8a7d7d",
-           calColor: cal.color || null };            // 일정 색이 따로 있으면 캘린더 색은 막대 왼쪽 띠로 남긴다
+           color: (own && own.background) || cal.color || "#8a7d7d" };
 }
 
 /* 고른 캘린더만 골라 날짜별 목록을 다시 만든다. 받아 둔 일정은 건드리지
