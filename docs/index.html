@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Serif+KR:wght@600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=87cc2282">
+<link rel="stylesheet" href="style.css?v=bfc02482">
 <!-- 구글 로그인. 연결하지 않으면 아무 일도 하지 않는다. -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -141,6 +141,21 @@
     <div class="note">시작·끝을 누르고 근태 달력에서 날짜를 고르면, 급여가 얼마나 깎이는지 미리 계산합니다.</div>
   </section>
 
+  <section class="sec" id="bulk">
+    <div class="sec-hd"><h2>기간으로 기록</h2></div>
+    <div class="sec-body">
+      <div class="prow">
+        <label class="bkf"><span>종류</span><select id="bkKind"></select></label>
+        <button class="pfb" type="button" id="bkFromBtn"><span>시작</span><b class="num" id="bkFromTxt">날짜 선택</b></button>
+        <button class="pfb" type="button" id="bkToBtn"><span>끝</span><b class="num" id="bkToTxt">날짜 선택</b></button>
+        <input type="hidden" id="bkFrom"><input type="hidden" id="bkTo">
+      </div>
+      <label class="bkf wide"><span>사유 (선택)</span><input type="text" id="bkNote" maxlength="40" placeholder="예: 훈련소 입소"></label>
+      <div class="bkrow"><div class="bkinfo" id="bkInfo"></div><button class="btn pri" type="button" id="bkGo" disabled>기록하기</button></div>
+    </div>
+    <div class="note">훈련소처럼 며칠씩 이어지는 공가·휴가를 한 번에 적습니다. 주말·공휴일은 건너뛰고 평일에만 기록하며, 그 날을 눌러 "이 기간 전체 해제"로 한 번에 지울 수 있습니다.</div>
+  </section>
+
   <section class="sec">
     <div class="sec-hd"><h2>연차 대조</h2><span class="hint" id="lvAsOf"></span></div>
     <div class="sec-body">
@@ -180,6 +195,7 @@
   <div class="shevents" id="shEvents" hidden></div>
   <div class="shbal" id="shBal" hidden></div>
   <div class="subst" id="shSubst" hidden></div>
+  <div class="subst" id="shGrp" hidden></div>
   <div class="opts" id="shOpts"></div>
   <div class="times" id="shTimes" hidden>
     <input id="shStart" type="time" step="60" aria-label="출근 시각">
@@ -195,6 +211,6 @@
 <!-- 데이터 자리. 배포본에는 자리표시자 그대로 나가고, 페이지가 열린 뒤
      금고에서 받아온다. 개발 서버는 여기에 값을 박아서 내려 준다. -->
 <script id="bundle" type="application/json">__BUNDLE__</script>
-<script src="app.js?v=37112ed4"></script>
+<script src="app.js?v=56675f60"></script>
 </body>
 </html>

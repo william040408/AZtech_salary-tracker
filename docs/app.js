@@ -113,6 +113,7 @@ function subTargets(){                                   // 쉰 날 -> 일한 �
   return subMap;
 }
 const dotMD = ds => ds.slice(5, 7) + "." + ds.slice(8);
+const metaOf = d => { const v = overrides.get(d); return (v && typeof v === "object") ? { note: v.note || "", grp: v.grp || "" } : { note: "", grp: "" }; };
 
 /** 점심(12~13시)과 겹치는 만큼만 빼고 실근무 시간을 센다. */
 function hoursBetween(st, en){
@@ -805,7 +806,7 @@ function drawLeave(){
     if (!(k in CONSUMES) || isRest(ds)) continue;      // 쉬는 날은 연차도 급여도 건드리지 않는다
     detail[mo] = detail[mo] || {};
     detail[mo][k] = (detail[mo][k] || 0) + 1;
-    (dayList[mo] = dayList[mo] || []).push({ ds, k });
+    (dayList[mo] = dayList[mo] || []).push({ ds, k, note: metaOf(ds).note });
     if (CONSUMES[k]){
       useByMonth[mo] = (useByMonth[mo] || 0) + CONSUMES[k];
       if (k === "coAnnual"){ byCompany += CONSUMES[k]; detailRows.co.push({ ds, k: KINDS[k].label }); }
@@ -818,7 +819,7 @@ function drawLeave(){
 
   const months = [...new Set([].concat(
     Object.keys(accByMonth), Object.keys(useByMonth), Object.keys(cashByMonth),
-    Object.keys(dedByMonth), Object.keys(mineHByMonth)))].sort();
+    Object.keys(dedByMonth), Object.keys(mineHByMonth), Object.keys(dayList)))].sort();
   for (const mo of months) mineHByMonth[mo] = deductHoursOf(mo);
 
   /* ── 월별 원장 ── */
@@ -863,13 +864,14 @@ function drawLeave(){
     const nextWork = ds => { const d = new Date(ds + "T00:00:00"); do d.setDate(d.getDate() + 1); while (isRest(iso(d))); return iso(d); };
     for (let i = 0; i < days.length; i++){
       let j = i;
-      while (j + 1 < days.length && days[j + 1].k === days[i].k && days[j + 1].ds === nextWork(days[j].ds)) j++;
+      while (j + 1 < days.length && days[j + 1].k === days[i].k && days[j + 1].note === days[i].note
+             && days[j + 1].ds === nextWork(days[j].ds)) j++;
       const k = days[i].k, n = j - i + 1, from = subTargets().get(days[i].ds);
       const label = { personal: "연차", half: "반차", unpaid: "무급휴가", coAnnual: "회사 연차", coUnpaid: "회사 무급휴가",
                       company: "회사휴가", substitute: "대체휴무", official: "공가" }[k] || KINDS[k].label;
       dated.push({ ds: days[i].ds, cls: CONSUMES[k] ? "use" : (k in DEDUCTS ? "un" : "acc"),
                    head: n > 1 ? md(days[i].ds) + "~" + (days[i].ds.slice(0, 7) === days[j].ds.slice(0, 7) ? Number(days[j].ds.slice(8)) : md(days[j].ds)) : md(days[i].ds),
-                   txt: " " + label + (n > 1 ? " " + n + "일" : "") + (k === "substitute" && from ? " (" + md(from) + " 근무 대신)" : "") });
+                   txt: " " + label + (n > 1 ? " " + n + "일" : "") + (k === "substitute" && from ? " (" + md(from) + " 근무 대신)" : "") + (days[i].note ? " · " + days[i].note : "") });
       i = j;
     }
     dated.sort((x, y) => x.ds.localeCompare(y.ds));
@@ -970,7 +972,7 @@ function drawLeave(){
 /* ── 칸 접었다 펴기 ──
    화면에 한꺼번에 너무 많이 나오므로, 제목을 눌러 내용을 감출 수 있게 한다. */
 const FOLDKEY = "salary.folds";
-const FOLD_SHUT = ["연차 계획", "연차 대조", "월별 명세서 대조"];   // 처음에는 접어 둔다
+const FOLD_SHUT = ["연차 계획", "기간으로 기록", "연차 대조", "월별 명세서 대조"];   // 처음에는 접어 둔다
 function readFolds(){ try { return JSON.parse(localStorage.getItem(FOLDKEY)) || {}; } catch { return {}; } }
 function writeFolds(f){ try { localStorage.setItem(FOLDKEY, JSON.stringify(f)); } catch {} }
 
@@ -1516,8 +1518,37 @@ function openSheet(ds){
   }
   syncTimes(ds, rest ? (restMode === "off" ? "dayoff" : "work") : k);
   drawSubst(ds, clicked);
+  drawGrp(ds);
   $("scrim").classList.add("on"); $("sheet").classList.add("on"); pushLayer("sheet");
 }
+/* ── 기간으로 적은 기록 ── */
+function drawGrp(ds){
+  const box = $("shGrp"), m = metaOf(ds); box.textContent = "";
+  box.hidden = !(m.grp || m.note);
+  if (box.hidden) return;
+  const t = document.createElement("span"); t.className = "sb-t";
+  const [f, e] = (m.grp || "").split("~");
+  t.textContent = (m.note ? "사유 " + m.note : "") + (m.note && f ? " · " : "") + (f ? dotMD(f) + "~" + dotMD(e) + " 기간 기록" : "");
+  box.appendChild(t);
+  if (m.grp){
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn sm"; b.id = "shGrpOff"; b.textContent = "이 기간 전체 해제";
+    box.appendChild(b);
+  }
+}
+function persistDates(dates){
+  if (dbRef) for (const d of dates){
+    const v = overrides.get(d), doc = dbRef.collection("leave").doc(d);
+    (v ? doc.set({ date: d, kind: kindName(v), s: v.s || null, e: v.e || null, sub: v.sub || null, note: v.note || null, grp: v.grp || null,
+                   updatedAt: new Date().toISOString() }) : doc.delete()).catch(() => { $("dbWarn").hidden = false; });
+  } else if (api) pushLeave();
+}
+$("shGrp").addEventListener("click", e => {
+  if (!e.target.closest("#shGrpOff") || !picked) return;
+  const g = metaOf(picked).grp, hit = [...overrides].filter(([, v]) => v && typeof v === "object" && v.grp === g).map(([d]) => d);
+  for (const d of hit) overrides.delete(d);
+  subMap = null; closeSheet(); redraw(); persistDates(hit);
+});
+
 /* ── 대체휴무 지정 ── */
 let subPick = null;                                   // 대체휴무일을 고르는 중인, 일한 날
 let workPick = null;                                  // 근무일을 고르는 중인, 대체휴무일
@@ -1556,7 +1587,7 @@ function startSubPick(){
   relayout();
 }
 function endSubPick(toSheet){
-  subPick = null; workPick = null; $("pickBar").hidden = true; $("pickNoLink").hidden = true;
+  subPick = null; workPick = null; bulkPick = 0; if (typeof drawBulk === "function") drawBulk(); $("pickBar").hidden = true; $("pickNoLink").hidden = true;
   if (toSheet){                                        // 바로 시트를 이어 열 때는 뒤로 가기 칸을 그대로 넘긴다
     const i = layers.lastIndexOf("subpick"); if (i >= 0) layers[i] = "sheet";
   } else dropLayer("subpick");
@@ -1722,15 +1753,18 @@ async function setKind(ds, kind, times, sub){
   sub = (kind && WORK_KINDS.has(kind) && isRest(ds)) ? keep : null;
   // 대체휴무로 묶여 있던 동안 그 날의 옛 기록은 가려져 있었다. 묶임이 바뀌면 그 옛 기록을 지워 원래 모습(엑셀 기본값)으로 돌린다.
   for (const t of new Set([prevSub, sub])) if (t && overrides.has(t)) clearOv(t);
-  const val = (times && times.s) || sub
-    ? { k: kind, ...(times && times.s ? { s: times.s, e: times.e } : {}), ...(sub ? { sub } : {}) } : kind;
+  const old = metaOf(ds), keepMeta = kind && kindName(overrides.get(ds)) === kind;      // 같은 종류로 다시 저장하면 사유·기간 묶음을 이어 둔다
+  const note = keepMeta ? old.note : "", grp = keepMeta ? old.grp : "";
+  const val = (times && times.s) || sub || note || grp
+    ? { k: kind, ...(times && times.s ? { s: times.s, e: times.e } : {}), ...(sub ? { sub } : {}),
+        ...(note ? { note } : {}), ...(grp ? { grp } : {}) } : kind;
   if (kind) overrides.set(ds, val); else overrides.delete(ds);
   subMap = null;
   redraw();
   if (dbRef){
     try {
       const doc = dbRef.collection("leave").doc(ds);
-      if (kind) await doc.set({ date: ds, kind, s: times?.s || null, e: times?.e || null, sub: sub || null,
+      if (kind) await doc.set({ date: ds, kind, s: times?.s || null, e: times?.e || null, sub: sub || null, note: note || null, grp: grp || null,
                                 updatedAt: new Date().toISOString() });
       else await doc.delete();
     } catch { $("dbWarn").hidden = false; }
@@ -1840,6 +1874,18 @@ $("grid").addEventListener("click", e => {
     return;
   }
   if (!b || b.disabled || !b.dataset.date) return;
+  if (bulkPick){                                   // 기간으로 기록할 시작·끝을 고르는 중
+    const ds = b.dataset.date;
+    if (bulkPick === 1){
+      $("bkFrom").value = ds; if ($("bkTo").value && $("bkTo").value < ds) $("bkTo").value = "";
+      bulkPick = $("bkTo").value ? 0 : 2;
+    } else {
+      if (ds < $("bkFrom").value){ $("bkTo").value = $("bkFrom").value; $("bkFrom").value = ds; } else $("bkTo").value = ds;
+      bulkPick = 0;
+    }
+    if (bulkPick){ $("pickTxt").textContent = "기간이 끝나는 날을 눌러 주세요."; } else endSubPick();
+    drawBulk(); return;
+  }
   if (workPick){                                   // 대신 일한 쉬는 날을 고르는 중
     const off = workPick, w = b.dataset.date, cur = subOf(w);
     const bad = !isRest(w) ? "쉬는 날(주말·공휴일)에 일한 날을 눌러 주세요."
@@ -1883,6 +1929,53 @@ $("grid").addEventListener("click", e => {
   }
   openSheet(b.dataset.date);
 });
+
+/* ── 기간으로 기록 ──
+   훈련소처럼 며칠씩 이어지는 공가를 날마다 누르지 않고, 종류·기간·사유를 한 번에 적는다.
+   주말·공휴일은 건너뛰고(원래 쉬는 날), 평일에만 적는다. */
+let bulkPick = 0;                                      // 1 = 시작 고르는 중, 2 = 끝 고르는 중
+const BULK_KINDS = ["official", "personal", "unpaid", "coAnnual", "coUnpaid", "company"];
+function bulkDays(){
+  const f = $("bkFrom").value, t = $("bkTo").value; if (!f || !t || f > t) return [];
+  const out = [], d = new Date(f + "T00:00:00"), end = new Date(t + "T00:00:00");
+  for (; d <= end; d.setDate(d.getDate() + 1)){ const ds = iso(d); if (!isRest(ds) && ds >= B.firstWorkDay) out.push(ds); }
+  return out;
+}
+function drawBulk(){
+  const f = $("bkFrom").value, t = $("bkTo").value, days = bulkDays();
+  $("bkFromTxt").textContent = f ? dotYMD(f) : "날짜 선택"; $("bkFromTxt").classList.toggle("empty", !f);
+  $("bkToTxt").textContent = t ? dotYMD(t) : "날짜 선택"; $("bkToTxt").classList.toggle("empty", !t);
+  $("bkFromBtn").classList.toggle("on", bulkPick === 1); $("bkToBtn").classList.toggle("on", bulkPick === 2);
+  $("bkGo").disabled = !days.length;
+  $("bkInfo").textContent = !f || !t ? "종류를 고르고 시작·끝을 달력에서 눌러 주세요."
+    : f > t ? "끝이 시작보다 앞입니다."
+    : days.length + "일에 적용됩니다 (주말·공휴일 " + (Math.round((new Date(t) - new Date(f)) / 864e5) + 1 - days.length) + "일 제외)";
+}
+const dotYMD = ds => ds.replace(/-/g, ".");
+function startBulkPick(mode){
+  if (bulkPick === mode){ endSubPick(); return; }
+  const first = !bulkPick;
+  bulkPick = (mode === 2 && !$("bkFrom").value) ? 1 : mode;
+  $("pickTxt").textContent = bulkPick === 1 ? "기록할 기간의 시작하는 날을 눌러 주세요." : "기간이 끝나는 날을 눌러 주세요.";
+  $("pickBar").hidden = false; $("pickNoLink").hidden = true;
+  if (first){ const i = layers.lastIndexOf("subpick"); if (i < 0) pushLayer("subpick"); }
+  drawBulk(); ensureVisible($("calSec"), "start"); relayout();
+}
+$("bkFromBtn").addEventListener("click", () => startBulkPick(1));
+$("bkToBtn").addEventListener("click", () => startBulkPick(2));
+$("bkGo").addEventListener("click", () => {
+  const days = bulkDays(), kind = $("bkKind").value, note = $("bkNote").value.trim();
+  if (!days.length) return;
+  const grp = $("bkFrom").value + "~" + $("bkTo").value;
+  for (const d of days) overrides.set(d, { k: kind, ...(note ? { note } : {}), grp });
+  subMap = null; redraw(); persistDates(days);
+  $("bkFrom").value = $("bkTo").value = ""; $("bkNote").value = "";
+  drawBulk(); $("bkInfo").textContent = days.length + "일을 " + (KINDS[kind].tag || KINDS[kind].label) + "로 기록했습니다.";
+});
+{
+  const sel = $("bkKind");
+  for (const k of BULK_KINDS){ const o = document.createElement("option"); o.value = k; o.textContent = KINDS[k].tag || KINDS[k].label; sel.appendChild(o); }
+}
 
 /* ── 연차 계획: 시작·끝 고르기 ──
    브라우저 기본 날짜 입력은 구글 스타일 달력이 뜨므로 쓰지 않는다. '시작' 이나 '끝' 을 누르면
@@ -2195,6 +2288,7 @@ function start(){
   $("openSetup").hidden = !api;
   $("refreshBtn").hidden = !api;
   if (api) metaAt().catch(() => {});
+  drawBulk();
   gcInit();
   initFontRelayout();
   syncPick();
@@ -2218,7 +2312,8 @@ function start(){
         subMap = null; overrides = new Map();
         for (const d of snap.docs){
         const v = d.data(); if (!v || !v.kind) continue;
-        overrides.set(d.id, (v.s || v.sub) ? { k: v.kind, ...(v.s ? { s: v.s, e: v.e } : {}), ...(v.sub ? { sub: v.sub } : {}) } : v.kind);
+        overrides.set(d.id, (v.s || v.sub || v.note || v.grp) ? { k: v.kind, ...(v.s ? { s: v.s, e: v.e } : {}), ...(v.sub ? { sub: v.sub } : {}),
+                                                         ...(v.note ? { note: v.note } : {}), ...(v.grp ? { grp: v.grp } : {}) } : v.kind);
       }
         redraw();
       },

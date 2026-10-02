@@ -662,3 +662,15 @@ h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .gc-row .gc-cal{flex:1;min-width:0}
 .gc-color{width:26px;height:22px;padding:0;border:1px solid var(--line);background:none;cursor:pointer;flex:none}
 .gc-row .linkbtn{flex:none;padding:0 4px}
+
+/* 기간으로 기록 */
+.bkf{display:flex;flex-direction:column;gap:2px;flex:1;min-width:118px}
+.bkf.wide{margin-top:8px}
+.bkf span{font-size:11.5px;font-weight:600;color:var(--muted)}
+.bkf select,.bkf input{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--r-sm)}
+.bkf select:focus,.bkf input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.bkrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.bkinfo{font-size:12.5px;color:var(--ink2);flex:1}
+.bkrow .btn{flex:none;padding:9px 18px}
+.bkrow .btn:disabled{opacity:.45;cursor:default}
+.pfb.on{border-color:var(--accent)}
