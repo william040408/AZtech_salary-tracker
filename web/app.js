@@ -388,6 +388,7 @@ function measureLanes(){
   return caps;
 }
 
+window.__dbg = () => ({ laneCaps: laneCaps.join(), cellH, win: innerWidth + "x" + innerHeight, dpr: devicePixelRatio });   // 콘솔 진단용
 function layoutCal(){
   if (layoutCal.busy) return;
   layoutCal.busy = true;
