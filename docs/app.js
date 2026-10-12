@@ -116,11 +116,12 @@ const dotMD = ds => ds.slice(5, 7) + "." + ds.slice(8);
 const metaOf = d => { const v = overrides.get(d); return (v && typeof v === "object") ? { note: v.note || "", grp: v.grp || "" } : { note: "", grp: "" }; };
 
 /** 점심(12~13시)과 겹치는 만큼만 빼고 실근무 시간을 센다. */
+const LUNCH = [12, 13];                                  // 점심시간 — 근무시간에서 뺀다
 function hoursBetween(st, en){
   const to = t => { const [h, m] = t.split(":").map(Number); return h + m / 60; };
   let a = to(st), b = to(en);
   if (b < a) b += 24;
-  const lunch = Math.max(0, Math.min(b, 13) - Math.max(a, 12));
+  const lunch = Math.max(0, Math.min(b, LUNCH[1]) - Math.max(a, LUNCH[0]));
   return Math.round((b - a - lunch) * 100) / 100;
 }
 
@@ -1712,6 +1713,25 @@ function drawSheetBal(k, ds){
   box.hidden = false;
 }
 
+/* 반차 빠른 선택 — 실제로 일한 시간을 누르면 바로 들어간다 */
+const HALF_PRESETS = [["오후만 근무", "13:00", "17:30"], ["오전만 근무", "08:30", "12:00"]];
+function drawPresets(on){
+  let box = $("shPresets");
+  if (!box){
+    box = document.createElement("div"); box.id = "shPresets"; box.className = "presets";
+    $("shTimes").appendChild(box);
+    box.addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      $("shStart").value = b.dataset.s; $("shEnd").value = b.dataset.e; saveTimes();
+    });
+  }
+  box.hidden = !on; box.textContent = "";
+  if (!on) return;
+  for (const [t, s1, e1] of HALF_PRESETS){
+    const b = document.createElement("button"); b.type = "button"; b.dataset.s = s1; b.dataset.e = e1;
+    b.textContent = t + " " + s1 + "~" + e1; box.appendChild(b);
+  }
+}
 function syncTimes(ds, k){
   const box = $("shTimes");
   if (!WORK_KINDS.has(k) && k !== "half"){ box.hidden = true; return; }
@@ -1720,6 +1740,7 @@ function syncTimes(ds, k){
   $("shEnd").value   = tm ? tm.e : "17:30";
   const btn = $("shOpts").querySelector('.opt[data-kind="' + (isRest(ds) ? "work" : k) + '"]');
   if (btn && btn.parentElement !== box.parentElement) btn.parentElement.appendChild(box);   // 고른 종류의 줄로
+  drawPresets(half);
   box.hidden = false;
   showHours();
 }
@@ -1727,15 +1748,29 @@ function showHours(){
   const a = $("shStart").value, b = $("shEnd").value;
   const half = picked && (deferred ? pendKind : kindOf(picked)) === "half";
   const w = (a && b) ? hoursBetween(a, b) : null;
+  $("shHours").classList.remove("bad");
   $("shHours").textContent = w == null ? "" : half
     ? "일한 " + w + "시간 · 비운 " + Math.max(0, Math.round((B.dailyHours - w) * 100) / 100) + "시간"
     : w + "시간";
+}
+/* 시각 입력 검사 — 끝이 시작보다 늦어야 하고, 점심만 걸친 구간은 근무시간이 0이다. 오늘이면 아직 안 지난 시각을 알려 준다. */
+function timeProblem(a, b){
+  if (!a || !b) return "출근·퇴근 시각을 모두 넣어 주세요";
+  if (b <= a) return "퇴근이 출근보다 늦어야 합니다";
+  if (hoursBetween(a, b) <= 0) return "점심시간(" + LUNCH[0] + "~" + LUNCH[1] + "시)만 걸쳐 근무시간이 0입니다";
+  return "";
 }
 function saveTimes(){
   if (!picked) return;
   const a = $("shStart").value, b = $("shEnd").value;
   showHours();
-  if (!a || !b) return;
+  const bad = timeProblem(a, b);
+  $("shHours").classList.toggle("bad", !!bad);
+  if (bad){ $("shHours").textContent = bad; return; }      // 잘못된 시각은 저장하지 않는다
+  if (picked === TODAY){
+    const now = new Date(), hhmm = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+    if (b > hhmm) $("shHours").textContent += " · 퇴근 시각이 아직 지나지 않았습니다";
+  }
   const rest = isRest(picked);
   // 평일은 8시간에 못 미치면 지각으로 본다. 쉬는 날에는 지각이 없다.
   const cur = deferred ? pendKind : kindOf(picked);

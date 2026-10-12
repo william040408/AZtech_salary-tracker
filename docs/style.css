@@ -674,3 +674,8 @@ h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em;text-wrap:balan
 .bkrow .btn{flex:none;padding:9px 18px}
 .bkrow .btn:disabled{opacity:.45;cursor:default}
 .pfb.on{border-color:var(--accent)}
+
+.thrs.bad{color:var(--unpaid)}
+.presets{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.presets button{appearance:none;font-family:inherit;font-size:11px;padding:5px 6px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);cursor:pointer}
+.presets button:hover{border-color:var(--accent);color:var(--accent)}
