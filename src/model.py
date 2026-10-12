@@ -22,8 +22,9 @@ def verify(ps):
     # 1) 기본급 -> 차감 시간 역산. 반차(4h) 사용이 있으므로 '일' 단위로 가정하지 않는다.
     base = e.get("기본급", 0)
     shortfall = FULL_BASE - base
-    if shortfall % HOURLY == 0:
-        ps["deducted_hours"] = shortfall // HOURLY
+    if (shortfall * 2) % HOURLY == 0:          # 30분 단위까지 인정 (지각·반차 반영)
+        q = shortfall * 2 // HOURLY / 2
+        ps["deducted_hours"] = int(q) if q == int(q) else q
     else:
         ps["deducted_hours"] = None
         issues.append(
@@ -31,8 +32,9 @@ def verify(ps):
             f"(만근 {FULL_BASE:,} 대비 {shortfall:,} 차이)"
         )
     h = ps["deducted_hours"]
+    # 4시간 단위가 아니면 지각·조퇴가 섞인 것 — 이상이 아니라 참고 사항이다
     if h is not None and h % 4 != 0:
-        issues.append(f"차감 {h}시간 — 연차(8h)·반차(4h) 어느 배수도 아님")
+        notes.append(f"차감 {h}시간 — 4시간 단위가 아님 (지각·조퇴 반영으로 보임)")
     ps["leave_used"] = h / DAILY_HOURS if h is not None else None
 
     # 2) 연차수당 -> 현금 지급받은 연차일수
