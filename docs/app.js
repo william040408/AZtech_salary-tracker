@@ -395,7 +395,7 @@ if (/[?&]dbg=1/.test(location.search)){
   const box = document.createElement("pre");
   box.style.cssText = "position:fixed;left:6px;bottom:6px;z-index:99;margin:0;padding:6px 8px;max-width:92vw;font:11px/1.35 monospace;background:#000c;color:#fff;white-space:pre-wrap;pointer-events:none";
   document.body.appendChild(box);
-  const paint = () => { const d = window.__dbg(); box.textContent = d.win + " dpr " + d.dpr + " cellH " + d.cellH + " caps " + d.laneCaps + "\n" + d.weeks.map((w, i) => i + ": need " + w.need + " " + w.ev).join("\n"); };
+  const paint = () => { if (!view) return; const d = window.__dbg(); box.textContent = d.win + " dpr " + d.dpr + " cellH " + d.cellH + " caps " + d.laneCaps + "\n" + d.weeks.map((w, i) => i + ": need " + w.need + " " + w.ev).join("\n"); };
   setInterval(paint, 700);
 }
 function layoutCal(){
