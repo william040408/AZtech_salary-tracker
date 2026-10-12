@@ -52,7 +52,7 @@ def report(slips):
             parts.append(f"연차수당 +{cash*DAY_PAY:,} ({cash}일분)")
         if ded_h:
             half = "" if ded_h % DAILY_HOURS == 0 else f", 반차 포함 가능"
-            parts.append(f"기본급 -{ded_h*HOURLY:,} ({ded_h}시간{half})")
+            parts.append(f"기본급 -{int(ded_h*HOURLY):,} ({ded_h}시간{half})")
 
         out.append({
             "period": p["period"],
