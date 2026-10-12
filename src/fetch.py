@@ -13,7 +13,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 ENV = Path(".env")
 RAW = Path("data/raw")
 HTMLDIR = RAW / "html"
-SHORT_LINK = re.compile(r"https?://l\.ecount\.com/[A-Za-z0-9]+")
+SHORT_LINK = re.compile(r"https?://l\.ecount\.com/[A-Za-z0-9_-]+")
 SUBJECT_HINT = "급여명세서"
 
 
