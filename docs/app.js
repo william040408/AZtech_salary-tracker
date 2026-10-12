@@ -1705,10 +1705,12 @@ function drawSheetBal(k, ds){
 
 function syncTimes(ds, k){
   const box = $("shTimes");
-  if (!WORK_KINDS.has(k)){ box.hidden = true; return; }
-  const tm = timesOf(ds);
-  $("shStart").value = tm ? tm.s : "08:30";
+  if (!WORK_KINDS.has(k) && k !== "half"){ box.hidden = true; return; }
+  const tm = timesOf(ds), half = k === "half";
+  $("shStart").value = tm ? tm.s : (half ? "13:00" : "08:30");        // 반차는 실제로 일한 시간을 적는다
   $("shEnd").value   = tm ? tm.e : "17:30";
+  const btn = $("shOpts").querySelector('.opt[data-kind="' + (isRest(ds) ? "work" : k) + '"]');
+  if (btn && btn.parentElement !== box.parentElement) btn.parentElement.appendChild(box);   // 고른 종류의 줄로
   box.hidden = false;
   showHours();
 }
@@ -1723,7 +1725,8 @@ function saveTimes(){
   if (!a || !b) return;
   const rest = isRest(picked);
   // 평일은 8시간에 못 미치면 지각으로 본다. 쉬는 날에는 지각이 없다.
-  const k = (!rest && hoursBetween(a, b) < 7.99) ? "short" : "work";
+  const cur = deferred ? pendKind : kindOf(picked);
+  const k = cur === "half" ? "half" : (!rest && hoursBetween(a, b) < 7.99) ? "short" : "work";   // 반차는 반차로 둔다
   if (deferred){ pendKind = k; pendTimes = { s: a, e: b }; }
   else if (rest && restMode === "sub" && !subOf(picked)) { /* 대체휴무일을 고를 때 함께 저장한다 */ }
   else setKind(picked, k, { s: a, e: b });
@@ -2057,8 +2060,15 @@ $("shOpts").addEventListener("click", e => {
   markOpt(k);
   if (deferred){                          // 일정이 있는 날 — 저장 단추로 확정한다
     pendKind = k;
-    if (!WORK_KINDS.has(k)) pendTimes = null;
+    if (!WORK_KINDS.has(k) && k !== "half") pendTimes = null;
     syncTimes(picked, k);
+    if (k === "half") saveTimes();
+    return;
+  }
+  if (k === "half"){                      // 반차 — 실제로 일한 시간을 적을 수 있게 열어 둔다
+    const tm = timesOf(picked);
+    setKind(picked, "half", tm ? { s: tm.s, e: tm.e } : { s: "13:00", e: "17:30" });
+    syncTimes(picked, "half"); saveTimes();
     return;
   }
   if (WORK_KINDS.has(k)){                 // 출근이면 시각을 적을 수 있게 열어 둔다
