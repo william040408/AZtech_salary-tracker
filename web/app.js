@@ -390,6 +390,16 @@ function measureLanes(){
 
 window.__dbg = () => ({ laneCaps: laneCaps.join(), cellH, win: innerWidth + "x" + innerHeight, dpr: devicePixelRatio,
   weeks: gcLanes(view).weeks.map(w => ({ need: w.need, ev: w.here.map(s => s.title.slice(0, 8) + "@" + w.lane.get(s) + (s.plan ? "(계획)" : "")).join(" | ") })) });   // 콘솔 진단용
+/* 주소 끝에 ?dbg=1 을 붙이면 줄 배정 값을 화면 왼쪽 아래에 보여 준다 (개발자 도구 없이 확인용) */
+if (/[?&]dbg=1/.test(location.search)){
+  const box = document.createElement("pre");
+  box.style.cssText = "position:fixed;left:6px;bottom:6px;z-index:99;margin:0;padding:6px 8px;max-width:92vw;font:11px/1.35 monospace;background:#000c;color:#fff;white-space:pre-wrap;pointer-events:none";
+  document.body.appendChild(box);
+  const paint = () => { const d = window.__dbg(); box.textContent = d.win + " dpr " + d.dpr + " cellH " + d.cellH + " caps " + d.laneCaps + "
+" + d.weeks.map((w, i) => i + ": need " + w.need + " " + w.ev).join("
+"); };
+  setInterval(paint, 700);
+}
 function layoutCal(){
   if (layoutCal.busy) return;
   layoutCal.busy = true;
