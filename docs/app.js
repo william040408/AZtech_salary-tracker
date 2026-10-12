@@ -223,7 +223,7 @@ function drawCal(skipLayout){
     const here = wk.here.filter(s => s.from <= ds && ds <= s.to);
     if (!here.length) return;
     if (!gcTitles() || cap < 1){ cell.classList.add("hasev"); return; }   // 제목을 껐거나 자리가 없으면 점만 찍는다
-    const K = wk.need > cap ? cap - 1 : cap;                          // 이 주가 그리는 줄 수 (넘치면 마지막 줄은 +N)
+    const K = cap;                                                    // 이 주가 그리는 줄 수. 넘치는 것은 칸 모서리의 +N 으로 알린다
     const box = document.createElement("span"); box.className = "evs";
     const slot = [];
     for (const s of here) slot[wk.lane.get(s)] = s;
@@ -247,16 +247,10 @@ function drawCal(skipLayout){
       box.appendChild(bar(s, s.from === ds || w0 === 0, s.to === ds || w0 === 6));   // 한 주의 시작·끝에서 끊는다
     }
     const hid = here.filter(s => wk.lane.get(s) >= K);
-    if (hid.length){
-      // 가려진 것이 하루짜리 하나뿐이면 '+1' 대신 그 일정을 적는다 (이어질 막대가 없으니 줄이 어긋나지 않는다)
-      if (hid.length === 1 && hid[0].from === hid[0].to) box.appendChild(bar(hid[0], true, true));
-      else {
-        const more = document.createElement("span"); more.className = "ev more";
-        more.textContent = "+" + hid.length; box.appendChild(more);
-      }
-    }
-    else if (wk.need > cap){                                          // '+N' 줄이 있는 주는 모든 칸이 그 자리를 비워 둔다
-      const v = document.createElement("span"); v.className = "ev blank"; box.appendChild(v);
+    if (hid.length){                                                  // 줄을 차지하지 않고 왼쪽 위 모서리에 둔다 — 보이는 줄 수가 줄지 않는다
+      const more = document.createElement("span"); more.className = "more-n";
+      more.textContent = "+" + hid.length; more.title = "더 있는 일정 " + hid.length + "개 — 눌러서 확인";
+      cell.appendChild(more);
     }
     cell.appendChild(box);
   };
@@ -379,7 +373,7 @@ function measureLanes(){
       inner = c.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       let t = 0, k = 0;
       for (const el of c.children){
-        if (el.classList.contains("evs")) continue;
+        if (el.classList.contains("evs") || el.classList.contains("more-n")) continue;
         t += el.getBoundingClientRect().height; k++;
       }
       worst = Math.max(worst, t + k);                        // 자식 사이 1px
