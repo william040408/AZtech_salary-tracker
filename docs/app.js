@@ -388,7 +388,8 @@ function measureLanes(){
   return caps;
 }
 
-window.__dbg = () => ({ laneCaps: laneCaps.join(), cellH, win: innerWidth + "x" + innerHeight, dpr: devicePixelRatio });   // 콘솔 진단용
+window.__dbg = () => ({ laneCaps: laneCaps.join(), cellH, win: innerWidth + "x" + innerHeight, dpr: devicePixelRatio,
+  weeks: gcLanes(view).weeks.map(w => ({ need: w.need, ev: w.here.map(s => s.title.slice(0, 8) + "@" + w.lane.get(s) + (s.plan ? "(계획)" : "")).join(" | ") })) });   // 콘솔 진단용
 function layoutCal(){
   if (layoutCal.busy) return;
   layoutCal.busy = true;
@@ -487,8 +488,8 @@ function drawMonths(){
                 + "  (−" + p.deductedHours + "시간, −" + WON(p.deductedHours*B.hourly) + "원)");
     }
     if (off) bits.push("쉰 날 " + (Math.round(off*10)/10) + "일" + (half?" (반차 "+half+")":""));
-    if (p && p.deductedHours && p.deductedHours % (B.dailyHours / 2) !== 0)
-      bits.push("차감이 " + (B.dailyHours / 2) + "시간 단위가 아님 — 지각·조퇴가 반영된 것으로 보임");
+    if (p && p.deductedHours && p.deductedHours % (B.dailyHours / 2) !== 0 && deductHoursOf(mo) !== p.deductedHours)
+      bits.push("차감이 " + (B.dailyHours / 2) + "시간 단위가 아님 — 달력 기록으로 설명되지 않습니다");
     const rw = restWorkOf(mo);
     if (rw.n){
       const hasItem = !!p && !p.derived && Object.keys(p.earnings).some(name => /휴일|가산|연장|야간/.test(name));
@@ -1496,7 +1497,7 @@ function openSheet(ds){
   const hol = a?.holiday || (B.holidays && B.holidays[ds]);
   const tm = timesOf(ds);
   $("shSub").textContent = tm
-    ? tm.s + " ~ " + tm.e + " · " + hoursBetween(tm.s, tm.e) + "시간" + (tm.mine ? " (직접 적음)" : "")
+    ? (k === "half" ? "실제 근무 " : "") + tm.s + " ~ " + tm.e + " · " + hoursBetween(tm.s, tm.e) + "시간" + (tm.mine ? " (직접 적음)" : "")
     : (hol || "출근 기록 없음");
   const keep = $("shTimes");
   if (keep) $("sheet").appendChild(keep);      // 지워지지 않게 잠시 밖으로
@@ -1716,7 +1717,11 @@ function syncTimes(ds, k){
 }
 function showHours(){
   const a = $("shStart").value, b = $("shEnd").value;
-  $("shHours").textContent = (a && b) ? hoursBetween(a, b) + "시간" : "";
+  const half = picked && (deferred ? pendKind : kindOf(picked)) === "half";
+  const w = (a && b) ? hoursBetween(a, b) : null;
+  $("shHours").textContent = w == null ? "" : half
+    ? "일한 " + w + "시간 · 비운 " + Math.max(0, Math.round((B.dailyHours - w) * 100) / 100) + "시간"
+    : w + "시간";
 }
 function saveTimes(){
   if (!picked) return;
@@ -1731,7 +1736,7 @@ function saveTimes(){
   else if (rest && restMode === "sub" && !subOf(picked)) { /* 대체휴무일을 고를 때 함께 저장한다 */ }
   else setKind(picked, k, { s: a, e: b });
   markOpt(rest ? restKey() : k);
-  $("shSub").textContent = a + " ~ " + b + " · " + hoursBetween(a, b) + "시간 (직접 적음)";
+  $("shSub").textContent = (cur === "half" ? "실제 근무 " : "") + a + " ~ " + b + " · " + hoursBetween(a, b) + "시간 (직접 적음)";
 }
 
 /* 일정이 있는 날은 곧바로 저장하지 않고 '저장하기' 를 누를 때 확정한다.
