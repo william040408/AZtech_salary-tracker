@@ -530,7 +530,7 @@ function drawMonths(){
         const c = document.createElement("div");
         c.className = "chk " + (ok ? "ok" : "bad");
         c.textContent = ok
-          ? "✓ " + (mine/B.dailyHours) + "일치 차감, 명세서와 일치"
+          ? "✓ " + mine + "시간 차감, 명세서와 일치"
           : "⚠ 기록상 " + mine + "시간, 명세서 차감 " + p.deductedHours + "시간 — 달력에서 그 달을 확인해 주세요";
         row.appendChild(c);
       }
@@ -603,7 +603,20 @@ function flatUnpaidOf(mo){
 /* 그 달 발생분을 넘겨 쓴 일수 — 이미 수당으로 받아 둔 재고를 쓰는 것이라 급여에서 빠진다 */
 function stockUseOf(mo){ return Math.max(0, useOf(mo) - accOf(mo)); }
 /* 그 달 기본급에서 빠지는 시간 */
-function deductHoursOf(mo){ return (flatUnpaidOf(mo) + stockUseOf(mo)) * B.dailyHours; }
+/* 모아둔 연차에서 넘겨 쓴 몫이 반차에 걸리면, 회사는 반차의 연차 0.5일을 쓰고 실제로 비운 시간만 기본급에서 뺀다
+   (예: 13시 출근 → 비운 3.5시간). 시각이 없으면 반일(4시간)로 본다. 나머지는 하루 8시간 단위다. */
+function stockHoursOf(mo){
+  let left = stockUseOf(mo), h = 0;
+  const halves = trackedDates().filter(d => monthOf(d) === mo && kindOf(d) === "half" && !isRest(d));
+  for (const ds of halves){
+    if (left < 0.5) break;
+    const tm = timesOf(ds), worked = tm ? hoursBetween(tm.s, tm.e) : null;
+    h += worked == null ? B.dailyHours / 2 : Math.max(0, Math.round((B.dailyHours - worked) * 100) / 100);
+    left -= 0.5;
+  }
+  return h + left * B.dailyHours;
+}
+function deductHoursOf(mo){ return flatUnpaidOf(mo) * B.dailyHours + stockHoursOf(mo); }
 /* 그 달에 현금으로 받을 연차수당 일수 */
 function cashDaysOf(mo){ return Math.max(0, accOf(mo) - useOf(mo)); }
 
@@ -1833,7 +1846,7 @@ function drawForecast(){
   const pay = B.payslips.find(p => p.period === target);
   const why = [];
   const stock = stockUseOf(target);
-  if (stock) why.push("그 달에 생긴 " + accOf(target) + "일을 " + stock + "일 넘겨 써서, 모아둔 연차에서 " + (stock * B.dailyHours) + "시간 차감");
+  if (stock) why.push("그 달에 생긴 " + accOf(target) + "일을 " + stock + "일 넘겨 써서, 모아둔 연차에서 " + (Math.round(stockHoursOf(target) * 100) / 100) + "시간 차감");
   else if (deductH) why.push("무급 " + (deductH / B.dailyHours) + "일 차감 반영");
   if (cash) why.push("그 달 발생분을 안 써서 연차수당이 붙는 것으로 봄");
   else why.push("그 달 발생분을 써서 연차수당은 없는 것으로 봄");
